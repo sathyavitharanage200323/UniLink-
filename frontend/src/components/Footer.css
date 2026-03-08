@@ -1,0 +1,155 @@
+/* ─────────────────────────────────────
+   Footer.css — UniLink Site Footer
+   ───────────────────────────────────── */
+
+.footer {
+  background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 55%, #0f172a 100%);
+  color: rgba(255, 255, 255, 0.78);
+  margin-top: auto;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+/* ── Main grid ── */
+.footer__inner {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 52px 28px 36px;
+  display: grid;
+  grid-template-columns: 2.2fr 1fr 1fr 1.4fr;
+  gap: 44px;
+}
+
+/* ── Brand column ── */
+.footer__brand-heading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: white;
+  font-size: 1.20rem;
+  font-weight: 700;
+  margin-bottom: 14px;
+  text-decoration: none;
+}
+.footer__brand-heading strong { font-weight: 900; }
+
+.footer__brand-logo-box {
+  width: 36px;
+  height: 36px;
+  background: rgba(109, 40, 217, 0.40);
+  border: 1.5px solid rgba(109, 40, 217, 0.60);
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #a78bfa;
+}
+
+.footer__tagline {
+  font-size: 0.85rem;
+  line-height: 1.65;
+  opacity: 0.65;
+  margin: 0 0 22px;
+  max-width: 270px;
+}
+
+.footer__socials {
+  display: flex;
+  gap: 8px;
+}
+.footer__social-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: rgba(255, 255, 255, 0.70);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+  transition: background 0.15s, color 0.15s;
+}
+.footer__social-btn:hover {
+  background: rgba(109, 40, 217, 0.40);
+  color: white;
+}
+
+/* ── Link columns ── */
+.footer__col h4 {
+  color: white;
+  font-size: 0.82rem;
+  font-weight: 700;
+  margin: 0 0 18px;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+}
+.footer__col ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.footer__col ul li a,
+.footer__col ul li button {
+  color: rgba(255, 255, 255, 0.58);
+  text-decoration: none;
+  font-size: 0.875rem;
+  transition: color 0.15s;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  font-family: inherit;
+}
+.footer__col ul li a:hover,
+.footer__col ul li button:hover { color: white; }
+
+/* ── Contact column ── */
+.footer__contact-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 0.875rem;
+  margin-bottom: 12px;
+  opacity: 0.68;
+  line-height: 1.4;
+}
+.footer__contact-item svg { flex-shrink: 0; margin-top: 2px; color: #a78bfa; }
+
+/* ── Bottom bar ── */
+.footer__bottom {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 16px 28px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.78rem;
+  color: rgba(255, 255, 255, 0.42);
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+/* ── Responsive ── */
+@media (max-width: 960px) {
+  .footer__inner {
+    grid-template-columns: 1fr 1fr;
+    gap: 32px;
+  }
+  .footer__brand-col { grid-column: 1 / -1; }
+}
+@media (max-width: 560px) {
+  .footer__inner {
+    grid-template-columns: 1fr;
+    gap: 28px;
+    padding: 36px 20px 28px;
+  }
+  .footer__bottom {
+    flex-direction: column;
+    text-align: center;
+    padding: 14px 20px;
+  }
+}
