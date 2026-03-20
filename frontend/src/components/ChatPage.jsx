@@ -48,6 +48,7 @@ export default function ChatPage({ currentUser, appointments = [], onLogout }) {
 
   const messagesEndRef = useRef(null);
   const typingTimer = useRef(null);
+  const seenMessageIdsRef = useRef(new Set());
 
   const isLecturer = currentUser?.role === 'LECTURER';
 
@@ -59,15 +60,39 @@ export default function ChatPage({ currentUser, appointments = [], onLogout }) {
     ? (isLecturer ? currentAppointment.student : currentAppointment.lecturer)
     : null;
 
+  function getRoomCounterpartyName(roomId) {
+    const appt = appointments.find((a) => roomsMap[a.id]?.id === roomId);
+    if (!appt) return 'New message';
+    const party = isLecturer ? appt.student : appt.lecturer;
+    return party?.name || 'New message';
+  }
+
   // ── WebSocket ──────────────────────────────────────────────────
   const { sendMessage: wsSend, sendTyping } = useWebSocket(
     selectedRoomId,
     (msg) => {
+      const isIncoming = msg.senderId !== currentUser?.id;
+      const isFreshMessage = !seenMessageIdsRef.current.has(msg.id);
+      seenMessageIdsRef.current.add(msg.id);
+
       setMessages((prev) => {
         // Avoid duplicates
         if (prev.find((m) => m.id === msg.id)) return prev;
         return [...prev, msg];
       });
+
+      if (isIncoming && isFreshMessage) {
+        const title = getRoomCounterpartyName(msg.roomId);
+        const preview = msg.messageType === 'FILE' || msg.messageType === 'IMAGE'
+          ? `Sent a ${msg.messageType.toLowerCase()}`
+          : (msg.content || 'New message');
+
+        toast.info(`${title}: ${preview}`, {
+          autoClose: 3000,
+          pauseOnHover: true,
+        });
+      }
+
       // Play notification sound if window not focused
       if (msg.senderId !== currentUser?.id && !document.hasFocus()) {
         try { new Audio('/notification.mp3').play(); } catch {}
@@ -112,6 +137,7 @@ export default function ChatPage({ currentUser, appointments = [], onLogout }) {
     if (!selectedRoomId) return;
     setLoading(true);
     setMessages([]);
+    seenMessageIdsRef.current = new Set();
     setFilteredMessages(null);
     setSearchQuery('');
     setFilterType('ALL');
@@ -122,6 +148,7 @@ export default function ChatPage({ currentUser, appointments = [], onLogout }) {
     ])
       .then(([msgRes, pinRes]) => {
         setMessages(msgRes.data);
+        seenMessageIdsRef.current = new Set(msgRes.data.map((m) => m.id));
         setPinnedMessages(pinRes.data);
       })
       .catch(() => toast.error('Could not load messages.'))
