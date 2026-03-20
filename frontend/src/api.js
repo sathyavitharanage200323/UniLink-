@@ -3,7 +3,9 @@
  * Every function returns a Promise that resolves to parsed JSON or throws an Error.
  */
 
-const BASE_URL = 'http://localhost:9090';
+import { BACKEND_BASE_URL } from './config';
+
+const BASE_URL = BACKEND_BASE_URL;
 
 async function apiFetch(path, options = {}) {
   const res = await fetch(`${BASE_URL}${path}`, {

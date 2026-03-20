@@ -4,6 +4,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Light as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { atomOneDark } from 'react-syntax-highlighter/dist/esm/styles/hljs';
+import { BACKEND_BASE_URL } from '../config';
 import {
   Pin, CheckCircle2, Trash2, FileText,
 } from 'lucide-react';
@@ -132,7 +133,7 @@ function BubbleContent({ msg, isMe }) {
       <div>
         {msg.fileUrl && (
           <img
-            src={`http://localhost:8080${msg.fileUrl}`}
+            src={`${BACKEND_BASE_URL}${msg.fileUrl}`}
             alt={msg.fileName || 'image'}
             style={{ maxWidth: '100%', borderRadius: 8, display: 'block', marginBottom: 4 }}
           />
@@ -146,7 +147,7 @@ function BubbleContent({ msg, isMe }) {
     return (
       <a
         className="file-attachment"
-        href={`http://localhost:8080${msg.fileUrl}`}
+        href={`${BACKEND_BASE_URL}${msg.fileUrl}`}
         target="_blank"
         rel="noreferrer"        aria-label={`Download ${msg.fileName || 'file'}`}      >
         <FileText size={16} />

@@ -346,19 +346,19 @@ export default function LecturerHome({ currentUser, appointments = [], onLogout 
                 </div>
                 <span>My Profile</span>
               </button>
-              <button className="lh-quick-btn">
+              <button className="lh-quick-btn" onClick={() => navigate('/coming-soon')}>
                 <div className="lh-quick-icon" style={{ background: '#f0fdf4', color: '#16a34a' }}>
                   <FileText size={24} />
                 </div>
                 <span>Export Reports</span>
               </button>
-              <button className="lh-quick-btn">
+              <button className="lh-quick-btn" onClick={() => navigate('/coming-soon')}>
                 <div className="lh-quick-icon" style={{ background: '#faf5ff', color: '#9333ea' }}>
                   <Users size={24} />
                 </div>
                 <span>Student List</span>
               </button>
-              <button className="lh-quick-btn">
+              <button className="lh-quick-btn" onClick={() => navigate('/coming-soon')}>
                 <div className="lh-quick-icon" style={{ background: '#f8fafc', color: '#64748b' }}>
                   <Settings size={24} />
                 </div>

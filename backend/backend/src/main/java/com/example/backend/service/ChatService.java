@@ -98,6 +98,13 @@ public class ChatService {
         // Auto-reply: if lecturer has DND on and sender is a student
         User lecturer = room.getAppointment().getLecturer();
         User student  = room.getAppointment().getStudent();
+
+        // Security: block student messages when an active discipline block exists.
+        if (sender.getId().equals(student.getId()) &&
+            disciplineRepository.isStudentBlockedByLecturer(student, lecturer, LocalDateTime.now())) {
+            throw new AccessDeniedException("You are blocked from messaging this lecturer.");
+        }
+
         if (sender.getId().equals(student.getId()) && lecturer.isDoNotDisturb()) {
             ChatMessage autoReply = ChatMessage.builder()
                     .room(room)
@@ -150,6 +157,12 @@ public class ChatService {
     public List<ChatMessage> getPinnedMessages(Long roomId) {
         ChatRoom room = getRoom(roomId);
         return chatMessageRepository.findByRoomAndPinnedTrueOrderBySentAtAsc(room);
+    }
+
+    /** Returns unread message count in a room for a specific user. */
+    public long getUnreadCount(Long roomId, Long userId) {
+        ChatRoom room = getRoom(roomId);
+        return chatMessageRepository.countUnreadByRoomAndNotSender(room, userId);
     }
 
     /** Toggle pin on a message. */
