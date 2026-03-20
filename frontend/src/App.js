@@ -5,6 +5,7 @@ import 'react-toastify/dist/ReactToastify.css';
 import ChatPage from './components/ChatPage';
 import StudentHome from './pages/StudentHome';
 import LecturerHome from './pages/LecturerHome';
+import { AppointmentsPage, ProfilePage, ComingSoonPage } from './pages/UtilityPages';
 import { getUsers, getStudentAppointments, getLecturerAppointments } from './api';
 import './App.css';
 
@@ -157,7 +158,7 @@ function LoginPage({ onLogin }) {
 }
 
 /* ── Router component ── */
-function AppRoutes({ activeUser, appointments, onLogin, onLogout }) {
+function AppRoutes({ activeUser, appointments, onLogin, onLogout, onUserUpdate }) {
   if (!activeUser) {
     return <LoginPage onLogin={onLogin} />;
   }
@@ -197,6 +198,21 @@ function AppRoutes({ activeUser, appointments, onLogin, onLogout }) {
         }
       />
 
+      <Route
+        path="/appointments"
+        element={<AppointmentsPage currentUser={activeUser} appointments={appointments} onLogout={onLogout} />}
+      />
+
+      <Route
+        path="/profile"
+        element={<ProfilePage currentUser={activeUser} onLogout={onLogout} onUserUpdate={onUserUpdate} />}
+      />
+
+      <Route
+        path="/coming-soon"
+        element={<ComingSoonPage currentUser={activeUser} onLogout={onLogout} />}
+      />
+
       {/* Catch-all */}
       <Route path="*" element={<Navigate to={homeRedirect} replace />} />
     </Routes>
@@ -226,6 +242,10 @@ export default function App() {
     setAppointments([]);
   };
 
+  const handleUserUpdate = (updatedUser) => {
+    setActiveUser(updatedUser);
+  };
+
   return (
     <BrowserRouter>
       <AppRoutes
@@ -233,6 +253,7 @@ export default function App() {
         appointments={appointments}
         onLogin={handleLogin}
         onLogout={handleLogout}
+        onUserUpdate={handleUserUpdate}
       />
       <ToastContainer position="bottom-right" autoClose={3000} theme="colored" />
     </BrowserRouter>

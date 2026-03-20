@@ -92,6 +92,13 @@ public class ChatRestController {
                         .map(ChatMessageDTO::from).toList());
     }
 
+    /** Get unread message count in room for user */
+    @GetMapping("/rooms/{roomId}/messages/unread-count")
+    public ResponseEntity<Map<String, Long>> getUnreadCount(@PathVariable Long roomId,
+                                                            @RequestParam Long userId) {
+        return ResponseEntity.ok(Map.of("count", chatService.getUnreadCount(roomId, userId)));
+    }
+
     /** Toggle pin on a message */
     @PatchMapping("/messages/{messageId}/pin")
     public ResponseEntity<ChatMessageDTO> togglePin(@PathVariable Long messageId) {

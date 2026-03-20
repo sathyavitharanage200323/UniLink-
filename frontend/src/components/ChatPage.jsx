@@ -15,7 +15,7 @@ import ComposeBar from './ComposeBar';
 import DisciplineModal from './DisciplineModal';
 import CannedResponseManager from './CannedResponseManager';
 import { useWebSocket } from '../hooks/useWebSocket';
-import { chatApi, cannedApi, userApi } from '../api/chatApi';
+import { chatApi, cannedApi, userApi, disciplineApi } from '../api/chatApi';
 
 /**
  * Main Chat Page.
@@ -45,6 +45,8 @@ export default function ChatPage({ currentUser, appointments = [], onLogout }) {
   const [dndMsg] = useState(currentUser?.autoReplyMessage ?? '');
   const [loading, setLoading] = useState(false);
   const [roomsMap, setRoomsMap] = useState({}); // appointmentId -> room
+  const [isBlocked, setIsBlocked] = useState(false);
+  const [unreadByRoom, setUnreadByRoom] = useState({});
 
   const messagesEndRef = useRef(null);
   const typingTimer = useRef(null);
@@ -60,14 +62,28 @@ export default function ChatPage({ currentUser, appointments = [], onLogout }) {
     : null;
 
   // ── WebSocket ──────────────────────────────────────────────────
-  const { sendMessage: wsSend, sendTyping } = useWebSocket(
+  const { sendMessage: wsSend, sendTyping, sendReadReceipt, isConnected } = useWebSocket(
     selectedRoomId,
     (msg) => {
       setMessages((prev) => {
-        // Avoid duplicates
-        if (prev.find((m) => m.id === msg.id)) return prev;
+        const idx = prev.findIndex((m) => m.id === msg.id);
+        if (idx >= 0) {
+          const next = [...prev];
+          next[idx] = msg;
+          return next;
+        }
         return [...prev, msg];
       });
+
+      // Keep sidebar unread counts in sync for non-active rooms.
+      if (msg?.roomId && msg.senderId !== currentUser?.id) {
+        if (selectedRoomId !== msg.roomId) {
+          setUnreadByRoom((prev) => ({ ...prev, [msg.roomId]: (prev[msg.roomId] || 0) + 1 }));
+        } else if (!msg.read) {
+          sendReadReceipt({ messageId: msg.id, readerId: currentUser?.id });
+        }
+      }
+
       // Play notification sound if window not focused
       if (msg.senderId !== currentUser?.id && !document.hasFocus()) {
         try { new Audio('/notification.mp3').play(); } catch {}
@@ -123,10 +139,56 @@ export default function ChatPage({ currentUser, appointments = [], onLogout }) {
       .then(([msgRes, pinRes]) => {
         setMessages(msgRes.data);
         setPinnedMessages(pinRes.data);
+        setUnreadByRoom((prev) => ({ ...prev, [selectedRoomId]: 0 }));
+
+        // Mark unread incoming messages as read for receipts.
+        const unreadIncoming = msgRes.data.filter((m) => !m.read && m.senderId !== currentUser?.id);
+        unreadIncoming.forEach(async (m) => {
+          try {
+            sendReadReceipt({ messageId: m.id, readerId: currentUser?.id });
+          } catch {}
+        });
       })
       .catch(() => toast.error('Could not load messages.'))
       .finally(() => setLoading(false));
-  }, [selectedRoomId]);
+  }, [selectedRoomId, currentUser?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Load unread counters for room list ───────────────────────────────────
+  useEffect(() => {
+    async function loadUnreadCounts() {
+      const roomIds = Object.values(roomsMap).map((r) => r?.id).filter(Boolean);
+      if (!currentUser?.id || roomIds.length === 0) return;
+      const entries = await Promise.all(
+        roomIds.map(async (rid) => {
+          try {
+            const res = await chatApi.getUnreadCount(rid, currentUser.id);
+            return [rid, res.data?.count || 0];
+          } catch {
+            return [rid, 0];
+          }
+        })
+      );
+      setUnreadByRoom(Object.fromEntries(entries));
+    }
+    loadUnreadCounts();
+  }, [roomsMap, currentUser?.id]);
+
+  // ── Check discipline block status for student -> lecturer chat ───────────
+  useEffect(() => {
+    async function checkBlocked() {
+      if (!selectedRoomId || isLecturer || !otherParty?.id || !currentUser?.id) {
+        setIsBlocked(false);
+        return;
+      }
+      try {
+        const res = await disciplineApi.checkBlocked(currentUser.id, otherParty.id);
+        setIsBlocked(Boolean(res.data?.blocked));
+      } catch {
+        setIsBlocked(false);
+      }
+    }
+    checkBlocked();
+  }, [selectedRoomId, isLecturer, otherParty?.id, currentUser?.id]);
 
   // ── Load room data ─────────────────────────────────────────────
   useEffect(() => {
@@ -151,7 +213,10 @@ export default function ChatPage({ currentUser, appointments = [], onLogout }) {
 
   // ── Actions ───────────────────────────────────────────────────
   function handleSend(payload) {
-    wsSend(payload);
+    const sent = wsSend(payload);
+    if (!sent) {
+      toast.info('Connection lost. Message queued and will send after reconnect.');
+    }
   }
 
   function handleTyping(isTyping) {
@@ -285,6 +350,9 @@ export default function ChatPage({ currentUser, appointments = [], onLogout }) {
                     {room.status === 'RESOLVED' ? '✓ Resolved' : 'Open'}
                   </div>
                 </div>
+                {(unreadByRoom[room.id] || 0) > 0 && (
+                  <span className="unread-badge">{unreadByRoom[room.id]}</span>
+                )}
               </div>
             );
           })}
@@ -323,6 +391,11 @@ export default function ChatPage({ currentUser, appointments = [], onLogout }) {
                 </div>
               </div>
               <div className="chat-header-actions">
+                {!isConnected && (
+                  <span style={{ fontSize: '0.72rem', color: 'var(--warning)', alignSelf: 'center', marginRight: 4 }}>
+                    reconnecting…
+                  </span>
+                )}
                 <button className={`icon-btn ${searchOpen ? 'active' : ''}`} title="Search" onClick={() => setSearchOpen((v) => !v)}>
                   <Search size={18} />
                 </button>
@@ -353,6 +426,13 @@ export default function ChatPage({ currentUser, appointments = [], onLogout }) {
               <div className={`room-banner resolved`}>
                 <CheckCircle size={14} />
                 This chat has been resolved. The transcript is read-only.
+              </div>
+            )}
+
+            {isBlocked && (
+              <div className={`room-banner resolved`}>
+                <Shield size={14} />
+                You are temporarily blocked by this lecturer and cannot send messages.
               </div>
             )}
 
@@ -444,6 +524,7 @@ export default function ChatPage({ currentUser, appointments = [], onLogout }) {
               onTyping={handleTyping}
               cannedResponses={cannedResponses}
               roomClosed={roomClosed}
+              blocked={isBlocked}
             />
           </>
         )}

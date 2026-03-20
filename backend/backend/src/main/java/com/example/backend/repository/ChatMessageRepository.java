@@ -31,7 +31,7 @@ public interface ChatMessageRepository extends JpaRepository<ChatMessage, Long> 
 
     // Count unread messages for a user in a room
     @Query("SELECT COUNT(m) FROM ChatMessage m WHERE m.room = :room " +
-           "AND m.sender.id <> :userId AND m.read = false")
+           "AND m.sender.id <> :userId AND m.read = false AND m.deleted = false")
     long countUnreadByRoomAndNotSender(@Param("room") ChatRoom room,
                                        @Param("userId") Long userId);
 }

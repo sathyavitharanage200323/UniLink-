@@ -16,6 +16,7 @@ const DEBOUNCE_MS = 800;
  *   onTyping(isTyping) – propagate typing state
  *   cannedResponses    – array of { id, title, content }
  *   roomClosed         – bool, disable when resolved
+ *   blocked            – bool, disable when student is blocked by lecturer
  */
 export default function ComposeBar({
   roomId,
@@ -25,6 +26,7 @@ export default function ComposeBar({
   onTyping,
   cannedResponses = [],
   roomClosed = false,
+  blocked = false,
 }) {
   const [content, setContent] = useState('');
   const [mode, setMode] = useState('TEXT'); // TEXT | CODE
@@ -69,7 +71,7 @@ export default function ComposeBar({
 
   function handleSend() {
     const trimmed = content.trim();
-    if (!trimmed || roomClosed) return;
+    if (!trimmed || roomClosed || blocked) return;
 
     onSend({
       senderId: currentUserId,
@@ -111,10 +113,12 @@ export default function ComposeBar({
     textareaRef.current?.focus();
   }
 
-  if (roomClosed) {
+  if (roomClosed || blocked) {
     return (
       <div className="compose-area" style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
-        This chat is resolved. No new messages can be sent.
+        {roomClosed
+          ? 'This chat is resolved. No new messages can be sent.'
+          : 'You are blocked from sending messages in this chat.'}
       </div>
     );
   }

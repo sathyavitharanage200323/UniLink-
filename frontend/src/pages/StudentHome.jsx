@@ -252,7 +252,7 @@ export default function StudentHome({ currentUser, appointments = [], onLogout }
                 </div>
                 <span>My Profile</span>
               </button>
-              <button className="sh-quick-btn">
+              <button className="sh-quick-btn" onClick={() => navigate('/coming-soon')}>
                 <div className="sh-quick-icon" style={{ background: '#fff7ed', color: '#ea580c' }}>
                   <TrendingUp size={24} />
                 </div>
@@ -264,19 +264,19 @@ export default function StudentHome({ currentUser, appointments = [], onLogout }
                 </div>
                 <span>My Schedule</span>
               </button>
-              <button className="sh-quick-btn">
+              <button className="sh-quick-btn" onClick={() => navigate('/coming-soon')}>
                 <div className="sh-quick-icon" style={{ background: '#f0fdf4', color: '#0891b2' }}>
                   <BookOpen size={24} />
                 </div>
                 <span>Resources</span>
               </button>
-              <button className="sh-quick-btn">
+              <button className="sh-quick-btn" onClick={() => navigate('/coming-soon')}>
                 <div className="sh-quick-icon" style={{ background: '#fffbeb', color: '#d97706' }}>
                   <Bell size={24} />
                 </div>
                 <span>Notifications</span>
               </button>
-              <button className="sh-quick-btn">
+              <button className="sh-quick-btn" onClick={() => navigate('/coming-soon')}>
                 <div className="sh-quick-icon" style={{ background: '#f8fafc', color: '#64748b' }}>
                   <CheckCircle size={24} />
                 </div>
