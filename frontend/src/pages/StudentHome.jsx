@@ -25,32 +25,30 @@ export default function StudentHome({ currentUser, appointments = [], onLogout }
   const pendingAppts   = appointments.filter((a) => a.status === 'PENDING');
   const completedCount = appointments.filter((a) => a.status === 'COMPLETED').length;
 
-  /* Demo data merged with real (shows something even with empty props) */
-  const displayAppts = confirmedAppts.length > 0 ? confirmedAppts : DEMO_APPTS;
-  const displayThreads = confirmedAppts.length > 0
-    ? confirmedAppts.map((a) => ({
-        id: a.id,
-        name: a.lecturer?.name ?? 'Lecturer',
-        dept: a.lecturer?.department ?? '',
-        lastMsg: 'Click to open the conversation',
-        unread: 0,
-        time: a.startTime,
-        appointment: a,
-      }))
-    : DEMO_THREADS;
+  const displayAppts = confirmedAppts;
+  const displayThreads = confirmedAppts.map((a) => ({
+    id: a.id,
+    name: a.lecturer?.name ?? 'Lecturer',
+    dept: a.lecturer?.department ?? '',
+    lastMsg: 'Click to open the conversation',
+    unread: 0,
+    time: a.startTime,
+    appointment: a,
+  }));
+  const unreadCount = displayThreads.reduce((sum, t) => sum + (t.unread || 0), 0);
 
   /* Stats */
   const stats = [
     {
       label: 'Upcoming',
-      value: confirmedAppts.length || 3,
+      value: confirmedAppts.length,
       icon: Calendar,
       bg: '#eff6ff',
       color: '#2563eb',
     },
     {
       label: 'Pending',
-      value: pendingAppts.length || 2,
+      value: pendingAppts.length,
       icon: Clock,
       bg: '#fffbeb',
       color: '#d97706',
@@ -64,7 +62,7 @@ export default function StudentHome({ currentUser, appointments = [], onLogout }
     },
     {
       label: 'Unread Msgs',
-      value: 5,
+      value: unreadCount,
       icon: MessageSquare,
       bg: '#faf5ff',
       color: '#7c3aed',
@@ -75,7 +73,7 @@ export default function StudentHome({ currentUser, appointments = [], onLogout }
 
   return (
     <div className="sh-layout">
-      <Header currentUser={currentUser} onLogout={onLogout} unreadCount={5} />
+      <Header currentUser={currentUser} onLogout={onLogout} unreadCount={unreadCount} />
 
       <main className="sh-main">
 
@@ -87,8 +85,8 @@ export default function StudentHome({ currentUser, appointments = [], onLogout }
               <h1 className="sh-hero__name">{currentUser?.name}</h1>
               <p className="sh-hero__sub">
                 You have{' '}
-                <strong>{confirmedAppts.length || 3} upcoming appointments</strong>{' '}
-                and <strong>5 unread messages</strong>. Keep up the great work!
+                <strong>{confirmedAppts.length} upcoming appointments</strong>{' '}
+                and <strong>{unreadCount} unread messages</strong>. Keep up the great work!
               </p>
               <div className="sh-hero__actions">
                 <button
@@ -321,54 +319,3 @@ function fmtRelative(iso) {
   if (diff < 86400000) return `${Math.floor(diff / 3600000)}h ago`;
   return new Date(iso).toLocaleDateString();
 }
-
-/* ── Demo data (shown when real appointments are not loaded) ── */
-const DEMO_APPTS = [
-  {
-    id: 101,
-    lecturer: { name: 'Dr. Amara Silva', department: 'IT' },
-    startTime: new Date().toISOString(),
-    status: 'CONFIRMED',
-    notes: 'Final year project discussion',
-  },
-  {
-    id: 102,
-    lecturer: { name: 'Dr. Nimal Fernando', department: 'CS' },
-    startTime: new Date(Date.now() + 86400000).toISOString(),
-    status: 'CONFIRMED',
-    notes: 'Algorithm assignment review',
-  },
-  {
-    id: 103,
-    lecturer: { name: 'Dr. Priya Mendis', department: 'IT' },
-    startTime: new Date(Date.now() + 172800000).toISOString(),
-    status: 'PENDING',
-    notes: 'Research methodology guidance',
-  },
-];
-const DEMO_THREADS = [
-  {
-    id: 101,
-    name: 'Dr. Amara Silva',
-    dept: 'Information Technology',
-    lastMsg: 'Please review the project timeline before our meeting.',
-    unread: 2,
-    time: new Date().toISOString(),
-  },
-  {
-    id: 102,
-    name: 'Dr. Nimal Fernando',
-    dept: 'Computer Science',
-    lastMsg: 'Your assignment submission has been reviewed. Well done!',
-    unread: 0,
-    time: new Date(Date.now() - 7200000).toISOString(),
-  },
-  {
-    id: 103,
-    name: 'Dr. Priya Mendis',
-    dept: 'Information Technology',
-    lastMsg: 'Session confirmed for Thursday 2 PM.',
-    unread: 1,
-    time: new Date(Date.now() - 86400000).toISOString(),
-  },
-];

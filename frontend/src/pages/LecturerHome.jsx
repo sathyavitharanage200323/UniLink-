@@ -26,25 +26,22 @@ export default function LecturerHome({ currentUser, appointments = [], onLogout 
   const confirmedAppts = appointments.filter((a) => a.status === 'CONFIRMED');
   const pendingAppts   = appointments.filter((a) => a.status === 'PENDING');
 
-  /* Merge with demo for display */
-  const todaySchedule  = confirmedAppts.length > 0 ? confirmedAppts : DEMO_SCHEDULE;
-  const studentThreads  = confirmedAppts.length > 0
-    ? confirmedAppts.map((a) => ({
-        id: a.id,
-        name: a.student?.name ?? 'Student',
-        dept: a.student?.department ?? '',
-        lastMsg: 'Click to open the conversation',
-        unread: 0,
-        time: a.startTime,
-        appointment: a,
-      }))
-    : DEMO_CHATS;
-  const pendingRequests = pendingAppts.length > 0 ? pendingAppts : DEMO_PENDING;
+  const todaySchedule = confirmedAppts;
+  const studentThreads = confirmedAppts.map((a) => ({
+    id: a.id,
+    name: a.student?.name ?? 'Student',
+    dept: a.student?.department ?? '',
+    lastMsg: 'Click to open the conversation',
+    unread: 0,
+    time: a.startTime,
+    appointment: a,
+  }));
+  const pendingRequests = pendingAppts;
 
   /* Stats */
   const stats = [
     { label: "Today's Students", value: todaySchedule.length,       icon: Users,           bg: '#faf5ff', color: '#7c3aed' },
-    { label: 'Pending Requests', value: pendingRequests.length || 2, icon: Clock,           bg: '#fff7ed', color: '#ea580c' },
+    { label: 'Pending Requests', value: pendingRequests.length, icon: Clock,           bg: '#fff7ed', color: '#ea580c' },
     { label: 'Active Chats',     value: studentThreads.length,       icon: MessageSquare,   bg: '#f0fdf4', color: '#16a34a' },
     { label: 'DND Status',       value: dnd ? 'ON' : 'OFF',           icon: dnd ? BellOff : Bell, bg: dnd ? '#fef9c3' : '#f8fafc', color: dnd ? '#a16207' : '#6b7280' },
   ];
@@ -403,20 +400,3 @@ function fmtRelative(iso) {
   if (diff < 86400000) return `${Math.floor(diff / 3600000)}h ago`;
   return new Date(iso).toLocaleDateString();
 }
-
-/* ── Demo data ── */
-const DEMO_SCHEDULE = [
-  { id: 101, studentName: 'Kavindu Perera',    startTime: new Date().toISOString(),                       status: 'CONFIRMED', notes: 'Final year project' },
-  { id: 102, studentName: 'Sithumi Rajapaksa', startTime: new Date(Date.now() + 3600000).toISOString(),   status: 'CONFIRMED', notes: 'Research methodology' },
-  { id: 103, studentName: 'Ashan Bandara',     startTime: new Date(Date.now() + 7200000).toISOString(),   status: 'CONFIRMED', notes: 'Thesis review' },
-  { id: 104, studentName: 'Malsha Peris',      startTime: new Date(Date.now() + 10800000).toISOString(),  status: 'PENDING',   notes: 'Assignment discussion' },
-];
-const DEMO_CHATS = [
-  { id: 101, name: 'Kavindu Perera',    dept: 'Information Technology', lastMsg: 'Thank you for the feedback on my project!',      unread: 1, time: new Date().toISOString() },
-  { id: 102, name: 'Sithumi Rajapaksa', dept: 'Computer Science',       lastMsg: 'Could you clarify the submission deadline?',      unread: 3, time: new Date(Date.now() - 1800000).toISOString() },
-  { id: 103, name: 'Ashan Bandara',     dept: 'Information Technology', lastMsg: 'The thesis outline has been uploaded.',           unread: 0, time: new Date(Date.now() - 7200000).toISOString() },
-];
-const DEMO_PENDING = [
-  { id: 201, studentName: 'Malsha Peris',   startTime: new Date(Date.now() + 86400000).toISOString(), notes: 'Assignment feedback session' },
-  { id: 202, studentName: 'Dinesh Kumara',  startTime: new Date(Date.now() + 172800000).toISOString(), notes: 'Project scope discussion' },
-];

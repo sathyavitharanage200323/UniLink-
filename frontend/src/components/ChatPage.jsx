@@ -50,6 +50,7 @@ export default function ChatPage({ currentUser, appointments = [], onLogout }) {
 
   const messagesEndRef = useRef(null);
   const typingTimer = useRef(null);
+  const seenMessageIdsRef = useRef(new Set());
 
   const isLecturer = currentUser?.role === 'LECTURER';
 
@@ -61,10 +62,21 @@ export default function ChatPage({ currentUser, appointments = [], onLogout }) {
     ? (isLecturer ? currentAppointment.student : currentAppointment.lecturer)
     : null;
 
+  function getRoomCounterpartyName(roomId) {
+    const appt = appointments.find((a) => roomsMap[a.id]?.id === roomId);
+    if (!appt) return 'New message';
+    const party = isLecturer ? appt.student : appt.lecturer;
+    return party?.name || 'New message';
+  }
+
   // ── WebSocket ──────────────────────────────────────────────────
   const { sendMessage: wsSend, sendTyping, sendReadReceipt, isConnected } = useWebSocket(
     selectedRoomId,
     (msg) => {
+      const isIncoming = msg.senderId !== currentUser?.id;
+      const isFreshMessage = !seenMessageIdsRef.current.has(msg.id);
+      seenMessageIdsRef.current.add(msg.id);
+
       setMessages((prev) => {
         const idx = prev.findIndex((m) => m.id === msg.id);
         if (idx >= 0) {
@@ -74,16 +86,6 @@ export default function ChatPage({ currentUser, appointments = [], onLogout }) {
         }
         return [...prev, msg];
       });
-
-      // Keep sidebar unread counts in sync for non-active rooms.
-      if (msg?.roomId && msg.senderId !== currentUser?.id) {
-        if (selectedRoomId !== msg.roomId) {
-          setUnreadByRoom((prev) => ({ ...prev, [msg.roomId]: (prev[msg.roomId] || 0) + 1 }));
-        } else if (!msg.read) {
-          sendReadReceipt({ messageId: msg.id, readerId: currentUser?.id });
-        }
-      }
-
       // Play notification sound if window not focused
       if (msg.senderId !== currentUser?.id && !document.hasFocus()) {
         try { new Audio('/notification.mp3').play(); } catch {}
@@ -128,6 +130,7 @@ export default function ChatPage({ currentUser, appointments = [], onLogout }) {
     if (!selectedRoomId) return;
     setLoading(true);
     setMessages([]);
+    seenMessageIdsRef.current = new Set();
     setFilteredMessages(null);
     setSearchQuery('');
     setFilterType('ALL');
@@ -138,6 +141,7 @@ export default function ChatPage({ currentUser, appointments = [], onLogout }) {
     ])
       .then(([msgRes, pinRes]) => {
         setMessages(msgRes.data);
+        seenMessageIdsRef.current = new Set(msgRes.data.map((m) => m.id));
         setPinnedMessages(pinRes.data);
         setUnreadByRoom((prev) => ({ ...prev, [selectedRoomId]: 0 }));
 

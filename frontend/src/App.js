@@ -9,31 +9,10 @@ import { AppointmentsPage, ProfilePage, ComingSoonPage } from './pages/UtilityPa
 import { getUsers, getStudentAppointments, getLecturerAppointments } from './api';
 import './App.css';
 
-/* ── Fallback users shown when backend is offline ── */
-const FALLBACK_USERS = [
-  {
-    id: 1,
-    name: 'Dr. Amara Silva',
-    role: 'LECTURER',
-    department: 'Information Technology',
-    expertise: 'Artificial Intelligence, Machine Learning',
-    doNotDisturb: false,
-    autoReplyMessage: 'I am currently unavailable. I will respond shortly.',
-  },
-  {
-    id: 2,
-    name: 'Kavindu Perera',
-    role: 'STUDENT',
-    department: 'Information Technology',
-    doNotDisturb: false,
-  },
-];
-
 /* ── Login screen — loads real users from the backend ── */
 function LoginPage({ onLogin }) {
   const [users,    setUsers]   = useState([]);
   const [loading,  setLoading] = useState(true);
-  const [offline,  setOffline] = useState(false);
 
   useEffect(() => {
     getUsers()
@@ -46,9 +25,8 @@ function LoginPage({ onLogin }) {
         setUsers(sorted);
       })
       .catch(() => {
-        setOffline(true);
-        setUsers(FALLBACK_USERS);
-        toast.warn('Backend offline — showing demo users', { autoClose: 4000 });
+        setUsers([]);
+        toast.error('Could not load users from backend.', { autoClose: 4000 });
       })
       .finally(() => setLoading(false));
   }, []);
@@ -148,8 +126,14 @@ function LoginPage({ onLogin }) {
             ))}
           </div>
 
+          {users.length === 0 && (
+            <p style={{ color: 'rgba(255,255,255,0.75)', fontSize: '0.9rem', textAlign: 'center' }}>
+              No users available. Please ensure backend is running and user records exist in the database.
+            </p>
+          )}
+
           <p style={{ color: 'rgba(255,255,255,0.45)', fontSize: '0.75rem', textAlign: 'center' }}>
-            {offline ? 'Demo mode — backend offline' : `${users.length} user(s) loaded from database`}
+            {`${users.length} user(s) loaded from database`}
           </p>
         </>
       )}
@@ -232,7 +216,7 @@ export default function App() {
         : await getLecturerAppointments(user.id);
       setAppointments(appts);
     } catch {
-      // Backend offline or no appointments yet — pages will use their built-in demo fallback
+      // Backend offline or no appointments yet.
       setAppointments([]);
     }
   };
