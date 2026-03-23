@@ -74,4 +74,6 @@ export const userApi = {
   create: (user) => api.post('/users', user),
   toggleDnd: (id, dnd, autoReplyMessage) =>
     api.patch(`/users/${id}/dnd`, { dnd, autoReplyMessage }),
+  updateProfile: (id, payload) => api.put(`/users/${id}/profile`, payload),
+  deleteAccount: (id) => api.delete(`/users/${id}`),
 };

@@ -1,5 +1,7 @@
 package com.example.backend.controller;
 
+import com.example.backend.dto.AuthUserResponse;
+import com.example.backend.dto.UserProfileUpdateRequest;
 import com.example.backend.model.User;
 import com.example.backend.service.UserService;
 import lombok.RequiredArgsConstructor;
@@ -51,5 +53,17 @@ public class UserController {
         String msg = body.containsKey("autoReplyMessage")
                 ? body.get("autoReplyMessage").toString() : null;
         return ResponseEntity.ok(userService.toggleDoNotDisturb(id, dnd, msg));
+    }
+
+    @PutMapping("/{id}/profile")
+    public ResponseEntity<AuthUserResponse> updateProfile(@PathVariable Long id,
+                                                          @RequestBody UserProfileUpdateRequest request) {
+        return ResponseEntity.ok(userService.updateProfile(id, request));
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteUser(@PathVariable Long id) {
+        userService.deleteUser(id);
+        return ResponseEntity.noContent().build();
     }
 }
