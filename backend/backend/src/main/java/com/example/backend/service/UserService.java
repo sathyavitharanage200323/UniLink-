@@ -4,6 +4,7 @@ import com.example.backend.exception.ResourceNotFoundException;
 import com.example.backend.model.User;
 import com.example.backend.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
@@ -13,6 +14,7 @@ import java.util.List;
 public class UserService {
 
     private final UserRepository userRepository;
+    private final BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
 
     public User getUser(Long id) {
         return userRepository.findById(id)
@@ -34,6 +36,9 @@ public class UserService {
 
     @Transactional
     public User save(User user) {
+        if (user.getPasswordHash() == null || user.getPasswordHash().trim().isEmpty()) {
+            user.setPasswordHash(encoder.encode("ChangeMe123!"));
+        }
         return userRepository.save(user);
     }
 

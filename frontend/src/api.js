@@ -115,3 +115,49 @@ export function getChatRoomByAppointment(appointmentId) {
 export function getMessages(roomId) {
   return apiFetch(`/api/chat/rooms/${roomId}/messages`);
 }
+
+// ── Auth ─────────────────────────────────────────────────────────────────────
+
+export function loginUser(payload) {
+  return apiFetch('/api/auth/login', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+export function registerUser(payload) {
+  return apiFetch('/api/auth/register', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+// ── Student/Lecturer Management ─────────────────────────────────────────────
+
+export function getManagedStudents() {
+  return apiFetch('/api/management/students');
+}
+
+export function getManagedLecturers() {
+  return apiFetch('/api/management/lecturers');
+}
+
+export function updateManagedStudent(id, payload) {
+  return apiFetch(`/api/management/students/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(payload),
+  });
+}
+
+export function updateManagedLecturer(id, payload) {
+  return apiFetch(`/api/management/lecturers/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(payload),
+  });
+}
+
+export function deleteManagedUser(id) {
+  return apiFetch(`/api/management/users/${id}`, {
+    method: 'DELETE',
+  });
+}
