@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { toast } from 'react-toastify';
 import {
   Calendar, MessageSquare, Clock, Users,
   ChevronRight, ArrowRight, Settings,
@@ -8,6 +9,7 @@ import {
 } from 'lucide-react';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
+import { userApi } from '../api/chatApi';
 import './LecturerHome.css';
 
 /**
@@ -18,9 +20,38 @@ import './LecturerHome.css';
  *   appointments – array from App.js
  *   onLogout     – () => void
  */
-export default function LecturerHome({ currentUser, appointments = [], onLogout }) {
+export default function LecturerHome({ currentUser, appointments = [], onLogout, onUserUpdate }) {
   const navigate = useNavigate();
   const [dnd, setDnd] = useState(currentUser?.doNotDisturb ?? false);
+  const [savingDnd, setSavingDnd] = useState(false);
+
+  useEffect(() => {
+    setDnd(currentUser?.doNotDisturb ?? false);
+  }, [currentUser?.doNotDisturb]);
+
+  async function handleDndToggle(nextVal) {
+    if (!currentUser?.id || savingDnd) return;
+    const prev = dnd;
+    setDnd(nextVal);
+    setSavingDnd(true);
+    try {
+      const res = await userApi.toggleDnd(currentUser.id, nextVal, currentUser?.autoReplyMessage || '');
+      const updatedUser = res.data;
+      if (onUserUpdate) {
+        onUserUpdate({
+          ...currentUser,
+          doNotDisturb: updatedUser.doNotDisturb,
+          autoReplyMessage: updatedUser.autoReplyMessage,
+        });
+      }
+      toast.success(nextVal ? 'Do Not Disturb ON' : 'Do Not Disturb OFF');
+    } catch {
+      setDnd(prev);
+      toast.error('Failed to save Do Not Disturb setting.');
+    } finally {
+      setSavingDnd(false);
+    }
+  }
 
   /* ── Derived appointment lists ── */
   const confirmedAppts = appointments.filter((a) => a.status === 'CONFIRMED');
@@ -268,7 +299,8 @@ export default function LecturerHome({ currentUser, appointments = [], onLogout 
                   <input
                     type="checkbox"
                     checked={dnd}
-                    onChange={(e) => setDnd(e.target.checked)}
+                    disabled={savingDnd}
+                    onChange={(e) => handleDndToggle(e.target.checked)}
                   />
                   <div className={`lh-toggle-track ${dnd ? 'on' : ''}`}>
                     <div className="lh-toggle-thumb" />
@@ -352,7 +384,7 @@ export default function LecturerHome({ currentUser, appointments = [], onLogout 
                 </div>
                 <span>Export Reports</span>
               </button>
-              <button className="lh-quick-btn" onClick={() => navigate('/coming-soon')}>
+              <button className="lh-quick-btn" onClick={() => navigate('/management')}>
                 <div className="lh-quick-icon" style={{ background: '#faf5ff', color: '#9333ea' }}>
                   <Users size={24} />
                 </div>

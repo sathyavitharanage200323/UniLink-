@@ -25,7 +25,7 @@ import { chatApi, cannedApi, userApi, disciplineApi } from '../api/chatApi';
  *   appointments – array of { id, student, lecturer, startTime, status }
  *   (In a real app these come from a global context / router params.)
  */
-export default function ChatPage({ currentUser, appointments = [], onLogout }) {
+export default function ChatPage({ currentUser, appointments = [], onLogout, onUserUpdate }) {
   const navigate = useNavigate();
   // ── State ──────────────────────────────────────────────────────
   const [selectedRoomId, setSelectedRoomId] = useState(null);
@@ -43,6 +43,7 @@ export default function ChatPage({ currentUser, appointments = [], onLogout }) {
   const [cannedResponses, setCannedResponses] = useState([]);
   const [dnd, setDnd] = useState(currentUser?.doNotDisturb ?? false);
   const [dndMsg] = useState(currentUser?.autoReplyMessage ?? '');
+  const [savingDnd, setSavingDnd] = useState(false);
   const [loading, setLoading] = useState(false);
   const [roomsMap, setRoomsMap] = useState({}); // appointmentId -> room
   const [isBlocked, setIsBlocked] = useState(false);
@@ -62,19 +63,10 @@ export default function ChatPage({ currentUser, appointments = [], onLogout }) {
     ? (isLecturer ? currentAppointment.student : currentAppointment.lecturer)
     : null;
 
-  function getRoomCounterpartyName(roomId) {
-    const appt = appointments.find((a) => roomsMap[a.id]?.id === roomId);
-    if (!appt) return 'New message';
-    const party = isLecturer ? appt.student : appt.lecturer;
-    return party?.name || 'New message';
-  }
-
   // ── WebSocket ──────────────────────────────────────────────────
   const { sendMessage: wsSend, sendTyping, sendReadReceipt, isConnected } = useWebSocket(
     selectedRoomId,
     (msg) => {
-      const isIncoming = msg.senderId !== currentUser?.id;
-      const isFreshMessage = !seenMessageIdsRef.current.has(msg.id);
       seenMessageIdsRef.current.add(msg.id);
 
       setMessages((prev) => {
@@ -215,6 +207,10 @@ export default function ChatPage({ currentUser, appointments = [], onLogout }) {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, filteredMessages]);
 
+  useEffect(() => {
+    setDnd(currentUser?.doNotDisturb ?? false);
+  }, [currentUser?.doNotDisturb]);
+
   // ── Actions ───────────────────────────────────────────────────
   function handleSend(payload) {
     const sent = wsSend(payload);
@@ -302,11 +298,27 @@ export default function ChatPage({ currentUser, appointments = [], onLogout }) {
   }
 
   async function handleDndToggle(val) {
+    if (!currentUser?.id || savingDnd) return;
+    const prev = dnd;
     setDnd(val);
+    setSavingDnd(true);
     try {
-      await userApi.toggleDnd(currentUser?.id, val, dndMsg);
+      const res = await userApi.toggleDnd(currentUser?.id, val, dndMsg);
+      const updatedUser = res.data;
+      if (onUserUpdate) {
+        onUserUpdate({
+          ...currentUser,
+          doNotDisturb: updatedUser.doNotDisturb,
+          autoReplyMessage: updatedUser.autoReplyMessage,
+        });
+      }
       toast.success(val ? 'Do Not Disturb ON' : 'Do Not Disturb OFF');
-    } catch {}
+    } catch {
+      setDnd(prev);
+      toast.error('Failed to save Do Not Disturb setting.');
+    } finally {
+      setSavingDnd(false);
+    }
   }
 
   // ── Derived ────────────────────────────────────────────────────
@@ -417,7 +429,7 @@ export default function ChatPage({ currentUser, appointments = [], onLogout }) {
                     <button className="icon-btn" title="Manage quick responses" onClick={() => setShowCannedMgr(true)}>
                       <Zap size={18} />
                     </button>
-                    <button className={`icon-btn ${dnd ? 'active' : ''}`} title="Do Not Disturb" onClick={() => handleDndToggle(!dnd)}>
+                    <button className={`icon-btn ${dnd ? 'active' : ''}`} title="Do Not Disturb" disabled={savingDnd} onClick={() => handleDndToggle(!dnd)}>
                       {dnd ? <BellOff size={18} /> : <Bell size={18} />}
                     </button>
                   </>

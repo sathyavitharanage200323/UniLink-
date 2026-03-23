@@ -1,35 +1,155 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import ChatPage from './components/ChatPage';
 import StudentHome from './pages/StudentHome';
 import LecturerHome from './pages/LecturerHome';
+import ManagementPage from './pages/ManagementPage';
 import { AppointmentsPage, ProfilePage, ComingSoonPage } from './pages/UtilityPages';
-import { getUsers, getStudentAppointments, getLecturerAppointments } from './api';
+import {
+  loginUser,
+  registerUser,
+  getStudentAppointments,
+  getLecturerAppointments,
+} from './api';
 import './App.css';
 
-/* ── Login screen — loads real users from the backend ── */
-function LoginPage({ onLogin }) {
-  const [users,    setUsers]   = useState([]);
-  const [loading,  setLoading] = useState(true);
+const DEPARTMENT_OPTIONS = [
+  'Faculty Of Computing',
+  'Faculty Of Engineering',
+  'Faculty Of Business',
+  'Faculty Of Humanities and Sciences',
+];
 
-  useEffect(() => {
-    getUsers()
-      .then((data) => {
-        // Show lecturers first, then students
-        const sorted = [...data].sort((a, b) => {
-          if (a.role === b.role) return a.name.localeCompare(b.name);
-          return a.role === 'LECTURER' ? -1 : 1;
-        });
-        setUsers(sorted);
-      })
-      .catch(() => {
-        setUsers([]);
-        toast.error('Could not load users from backend.', { autoClose: 4000 });
-      })
-      .finally(() => setLoading(false));
-  }, []);
+const BATCH_OPTIONS = [
+  'Artificial Intelligence',
+  'Software Engineering',
+  'Computer Science',
+  'Information Technology',
+  'Data Science',
+  'Cyber Security',
+  'Computer Systems & Network Engineering',
+  'Information Systems Engineering',
+  'Interactive Media',
+  'Computer Systems Engineering',
+];
+
+const ACADEMIC_PERIODS = [
+  { academicYear: 'Year 1', semester: 'Semester 1', label: 'Year 1 Semester 1' },
+  { academicYear: 'Year 1', semester: 'Semester 2', label: 'Year 1 Semester 2' },
+  { academicYear: 'Year 2', semester: 'Semester 1', label: 'Year 2 Semester 1' },
+  { academicYear: 'Year 2', semester: 'Semester 2', label: 'Year 2 Semester 2' },
+  { academicYear: 'Year 3', semester: 'Semester 1', label: 'Year 3 Semester 1' },
+  { academicYear: 'Year 3', semester: 'Semester 2', label: 'Year 3 Semester 2' },
+  { academicYear: 'Year 4', semester: 'Semester 1', label: 'Year 4 Semester 1' },
+  { academicYear: 'Year 4', semester: 'Semester 2', label: 'Year 4 Semester 2' },
+];
+
+/* ── Login/Register screen ── */
+function LoginPage({ onLogin }) {
+  const [tab, setTab] = useState('LOGIN');
+  const [submitting, setSubmitting] = useState(false);
+
+  const [loginForm, setLoginForm] = useState({ email: '', password: '' });
+  const [registerForm, setRegisterForm] = useState({
+    name: '',
+    email: '',
+    password: '',
+    confirmPassword: '',
+    role: 'STUDENT',
+    department: '',
+    phone: '',
+    registrationNumber: '',
+    batch: '',
+    academicYear: '',
+    semester: '',
+    employeeCode: '',
+    officeLocation: '',
+    officeHours: '',
+    expertise: '',
+    bio: '',
+  });
+
+  const selectedAcademicPeriod = ACADEMIC_PERIODS.find(
+    (p) => p.academicYear === registerForm.academicYear && p.semester === registerForm.semester
+  )?.label || '';
+
+  const validateLogin = () => {
+    if (!loginForm.email.trim()) return 'Email is required';
+    if (!loginForm.password) return 'Password is required';
+    return null;
+  };
+
+  const validateRegister = () => {
+    if (registerForm.name.trim().length < 3) return 'Name must be at least 3 characters';
+    if (!/^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+$/.test(registerForm.email)) return 'Enter a valid email';
+    if (registerForm.password.length < 8) return 'Password must be at least 8 characters';
+    if (registerForm.password !== registerForm.confirmPassword) return 'Passwords do not match';
+    if (!registerForm.department.trim()) return 'Department is required';
+    if (registerForm.role === 'STUDENT' && !registerForm.registrationNumber.trim()) {
+      return 'Registration number is required for student';
+    }
+    if (registerForm.role === 'LECTURER' && !registerForm.employeeCode.trim()) {
+      return 'Employee code is required for lecturer';
+    }
+    return null;
+  };
+
+  const handleLoginSubmit = async (e) => {
+    e.preventDefault();
+    const error = validateLogin();
+    if (error) {
+      toast.error(error);
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const user = await loginUser(loginForm);
+      await onLogin(user);
+      toast.success('Login successful');
+    } catch (err) {
+      toast.error(err.message || 'Login failed');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleRegisterSubmit = async (e) => {
+    e.preventDefault();
+    const error = validateRegister();
+    if (error) {
+      toast.error(error);
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const payload = {
+        name: registerForm.name.trim(),
+        email: registerForm.email.trim(),
+        password: registerForm.password,
+        role: registerForm.role,
+        department: registerForm.department.trim(),
+        phone: registerForm.phone.trim(),
+        registrationNumber: registerForm.registrationNumber.trim(),
+        batch: registerForm.batch.trim(),
+        academicYear: registerForm.academicYear.trim(),
+        semester: registerForm.semester.trim(),
+        employeeCode: registerForm.employeeCode.trim(),
+        officeLocation: registerForm.officeLocation.trim(),
+        officeHours: registerForm.officeHours.trim(),
+        expertise: registerForm.expertise.trim(),
+        bio: registerForm.bio.trim(),
+      };
+      const user = await registerUser(payload);
+      await onLogin(user);
+      toast.success('Registration successful');
+    } catch (err) {
+      toast.error(err.message || 'Registration failed');
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   return (
     <div style={{
@@ -63,83 +183,171 @@ function LoginPage({ onLogin }) {
         </p>
       </div>
 
-      {/* Loading spinner */}
-      {loading && (
-        <div style={{ color: 'rgba(255,255,255,0.8)', fontSize: '0.95rem' }}>
-          Loading users…
+      <div style={{
+        width: 'min(860px, 100%)',
+        borderRadius: 18,
+        padding: 24,
+        background: 'rgba(255,255,255,0.16)',
+        border: '1px solid rgba(255,255,255,0.24)',
+        backdropFilter: 'blur(12px)',
+        color: 'white',
+      }}>
+        <div style={{ display: 'flex', gap: 8, marginBottom: 18 }}>
+          <button
+            type="button"
+            onClick={() => setTab('LOGIN')}
+            style={{
+              border: 'none', borderRadius: 10, padding: '10px 14px', cursor: 'pointer',
+              background: tab === 'LOGIN' ? 'white' : 'rgba(255,255,255,0.2)',
+              color: tab === 'LOGIN' ? '#0f172a' : 'white', fontWeight: 700,
+            }}
+          >
+            Login
+          </button>
+          <button
+            type="button"
+            onClick={() => setTab('REGISTER')}
+            style={{
+              border: 'none', borderRadius: 10, padding: '10px 14px', cursor: 'pointer',
+              background: tab === 'REGISTER' ? 'white' : 'rgba(255,255,255,0.2)',
+              color: tab === 'REGISTER' ? '#0f172a' : 'white', fontWeight: 700,
+            }}
+          >
+            Register
+          </button>
         </div>
-      )}
 
-      {/* User cards */}
-      {!loading && (
-        <>
-          <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap', justifyContent: 'center' }}>
-            {users.map((u) => (
-              <button
-                key={u.id}
-                onClick={() => onLogin(u)}
-                style={{
-                  padding: '24px 32px',
-                  borderRadius: 18,
-                  border: '2px solid rgba(255,255,255,0.25)',
-                  background: 'rgba(255,255,255,0.14)',
-                  backdropFilter: 'blur(12px)',
-                  cursor: 'pointer',
-                  color: 'white',
-                  textAlign: 'center',
-                  minWidth: 210,
-                  transition: 'transform 0.15s, background 0.15s',
-                }}
-                onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.24)'; e.currentTarget.style.transform = 'translateY(-3px)'; }}
-                onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.14)'; e.currentTarget.style.transform = 'translateY(0)'; }}
+        {tab === 'LOGIN' ? (
+          <form onSubmit={handleLoginSubmit} style={{ display: 'grid', gap: 12 }}>
+            <input
+              value={loginForm.email}
+              onChange={(e) => setLoginForm((p) => ({ ...p, email: e.target.value }))}
+              placeholder="University email"
+              type="email"
+              className="auth-field"
+              style={authInputStyle}
+            />
+            <input
+              value={loginForm.password}
+              onChange={(e) => setLoginForm((p) => ({ ...p, password: e.target.value }))}
+              placeholder="Password"
+              type="password"
+              className="auth-field"
+              style={authInputStyle}
+            />
+            <button type="submit" disabled={submitting} style={authButtonStyle}>
+              {submitting ? 'Signing in...' : 'Sign In'}
+            </button>
+          </form>
+        ) : (
+          <form onSubmit={handleRegisterSubmit} style={{ display: 'grid', gap: 12 }}>
+            <div style={{ display: 'grid', gap: 12, gridTemplateColumns: 'repeat(auto-fit, minmax(220px,1fr))' }}>
+              <input className="auth-field" value={registerForm.name} onChange={(e) => setRegisterForm((p) => ({ ...p, name: e.target.value }))} placeholder="Full name" style={authInputStyle} />
+              <input className="auth-field" type="email" value={registerForm.email} onChange={(e) => setRegisterForm((p) => ({ ...p, email: e.target.value }))} placeholder="Email" style={authInputStyle} />
+              <input className="auth-field" type="password" value={registerForm.password} onChange={(e) => setRegisterForm((p) => ({ ...p, password: e.target.value }))} placeholder="Password (min 8 chars)" style={authInputStyle} />
+              <input className="auth-field" type="password" value={registerForm.confirmPassword} onChange={(e) => setRegisterForm((p) => ({ ...p, confirmPassword: e.target.value }))} placeholder="Confirm password" style={authInputStyle} />
+              <select className="auth-field" value={registerForm.role} onChange={(e) => setRegisterForm((p) => ({ ...p, role: e.target.value }))} style={authInputStyle}>
+                <option value="STUDENT">STUDENT</option>
+                <option value="LECTURER">LECTURER</option>
+              </select>
+              <select
+                className="auth-field"
+                value={registerForm.department}
+                onChange={(e) => setRegisterForm((p) => ({ ...p, department: e.target.value }))}
+                style={authInputStyle}
               >
-                <div style={{ fontSize: '2.4rem', marginBottom: 10 }}>
-                  {u.role === 'LECTURER' ? '👩‍🏫' : '🧑‍💻'}
-                </div>
-                <div style={{ fontWeight: 800, fontSize: '1rem', marginBottom: 4 }}>{u.name}</div>
-                <div style={{
-                  display: 'inline-block',
-                  padding: '3px 12px',
-                  borderRadius: 999,
-                  background: u.role === 'LECTURER' ? 'rgba(167,139,250,0.40)' : 'rgba(96,165,250,0.40)',
-                  fontSize: '0.72rem',
-                  fontWeight: 700,
-                  letterSpacing: '0.6px',
-                  textTransform: 'uppercase',
-                  marginBottom: 4,
-                }}>
-                  {u.role}
-                </div>
-                <div style={{ opacity: 0.70, fontSize: '0.78rem' }}>{u.department}</div>
-                <div style={{
-                  marginTop: 16,
-                  padding: '8px 20px',
-                  borderRadius: 10,
-                  background: 'rgba(255,255,255,0.22)',
-                  fontSize: '0.82rem',
-                  fontWeight: 700,
-                  border: '1.5px solid rgba(255,255,255,0.35)',
-                }}>
-                  Continue as {u.role === 'LECTURER' ? 'Lecturer' : 'Student'} →
-                </div>
-              </button>
-            ))}
-          </div>
+                <option value="">Select department</option>
+                {DEPARTMENT_OPTIONS.map((d) => (
+                  <option key={d} value={d}>{d}</option>
+                ))}
+              </select>
+              <input className="auth-field" value={registerForm.phone} onChange={(e) => setRegisterForm((p) => ({ ...p, phone: e.target.value }))} placeholder="Phone" style={authInputStyle} />
 
-          {users.length === 0 && (
-            <p style={{ color: 'rgba(255,255,255,0.75)', fontSize: '0.9rem', textAlign: 'center' }}>
-              No users available. Please ensure backend is running and user records exist in the database.
-            </p>
-          )}
+              {registerForm.role === 'STUDENT' ? (
+                <>
+                  <input className="auth-field" value={registerForm.registrationNumber} onChange={(e) => setRegisterForm((p) => ({ ...p, registrationNumber: e.target.value }))} placeholder="Registration number" style={authInputStyle} />
+                  <select
+                    className="auth-field"
+                    value={registerForm.batch}
+                    onChange={(e) => setRegisterForm((p) => ({ ...p, batch: e.target.value }))}
+                    style={authInputStyle}
+                  >
+                    <option value="">Select batch / program</option>
+                    {BATCH_OPTIONS.map((b) => (
+                      <option key={b} value={b}>{b}</option>
+                    ))}
+                  </select>
+                  <select
+                    className="auth-field"
+                    value={selectedAcademicPeriod}
+                    onChange={(e) => {
+                      const period = ACADEMIC_PERIODS.find((p) => p.label === e.target.value);
+                      setRegisterForm((p) => ({
+                        ...p,
+                        academicYear: period ? period.academicYear : '',
+                        semester: period ? period.semester : '',
+                      }));
+                    }}
+                    style={authInputStyle}
+                  >
+                    <option value="">Select academic year and semester</option>
+                    {ACADEMIC_PERIODS.map((p) => (
+                      <option key={p.label} value={p.label}>{p.label}</option>
+                    ))}
+                  </select>
+                </>
+              ) : (
+                <>
+                  <input className="auth-field" value={registerForm.employeeCode} onChange={(e) => setRegisterForm((p) => ({ ...p, employeeCode: e.target.value }))} placeholder="Employee code" style={authInputStyle} />
+                  <input className="auth-field" value={registerForm.expertise} onChange={(e) => setRegisterForm((p) => ({ ...p, expertise: e.target.value }))} placeholder="Expertise" style={authInputStyle} />
+                  <input className="auth-field" value={registerForm.officeLocation} onChange={(e) => setRegisterForm((p) => ({ ...p, officeLocation: e.target.value }))} placeholder="Office location" style={authInputStyle} />
+                  <input className="auth-field" value={registerForm.officeHours} onChange={(e) => setRegisterForm((p) => ({ ...p, officeHours: e.target.value }))} placeholder="Office hours" style={authInputStyle} />
+                </>
+              )}
+            </div>
+            {registerForm.role === 'LECTURER' && (
+              <textarea
+                className="auth-field"
+                value={registerForm.bio}
+                onChange={(e) => setRegisterForm((p) => ({ ...p, bio: e.target.value }))}
+                placeholder="Short bio"
+                style={{ ...authInputStyle, minHeight: 90, resize: 'vertical' }}
+              />
+            )}
 
-          <p style={{ color: 'rgba(255,255,255,0.45)', fontSize: '0.75rem', textAlign: 'center' }}>
-            {`${users.length} user(s) loaded from database`}
-          </p>
-        </>
-      )}
+            <button type="submit" disabled={submitting} style={authButtonStyle}>
+              {submitting ? 'Creating account...' : 'Create Account'}
+            </button>
+          </form>
+        )}
+      </div>
     </div>
   );
 }
+
+const authInputStyle = {
+  width: '100%',
+  height: 42,
+  borderRadius: 10,
+  border: '1px solid rgba(255,255,255,0.45)',
+  background: 'rgba(255,255,255,0.16)',
+  color: 'white',
+  WebkitTextFillColor: 'white',
+  caretColor: 'white',
+  padding: '0 12px',
+  boxSizing: 'border-box',
+  outline: 'none',
+};
+
+const authButtonStyle = {
+  border: 'none',
+  borderRadius: 10,
+  height: 42,
+  background: 'white',
+  color: '#0f172a',
+  fontWeight: 800,
+  cursor: 'pointer',
+};
 
 /* ── Router component ── */
 function AppRoutes({ activeUser, appointments, onLogin, onLogout, onUserUpdate }) {
@@ -166,7 +374,7 @@ function AppRoutes({ activeUser, appointments, onLogin, onLogout, onUserUpdate }
         path="/lecturer/home"
         element={
           activeUser.role === 'LECTURER'
-            ? <LecturerHome currentUser={activeUser} appointments={appointments} onLogout={onLogout} />
+            ? <LecturerHome currentUser={activeUser} appointments={appointments} onLogout={onLogout} onUserUpdate={onUserUpdate} />
             : <Navigate to="/student/home" replace />
         }
       />
@@ -178,6 +386,7 @@ function AppRoutes({ activeUser, appointments, onLogin, onLogout, onUserUpdate }
             currentUser={activeUser}
             appointments={appointments}
             onLogout={onLogout}
+            onUserUpdate={onUserUpdate}
           />
         }
       />
@@ -195,6 +404,15 @@ function AppRoutes({ activeUser, appointments, onLogin, onLogout, onUserUpdate }
       <Route
         path="/coming-soon"
         element={<ComingSoonPage currentUser={activeUser} onLogout={onLogout} />}
+      />
+
+      <Route
+        path="/management"
+        element={
+          activeUser.role === 'LECTURER'
+            ? <ManagementPage currentUser={activeUser} onLogout={onLogout} />
+            : <Navigate to="/student/home" replace />
+        }
       />
 
       {/* Catch-all */}
