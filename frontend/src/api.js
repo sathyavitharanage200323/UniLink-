@@ -119,6 +119,8 @@ export function updateSlot(id, data) {
   });
 }
 
+
+
 export function deleteSlot(id) {
   return apiFetch(`/api/slots/${id}`, {
     method: 'DELETE',
