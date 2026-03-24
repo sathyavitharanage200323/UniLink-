@@ -3,6 +3,7 @@ package com.example.backend.model;
 import jakarta.persistence.*;
 import lombok.*;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import java.time.LocalDateTime;
 
 @Entity
@@ -18,6 +19,10 @@ public class User {
     @Column(nullable = false, unique = true, length = 100)
     private String email;
 
+    @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
+    @Column(name = "password_hash", nullable = false, length = 255)
+    private String passwordHash;
+
     @Column(nullable = false, length = 100)
     private String name;
 
@@ -27,6 +32,9 @@ public class User {
 
     @Column(length = 100)
     private String department;
+
+    @Column(length = 20)
+    private String phone;
 
     @Column(length = 200)
     private String expertise;

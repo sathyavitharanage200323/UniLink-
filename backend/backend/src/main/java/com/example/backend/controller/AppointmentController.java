@@ -58,6 +58,21 @@ public class AppointmentController {
         return ResponseEntity.ok(appointmentService.updateStatus(id, status));
     }
 
+    /** Update appointment time (for reschedule/delay) */
+    @PatchMapping("/{id}/time")
+    public ResponseEntity<Appointment> updateTime(@PathVariable Long id,
+                                                   @RequestBody Map<String, String> body) {
+        // Parse ISO 8601 format with timezone (e.g., "2026-03-26T10:00:00.000Z")
+        // Convert from Instant to LocalDateTime
+        LocalDateTime newStart = java.time.Instant.parse(body.get("startTime"))
+            .atZone(java.time.ZoneId.systemDefault())
+            .toLocalDateTime();
+        LocalDateTime newEnd = java.time.Instant.parse(body.get("endTime"))
+            .atZone(java.time.ZoneId.systemDefault())
+            .toLocalDateTime();
+        return ResponseEntity.ok(appointmentService.updateTime(id, newStart, newEnd));
+    }
+
     /** Delete an appointment */
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable Long id) {

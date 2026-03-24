@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { toast } from 'react-toastify';
 import {
   Calendar, MessageSquare, Clock, Users,
   ChevronRight, ArrowRight, Settings,
@@ -8,6 +9,7 @@ import {
 } from 'lucide-react';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
+import { userApi } from '../api/chatApi';
 import './LecturerHome.css';
 
 /**
@@ -18,33 +20,59 @@ import './LecturerHome.css';
  *   appointments – array from App.js
  *   onLogout     – () => void
  */
-export default function LecturerHome({ currentUser, appointments = [], onLogout }) {
+export default function LecturerHome({ currentUser, appointments = [], onLogout, onUserUpdate }) {
   const navigate = useNavigate();
   const [dnd, setDnd] = useState(currentUser?.doNotDisturb ?? false);
+  const [savingDnd, setSavingDnd] = useState(false);
+
+  useEffect(() => {
+    setDnd(currentUser?.doNotDisturb ?? false);
+  }, [currentUser?.doNotDisturb]);
+
+  async function handleDndToggle(nextVal) {
+    if (!currentUser?.id || savingDnd) return;
+    const prev = dnd;
+    setDnd(nextVal);
+    setSavingDnd(true);
+    try {
+      const res = await userApi.toggleDnd(currentUser.id, nextVal, currentUser?.autoReplyMessage || '');
+      const updatedUser = res.data;
+      if (onUserUpdate) {
+        onUserUpdate({
+          ...currentUser,
+          doNotDisturb: updatedUser.doNotDisturb,
+          autoReplyMessage: updatedUser.autoReplyMessage,
+        });
+      }
+      toast.success(nextVal ? 'Do Not Disturb ON' : 'Do Not Disturb OFF');
+    } catch {
+      setDnd(prev);
+      toast.error('Failed to save Do Not Disturb setting.');
+    } finally {
+      setSavingDnd(false);
+    }
+  }
 
   /* ── Derived appointment lists ── */
   const confirmedAppts = appointments.filter((a) => a.status === 'CONFIRMED');
   const pendingAppts   = appointments.filter((a) => a.status === 'PENDING');
 
-  /* Merge with demo for display */
-  const todaySchedule  = confirmedAppts.length > 0 ? confirmedAppts : DEMO_SCHEDULE;
-  const studentThreads  = confirmedAppts.length > 0
-    ? confirmedAppts.map((a) => ({
-        id: a.id,
-        name: a.student?.name ?? 'Student',
-        dept: a.student?.department ?? '',
-        lastMsg: 'Click to open the conversation',
-        unread: 0,
-        time: a.startTime,
-        appointment: a,
-      }))
-    : DEMO_CHATS;
-  const pendingRequests = pendingAppts.length > 0 ? pendingAppts : DEMO_PENDING;
+  const todaySchedule = confirmedAppts;
+  const studentThreads = confirmedAppts.map((a) => ({
+    id: a.id,
+    name: a.student?.name ?? 'Student',
+    dept: a.student?.department ?? '',
+    lastMsg: 'Click to open the conversation',
+    unread: 0,
+    time: a.startTime,
+    appointment: a,
+  }));
+  const pendingRequests = pendingAppts;
 
   /* Stats */
   const stats = [
     { label: "Today's Students", value: todaySchedule.length,       icon: Users,           bg: '#faf5ff', color: '#7c3aed' },
-    { label: 'Pending Requests', value: pendingRequests.length || 2, icon: Clock,           bg: '#fff7ed', color: '#ea580c' },
+    { label: 'Pending Requests', value: pendingRequests.length, icon: Clock,           bg: '#fff7ed', color: '#ea580c' },
     { label: 'Active Chats',     value: studentThreads.length,       icon: MessageSquare,   bg: '#f0fdf4', color: '#16a34a' },
     { label: 'DND Status',       value: dnd ? 'ON' : 'OFF',           icon: dnd ? BellOff : Bell, bg: dnd ? '#fef9c3' : '#f8fafc', color: dnd ? '#a16207' : '#6b7280' },
   ];
@@ -76,9 +104,15 @@ export default function LecturerHome({ currentUser, appointments = [], onLogout 
               <div className="lh-hero__actions">
                 <button
                   className="lh-btn lh-btn--primary"
-                  onClick={() => navigate('/appointments')}
+                  onClick={() => navigate('/lecturer/availability')}
                 >
-                  <Calendar size={16} /> View Schedule
+                  <Calendar size={16} /> Manage Availability
+                </button>
+                <button
+                  className="lh-btn lh-btn--outline"
+                  onClick={() => navigate('/lecturer/schedule')}
+                >
+                  <Clock size={16} /> View Requests
                 </button>
                 <button
                   className="lh-btn lh-btn--outline"
@@ -132,7 +166,7 @@ export default function LecturerHome({ currentUser, appointments = [], onLogout 
           <section className="lh-card">
             <div className="lh-card__header">
               <h2><Calendar size={17} style={{ color: '#7c3aed' }} /> Today's Schedule</h2>
-              <button className="lh-link-btn" onClick={() => navigate('/appointments')}>
+              <button className="lh-link-btn" onClick={() => navigate('/lecturer/schedule')}>
                 Full schedule <ChevronRight size={14} />
               </button>
             </div>
@@ -217,7 +251,7 @@ export default function LecturerHome({ currentUser, appointments = [], onLogout 
           <section className="lh-card">
             <div className="lh-card__header">
               <h2><Clock size={17} style={{ color: '#ea580c' }} /> Pending Requests</h2>
-              <button className="lh-link-btn" onClick={() => navigate('/appointments')}>
+              <button className="lh-link-btn" onClick={() => navigate('/lecturer/schedule')}>
                 View all <ChevronRight size={14} />
               </button>
             </div>
@@ -271,7 +305,8 @@ export default function LecturerHome({ currentUser, appointments = [], onLogout 
                   <input
                     type="checkbox"
                     checked={dnd}
-                    onChange={(e) => setDnd(e.target.checked)}
+                    disabled={savingDnd}
+                    onChange={(e) => handleDndToggle(e.target.checked)}
                   />
                   <div className={`lh-toggle-track ${dnd ? 'on' : ''}`}>
                     <div className="lh-toggle-thumb" />
@@ -325,7 +360,7 @@ export default function LecturerHome({ currentUser, appointments = [], onLogout 
                 </div>
                 <span>Student Chats</span>
               </button>
-              <button className="lh-quick-btn" onClick={() => navigate('/appointments')}>
+              <button className="lh-quick-btn" onClick={() => navigate('/lecturer/schedule')}>
                 <div className="lh-quick-icon" style={{ background: '#fff7ed', color: '#ea580c' }}>
                   <Calendar size={24} />
                 </div>
@@ -349,19 +384,19 @@ export default function LecturerHome({ currentUser, appointments = [], onLogout 
                 </div>
                 <span>My Profile</span>
               </button>
-              <button className="lh-quick-btn">
+              <button className="lh-quick-btn" onClick={() => navigate('/coming-soon')}>
                 <div className="lh-quick-icon" style={{ background: '#f0fdf4', color: '#16a34a' }}>
                   <FileText size={24} />
                 </div>
                 <span>Export Reports</span>
               </button>
-              <button className="lh-quick-btn">
+              <button className="lh-quick-btn" onClick={() => navigate('/management')}>
                 <div className="lh-quick-icon" style={{ background: '#faf5ff', color: '#9333ea' }}>
                   <Users size={24} />
                 </div>
                 <span>Student List</span>
               </button>
-              <button className="lh-quick-btn">
+              <button className="lh-quick-btn" onClick={() => navigate('/coming-soon')}>
                 <div className="lh-quick-icon" style={{ background: '#f8fafc', color: '#64748b' }}>
                   <Settings size={24} />
                 </div>
@@ -403,20 +438,3 @@ function fmtRelative(iso) {
   if (diff < 86400000) return `${Math.floor(diff / 3600000)}h ago`;
   return new Date(iso).toLocaleDateString();
 }
-
-/* ── Demo data ── */
-const DEMO_SCHEDULE = [
-  { id: 101, studentName: 'Kavindu Perera',    startTime: new Date().toISOString(),                       status: 'CONFIRMED', notes: 'Final year project' },
-  { id: 102, studentName: 'Sithumi Rajapaksa', startTime: new Date(Date.now() + 3600000).toISOString(),   status: 'CONFIRMED', notes: 'Research methodology' },
-  { id: 103, studentName: 'Ashan Bandara',     startTime: new Date(Date.now() + 7200000).toISOString(),   status: 'CONFIRMED', notes: 'Thesis review' },
-  { id: 104, studentName: 'Malsha Peris',      startTime: new Date(Date.now() + 10800000).toISOString(),  status: 'PENDING',   notes: 'Assignment discussion' },
-];
-const DEMO_CHATS = [
-  { id: 101, name: 'Kavindu Perera',    dept: 'Information Technology', lastMsg: 'Thank you for the feedback on my project!',      unread: 1, time: new Date().toISOString() },
-  { id: 102, name: 'Sithumi Rajapaksa', dept: 'Computer Science',       lastMsg: 'Could you clarify the submission deadline?',      unread: 3, time: new Date(Date.now() - 1800000).toISOString() },
-  { id: 103, name: 'Ashan Bandara',     dept: 'Information Technology', lastMsg: 'The thesis outline has been uploaded.',           unread: 0, time: new Date(Date.now() - 7200000).toISOString() },
-];
-const DEMO_PENDING = [
-  { id: 201, studentName: 'Malsha Peris',   startTime: new Date(Date.now() + 86400000).toISOString(), notes: 'Assignment feedback session' },
-  { id: 202, studentName: 'Dinesh Kumara',  startTime: new Date(Date.now() + 172800000).toISOString(), notes: 'Project scope discussion' },
-];

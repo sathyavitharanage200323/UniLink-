@@ -1,6 +1,7 @@
 package com.example.backend.controller;
 
 import com.example.backend.dto.ChatMessageDTO;
+import com.example.backend.dto.ReadReceiptPayload;
 import com.example.backend.dto.SendMessageRequest;
 import com.example.backend.dto.TypingPayload;
 import com.example.backend.model.ChatMessage;
@@ -54,5 +55,15 @@ public class WebSocketChatController {
     public void handleTyping(@DestinationVariable Long roomId,
                              @Payload TypingPayload payload) {
         messagingTemplate.convertAndSend("/topic/typing/" + roomId, payload);
+    }
+
+    /**
+     * Read receipt event: mark message as read and broadcast updated message state.
+     */
+    @MessageMapping("/chat.read/{roomId}")
+    public void handleRead(@DestinationVariable Long roomId,
+                           @Payload ReadReceiptPayload payload) {
+        ChatMessage updated = chatService.markRead(payload.getMessageId());
+        messagingTemplate.convertAndSend("/topic/room/" + roomId, ChatMessageDTO.from(updated));
     }
 }

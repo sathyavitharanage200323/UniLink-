@@ -150,51 +150,9 @@ CREATE TABLE IF NOT EXISTS typing_indicators (
 SET FOREIGN_KEY_CHECKS = 1;
 
 -- ============================================================
---  SAMPLE DATA  (safe to rerun — INSERT IGNORE)
+--  SAMPLE DATA
+--  Intentionally omitted: no hardcoded seed rows.
 -- ============================================================
-
--- Users
-INSERT IGNORE INTO users (id, email, name, role, department, expertise, do_not_disturb)
-VALUES
-  (1, 'amara.silva@university.edu',          'Dr. Amara Silva',     'LECTURER', 'Information Technology', 'Artificial Intelligence, Machine Learning', 0),
-  (2, 'kavindu.perera@student.university.edu', 'Kavindu Perera',    'STUDENT',  'Information Technology', NULL, 0),
-  (3, 'nimal.fernando@university.edu',       'Dr. Nimal Fernando',  'LECTURER', 'Computer Science',       'Data Structures, Algorithms', 0),
-  (4, 'sithumi.rajapaksa@student.university.edu', 'Sithumi Rajapaksa', 'STUDENT', 'Computer Science',    NULL, 0),
-  (5, 'priya.mendis@university.edu',         'Dr. Priya Mendis',    'LECTURER', 'Information Technology', 'Research Methodology, HCI', 0),
-  (6, 'ashan.bandara@student.university.edu','Ashan Bandara',       'STUDENT',  'Information Technology', NULL, 0);
-
--- Appointments
-INSERT IGNORE INTO appointments (id, student_id, lecturer_id, start_time, end_time, status, notes)
-VALUES
-  (101, 2, 1, DATE_ADD(NOW(), INTERVAL 1 HOUR),  DATE_ADD(NOW(), INTERVAL 2 HOUR),  'CONFIRMED', 'Final year project discussion'),
-  (102, 4, 3, DATE_ADD(NOW(), INTERVAL 3 HOUR),  DATE_ADD(NOW(), INTERVAL 4 HOUR),  'CONFIRMED', 'Algorithm assignment review'),
-  (103, 6, 5, DATE_ADD(NOW(), INTERVAL 26 HOUR), DATE_ADD(NOW(), INTERVAL 27 HOUR), 'PENDING',   'Research methodology guidance'),
-  (104, 2, 3, DATE_ADD(NOW(), INTERVAL 48 HOUR), DATE_ADD(NOW(), INTERVAL 49 HOUR), 'PENDING',   'Data structures consultation');
-
--- Chat rooms (one per confirmed appointment)
-INSERT IGNORE INTO chat_rooms (id, appointment_id, status)
-VALUES
-  (1, 101, 'OPEN'),
-  (2, 102, 'OPEN');
-
--- Sample messages
-INSERT IGNORE INTO chat_messages (id, room_id, sender_id, content, message_type, is_read)
-VALUES
-  (1, 1, 1, 'Hello Kavindu! I have reviewed the outline you submitted. Let us discuss the methodology today.',      'TEXT', 1),
-  (2, 1, 2, 'Thank you Dr. Silva! I have a few questions about the data collection phase.',                          'TEXT', 1),
-  (3, 1, 1, 'Of course. Please prepare a brief summary of your proposed approach and we can go from there.',         'TEXT', 1),
-  (4, 1, 2, 'Will do! Here is the Python snippet I am using for data cleaning:\n```python\ndf.dropna(inplace=True)\ndf[''date''] = pd.to_datetime(df[''date''])\n```', 'CODE', 0),
-  (5, 2, 3, 'Hi Sithumi, your assignment has been graded. Good work on the graph traversal section!',                'TEXT', 1),
-  (6, 2, 4, 'Thank you Dr. Fernando! I struggled a bit with the Dijkstra implementation.',                           'TEXT', 0);
-
--- Canned responses for lecturers
-INSERT IGNORE INTO canned_responses (lecturer_id, title, content)
-VALUES
-  (1, 'Thank you', 'Thank you for reaching out. I will review this and get back to you shortly.'),
-  (1, 'Please resubmit', 'Please revise and resubmit with the corrections noted during our last session.'),
-  (1, 'Confirm meeting', 'Your appointment has been confirmed. Please be ready 5 minutes before the scheduled time.'),
-  (3, 'Assignment feedback', 'I have reviewed your submission. Please see my annotated comments in the feedback portal.'),
-  (3, 'Office hours', 'I am available during office hours: Monday & Wednesday 2–4 PM in Room B204.');
 
 -- ============================================================
 --  Verification queries (run to confirm setup)

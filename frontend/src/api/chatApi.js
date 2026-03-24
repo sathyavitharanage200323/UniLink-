@@ -20,6 +20,8 @@ export const chatApi = {
     api.get(`/chat/rooms/${roomId}/messages/filter?type=${type}`),
   getPinnedMessages: (roomId) =>
     api.get(`/chat/rooms/${roomId}/messages/pinned`),
+  getUnreadCount: (roomId, userId) =>
+    api.get(`/chat/rooms/${roomId}/messages/unread-count?userId=${userId}`),
   togglePin: (messageId) =>
     api.patch(`/chat/messages/${messageId}/pin`),
   markAsAnswer: (messageId) =>
@@ -72,4 +74,6 @@ export const userApi = {
   create: (user) => api.post('/users', user),
   toggleDnd: (id, dnd, autoReplyMessage) =>
     api.patch(`/users/${id}/dnd`, { dnd, autoReplyMessage }),
+  updateProfile: (id, payload) => api.put(`/users/${id}/profile`, payload),
+  deleteAccount: (id) => api.delete(`/users/${id}`),
 };

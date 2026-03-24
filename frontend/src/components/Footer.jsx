@@ -1,5 +1,5 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import {
   GraduationCap, Mail, Phone, MapPin,
   Github, Twitter, Linkedin, Globe,
@@ -12,6 +12,7 @@ import './Footer.css';
  */
 export default function Footer() {
   const year = new Date().getFullYear();
+  const navigate = useNavigate();
 
   return (
     <footer className="footer">
@@ -42,7 +43,7 @@ export default function Footer() {
             <a href="https://linkedin.com" target="_blank" rel="noreferrer" aria-label="LinkedIn" className="footer__social-btn">
               <Linkedin size={16} />
             </a>
-            <button type="button" aria-label="Website" className="footer__social-btn">
+            <button type="button" aria-label="Website" className="footer__social-btn" onClick={() => navigate('/coming-soon')}>
               <Globe size={16} />
             </button>
           </div>
@@ -64,11 +65,11 @@ export default function Footer() {
         <div className="footer__col">
           <h4>Support</h4>
           <ul>
-            <li><button type="button" onClick={() => {}}>Help Centre</button></li>
-            <li><button type="button" onClick={() => {}}>User Guide</button></li>
-            <li><button type="button" onClick={() => {}}>Privacy Policy</button></li>
-            <li><button type="button" onClick={() => {}}>Terms of Service</button></li>
-            <li><button type="button" onClick={() => {}}>Accessibility</button></li>
+            <li><button type="button" onClick={() => navigate('/coming-soon')}>Help Centre</button></li>
+            <li><button type="button" onClick={() => navigate('/coming-soon')}>User Guide</button></li>
+            <li><button type="button" onClick={() => navigate('/coming-soon')}>Privacy Policy</button></li>
+            <li><button type="button" onClick={() => navigate('/coming-soon')}>Terms of Service</button></li>
+            <li><button type="button" onClick={() => navigate('/coming-soon')}>Accessibility</button></li>
           </ul>
         </div>
 
