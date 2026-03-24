@@ -7,6 +7,9 @@ import StudentHome from './pages/StudentHome';
 import LecturerHome from './pages/LecturerHome';
 import ManagementPage from './pages/ManagementPage';
 import { AppointmentsPage, ProfilePage, ComingSoonPage } from './pages/UtilityPages';
+import BookingPage from './pages/BookingPage';
+import LecturerSchedulePage from './pages/LecturerSchedulePage';
+import LecturerAvailabilityPage from './pages/LecturerAvailabilityPage';
 import {
   loginUser,
   registerUser,
@@ -411,6 +414,33 @@ function AppRoutes({ activeUser, appointments, onLogin, onLogout, onUserUpdate }
         element={
           activeUser.role === 'LECTURER'
             ? <ManagementPage currentUser={activeUser} onLogout={onLogout} />
+            : <Navigate to="/student/home" replace />
+        }
+      />
+
+      <Route
+        path="/book"
+        element={
+          activeUser?.role === 'STUDENT'
+            ? <BookingPage currentUser={activeUser} onLogout={onLogout} />
+            : <Navigate to="/lecturer/home" replace />
+        }
+      />
+
+      <Route
+        path="/lecturer/schedule"
+        element={
+          activeUser?.role === 'LECTURER'
+            ? <LecturerSchedulePage currentUser={activeUser} onLogout={onLogout} />
+            : <Navigate to="/student/home" replace />
+        }
+      />
+
+      <Route
+        path="/lecturer/availability"
+        element={
+          activeUser?.role === 'LECTURER'
+            ? <LecturerAvailabilityPage currentUser={activeUser} onLogout={onLogout} />
             : <Navigate to="/student/home" replace />
         }
       />

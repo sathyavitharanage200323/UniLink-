@@ -104,9 +104,15 @@ export default function LecturerHome({ currentUser, appointments = [], onLogout,
               <div className="lh-hero__actions">
                 <button
                   className="lh-btn lh-btn--primary"
-                  onClick={() => navigate('/appointments')}
+                  onClick={() => navigate('/lecturer/availability')}
                 >
-                  <Calendar size={16} /> View Schedule
+                  <Calendar size={16} /> Manage Availability
+                </button>
+                <button
+                  className="lh-btn lh-btn--outline"
+                  onClick={() => navigate('/lecturer/schedule')}
+                >
+                  <Clock size={16} /> View Requests
                 </button>
                 <button
                   className="lh-btn lh-btn--outline"
@@ -160,7 +166,7 @@ export default function LecturerHome({ currentUser, appointments = [], onLogout,
           <section className="lh-card">
             <div className="lh-card__header">
               <h2><Calendar size={17} style={{ color: '#7c3aed' }} /> Today's Schedule</h2>
-              <button className="lh-link-btn" onClick={() => navigate('/appointments')}>
+              <button className="lh-link-btn" onClick={() => navigate('/lecturer/schedule')}>
                 Full schedule <ChevronRight size={14} />
               </button>
             </div>
@@ -245,7 +251,7 @@ export default function LecturerHome({ currentUser, appointments = [], onLogout,
           <section className="lh-card">
             <div className="lh-card__header">
               <h2><Clock size={17} style={{ color: '#ea580c' }} /> Pending Requests</h2>
-              <button className="lh-link-btn" onClick={() => navigate('/appointments')}>
+              <button className="lh-link-btn" onClick={() => navigate('/lecturer/schedule')}>
                 View all <ChevronRight size={14} />
               </button>
             </div>
@@ -354,7 +360,7 @@ export default function LecturerHome({ currentUser, appointments = [], onLogout,
                 </div>
                 <span>Student Chats</span>
               </button>
-              <button className="lh-quick-btn" onClick={() => navigate('/appointments')}>
+              <button className="lh-quick-btn" onClick={() => navigate('/lecturer/schedule')}>
                 <div className="lh-quick-icon" style={{ background: '#fff7ed', color: '#ea580c' }}>
                   <Calendar size={24} />
                 </div>

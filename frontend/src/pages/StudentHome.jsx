@@ -91,7 +91,7 @@ export default function StudentHome({ currentUser, appointments = [], onLogout }
               <div className="sh-hero__actions">
                 <button
                   className="sh-btn sh-btn--primary"
-                  onClick={() => navigate('/appointments')}
+                  onClick={() => navigate('/book')}
                 >
                   <PlusCircle size={16} /> Book Appointment
                 </button>
@@ -169,7 +169,7 @@ export default function StudentHome({ currentUser, appointments = [], onLogout }
                   <p>No upcoming appointments</p>
                   <button
                     className="sh-btn sh-btn--sm sh-btn--primary"
-                    onClick={() => navigate('/appointments')}
+                    onClick={() => navigate('/book')}
                   >
                     Book Now
                   </button>
@@ -232,7 +232,7 @@ export default function StudentHome({ currentUser, appointments = [], onLogout }
               <h2><Star size={17} style={{ color: '#f59e0b' }} /> Quick Actions</h2>
             </div>
             <div className="sh-quick-grid">
-              <button className="sh-quick-btn" onClick={() => navigate('/appointments')}>
+              <button className="sh-quick-btn" onClick={() => navigate('/book')}>
                 <div className="sh-quick-icon" style={{ background: '#eff6ff', color: '#2563eb' }}>
                   <PlusCircle size={24} />
                 </div>

@@ -60,6 +60,13 @@ export function AppointmentsPage({ currentUser, appointments = [], onLogout }) {
 					<p style={{ margin: '8px 0 0', color: '#475569' }}>
 						{list.length} appointment(s) loaded from backend.
 					</p>
+					<button
+						type="button"
+						onClick={() => navigate('/book')}
+						style={{ marginTop: 12, padding: '8px 16px', borderRadius: 10, border: 'none', background: '#2563eb', color: 'white', fontWeight: 700, cursor: 'pointer' }}
+					>
+						+ Book New Appointment
+					</button>
 
 					<div style={{ marginTop: 16, display: 'grid', gap: 10 }}>
 						{list.map((a) => (
