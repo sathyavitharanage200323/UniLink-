@@ -100,6 +100,7 @@ export function ProfilePage({ currentUser, onLogout, onUserUpdate }) {
 		academicYear: currentUser?.academicYear || '',
 		semester: currentUser?.semester || '',
 		employeeCode: currentUser?.employeeCode || '',
+		designation: currentUser?.designation || '',
 		officeLocation: currentUser?.officeLocation || '',
 		officeHours: currentUser?.officeHours || '',
 		bio: currentUser?.bio || '',
@@ -130,6 +131,7 @@ export function ProfilePage({ currentUser, onLogout, onUserUpdate }) {
 			academicYear: currentUser?.academicYear || '',
 			semester: currentUser?.semester || '',
 			employeeCode: currentUser?.employeeCode || '',
+			designation: currentUser?.designation || '',
 			officeLocation: currentUser?.officeLocation || '',
 			officeHours: currentUser?.officeHours || '',
 			bio: currentUser?.bio || '',
@@ -178,6 +180,7 @@ export function ProfilePage({ currentUser, onLogout, onUserUpdate }) {
 				academicYear: isStudent ? formData.academicYear : null,
 				semester: isStudent ? formData.semester : null,
 				employeeCode: isLecturer ? formData.employeeCode : null,
+				designation: isLecturer ? formData.designation : null,
 				officeLocation: isLecturer ? formData.officeLocation : null,
 				officeHours: isLecturer ? formData.officeHours : null,
 				bio: isLecturer ? formData.bio : null,
@@ -390,6 +393,16 @@ export function ProfilePage({ currentUser, onLogout, onUserUpdate }) {
 									<div>
 										<label style={{ display: 'block', marginBottom: 6, fontWeight: 600 }}>Employee Code</label>
 										<input name="employeeCode" value={formData.employeeCode} onChange={handleFormChange} style={{ width: '100%', padding: 10, borderRadius: 10, border: '1px solid #cbd5e1' }} />
+									</div>
+									<div>
+										<label style={{ display: 'block', marginBottom: 6, fontWeight: 600 }}>Designation</label>
+										<select name="designation" value={formData.designation} onChange={handleFormChange} style={{ width: '100%', padding: 10, borderRadius: 10, border: '1px solid #cbd5e1', background: 'white' }}>
+											<option value="">Select designation</option>
+											<option value="Lecturer">Lecturer</option>
+											<option value="Lecturer In Charge">Lecturer In Charge</option>
+											<option value="Senior Lecturer">Senior Lecturer</option>
+											<option value="Professor">Professor</option>
+										</select>
 									</div>
 									<div>
 										<label style={{ display: 'block', marginBottom: 6, fontWeight: 600 }}>Office Location</label>

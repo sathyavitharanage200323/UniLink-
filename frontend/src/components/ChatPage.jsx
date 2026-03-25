@@ -45,9 +45,14 @@ export default function ChatPage({ currentUser, appointments = [], onLogout, onU
   const [dndMsg] = useState(currentUser?.autoReplyMessage ?? '');
   const [savingDnd, setSavingDnd] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [roomsMap, setRoomsMap] = useState({}); // appointmentId -> room
+  const [roomSummaries, setRoomSummaries] = useState([]);
   const [isBlocked, setIsBlocked] = useState(false);
   const [unreadByRoom, setUnreadByRoom] = useState({});
+  const [showLecturerFinder, setShowLecturerFinder] = useState(false);
+  const [searchingLecturers, setSearchingLecturers] = useState(false);
+  const [lecturerFilters, setLecturerFilters] = useState({ query: '', department: '', designation: '' });
+  const [lecturerResults, setLecturerResults] = useState([]);
+  const totalUnread = Object.values(unreadByRoom).reduce((sum, n) => sum + (n || 0), 0);
 
   const messagesEndRef = useRef(null);
   const typingTimer = useRef(null);
@@ -55,16 +60,21 @@ export default function ChatPage({ currentUser, appointments = [], onLogout, onU
 
   const isLecturer = currentUser?.role === 'LECTURER';
 
-  // ── Get room info for the current appointment ──────────────────
-  const currentAppointment = appointments.find((a) =>
-    roomsMap[a.id]?.id === selectedRoomId
-  );
-  const otherParty = currentAppointment
-    ? (isLecturer ? currentAppointment.student : currentAppointment.lecturer)
+  // ── Current selected room summary ───────────────────────────────
+  const selectedRoom = roomSummaries.find((r) => r.roomId === selectedRoomId) || null;
+  const otherParty = selectedRoom
+    ? (isLecturer
+      ? { id: selectedRoom.studentId, name: selectedRoom.studentName, department: selectedRoom.studentDepartment }
+      : {
+        id: selectedRoom.lecturerId,
+        name: selectedRoom.lecturerName,
+        department: selectedRoom.lecturerDepartment,
+        designation: selectedRoom.lecturerDesignation,
+      })
     : null;
 
   // ── WebSocket ──────────────────────────────────────────────────
-  const { sendMessage: wsSend, sendTyping, sendReadReceipt, isConnected } = useWebSocket(
+  const { sendTyping, sendReadReceipt, isConnected } = useWebSocket(
     selectedRoomId,
     (msg) => {
       seenMessageIdsRef.current.add(msg.id);
@@ -94,28 +104,19 @@ export default function ChatPage({ currentUser, appointments = [], onLogout, onU
     }
   );
 
-  // ── On mount: load rooms for all confirmed appointments ────────
+  // ── On mount: load rooms (appointment + direct) ─────────────────
   useEffect(() => {
     async function loadRooms() {
-      const map = {};
-      for (const appt of appointments) {
-        if (appt.status === 'CONFIRMED') {
-          try {
-            const res = await chatApi.getRoomByAppointment(appt.id);
-            map[appt.id] = res.data;
-          } catch {
-            // Room may not exist yet – create it
-            try {
-              const res = await chatApi.createRoom(appt.id);
-              map[appt.id] = res.data;
-            } catch {}
-          }
-        }
+      if (!currentUser?.id) return;
+      try {
+        const res = await chatApi.getRoomsForUser(currentUser.id);
+        setRoomSummaries(res.data || []);
+      } catch {
+        setRoomSummaries([]);
       }
-      setRoomsMap(map);
     }
-    if (appointments.length > 0) loadRooms();
-  }, [appointments]);
+    loadRooms();
+  }, [currentUser?.id]);
 
   // ── Load messages when room changes ───────────────────────────
   useEffect(() => {
@@ -152,10 +153,14 @@ export default function ChatPage({ currentUser, appointments = [], onLogout, onU
   // ── Load unread counters for room list ───────────────────────────────────
   useEffect(() => {
     async function loadUnreadCounts() {
-      const roomIds = Object.values(roomsMap).map((r) => r?.id).filter(Boolean);
+      const roomIds = roomSummaries.map((r) => r?.roomId).filter(Boolean);
       if (!currentUser?.id || roomIds.length === 0) return;
       const entries = await Promise.all(
         roomIds.map(async (rid) => {
+          const room = roomSummaries.find((r) => r.roomId === rid);
+          if (room?.roomStatus === 'RESOLVED' || room?.roomStatus === 'CLOSED') {
+            return [rid, 0];
+          }
           try {
             const res = await chatApi.getUnreadCount(rid, currentUser.id);
             return [rid, res.data?.count || 0];
@@ -167,7 +172,26 @@ export default function ChatPage({ currentUser, appointments = [], onLogout, onU
       setUnreadByRoom(Object.fromEntries(entries));
     }
     loadUnreadCounts();
-  }, [roomsMap, currentUser?.id]);
+  }, [roomSummaries, currentUser?.id]);
+
+  useEffect(() => {
+    async function findLecturers() {
+      if (isLecturer) return;
+      setSearchingLecturers(true);
+      try {
+        const res = await userApi.searchLecturers(lecturerFilters);
+        setLecturerResults(res.data || []);
+      } catch {
+        setLecturerResults([]);
+      } finally {
+        setSearchingLecturers(false);
+      }
+    }
+
+    if (showLecturerFinder) {
+      findLecturers();
+    }
+  }, [showLecturerFinder, lecturerFilters, isLecturer]);
 
   // ── Check discipline block status for student -> lecturer chat ───────────
   useEffect(() => {
@@ -188,7 +212,11 @@ export default function ChatPage({ currentUser, appointments = [], onLogout, onU
 
   // ── Load room data ─────────────────────────────────────────────
   useEffect(() => {
-    if (!selectedRoomId) return;
+    if (!selectedRoomId) {
+      setRoomData(null);
+      return;
+    }
+    setRoomData(null);
     chatApi.getRoom(selectedRoomId)
       .then((r) => setRoomData(r.data))
       .catch(() => {});
@@ -212,10 +240,18 @@ export default function ChatPage({ currentUser, appointments = [], onLogout, onU
   }, [currentUser?.doNotDisturb]);
 
   // ── Actions ───────────────────────────────────────────────────
-  function handleSend(payload) {
-    const sent = wsSend(payload);
-    if (!sent) {
-      toast.info('Connection lost. Message queued and will send after reconnect.');
+  async function handleSend(payload) {
+    if (!selectedRoomId) return;
+    try {
+      const res = await chatApi.sendMessage(selectedRoomId, payload);
+      const saved = res.data;
+      setMessages((prev) => {
+        const exists = prev.some((m) => m.id === saved.id);
+        return exists ? prev : [...prev, saved];
+      });
+    } catch (err) {
+      const msg = err?.response?.data?.message || 'Could not send message.';
+      toast.error(msg);
     }
   }
 
@@ -279,6 +315,10 @@ export default function ChatPage({ currentUser, appointments = [], onLogout, onU
     try {
       const res = await chatApi.resolveRoom(selectedRoomId, currentUser?.id);
       setRoomData(res.data);
+      setRoomSummaries((prev) => prev.map((r) => (
+        r.roomId === selectedRoomId ? { ...r, roomStatus: 'RESOLVED' } : r
+      )));
+      setUnreadByRoom((prev) => ({ ...prev, [selectedRoomId]: 0 }));
       toast.success('Chat marked as Resolved.');
     } catch { toast.error('Could not resolve chat.'); }
   }
@@ -321,15 +361,64 @@ export default function ChatPage({ currentUser, appointments = [], onLogout, onU
     }
   }
 
+  async function handleStartDirectChat(lecturerId) {
+    try {
+      let res;
+      try {
+        res = await chatApi.createDirectRoomNew(currentUser?.id, lecturerId);
+      } catch {
+        // Fallback for older backend builds that do not expose /rooms/direct/new yet.
+        res = await chatApi.createDirectRoom(currentUser?.id, lecturerId);
+      }
+      const roomId = res.data?.id;
+      const roomsRes = await chatApi.getRoomsForUser(currentUser?.id);
+      setRoomSummaries(roomsRes.data || []);
+      if (roomId) {
+        setSelectedRoomId(roomId);
+      }
+      setShowLecturerFinder(false);
+      toast.success('New question chat started.');
+    } catch {
+      toast.error('Could not start direct chat.');
+    }
+  }
+
+  async function handleStartNewQuestionThread() {
+    if (!currentUser?.id || !selectedRoom?.lecturerId) return;
+    try {
+      let res;
+      try {
+        res = await chatApi.createDirectRoomNew(currentUser.id, selectedRoom.lecturerId);
+      } catch {
+        // Fallback so "Start New Question" still works even before backend restart.
+        res = await chatApi.createDirectRoom(currentUser.id, selectedRoom.lecturerId);
+      }
+      const roomId = res.data?.id;
+      const roomsRes = await chatApi.getRoomsForUser(currentUser.id);
+      setRoomSummaries(roomsRes.data || []);
+      if (roomId) {
+        setSelectedRoomId(roomId);
+        setUnreadByRoom((prev) => ({ ...prev, [roomId]: 0 }));
+      }
+      toast.success(`Opened Question Thread #${roomId || 'new'} for your new question.`);
+    } catch {
+      toast.error('Could not open a new chat thread.');
+    }
+  }
+
   // ── Derived ────────────────────────────────────────────────────
   const displayMessages = filteredMessages ?? messages;
-  const roomClosed = roomData?.status === 'RESOLVED' || roomData?.status === 'CLOSED';
+  const effectiveRoomStatus = selectedRoom?.roomStatus || roomData?.status;
+  const roomClosed = effectiveRoomStatus === 'RESOLVED' || effectiveRoomStatus === 'CLOSED';
+  const canStartNewDirectThread = !isLecturer
+    && selectedRoom?.roomType === 'DIRECT'
+    && roomClosed;
   const latestPinned = pinnedMessages[pinnedMessages.length - 1];
 
   // ── Render ────────────────────────────────────────────────────
   return (
     <div className="chat-layout">
-      <Header currentUser={currentUser} onLogout={onLogout} />
+      <Header currentUser={currentUser} onLogout={onLogout} unreadCount={totalUnread} />
       <div className="chat-page">
       {/* ── Sidebar ─────────────────────────── */}
       <aside className="chat-sidebar">
@@ -346,16 +435,78 @@ export default function ChatPage({ currentUser, appointments = [], onLogout, onU
             <p>{currentUser?.name} · {isLecturer ? 'Lecturer' : 'Student'}</p>
           </div>
         </div>
+        {!isLecturer && (
+          <div style={{ padding: '10px 12px', borderBottom: '1px solid var(--line)' }}>
+            <button className="btn btn-primary" style={{ width: '100%' }} onClick={() => setShowLecturerFinder((v) => !v)}>
+              {showLecturerFinder ? 'Hide Lecturer Finder' : 'Find Lecturer'}
+            </button>
+            {showLecturerFinder && (
+              <div style={{ marginTop: 10, display: 'grid', gap: 8 }}>
+                <input
+                  className="search-input"
+                  placeholder="Search lecturer name / expertise"
+                  value={lecturerFilters.query}
+                  onChange={(e) => setLecturerFilters((p) => ({ ...p, query: e.target.value }))}
+                />
+                <select
+                  className="search-input"
+                  value={lecturerFilters.department}
+                  onChange={(e) => setLecturerFilters((p) => ({ ...p, department: e.target.value }))}
+                >
+                  <option value="">All Departments</option>
+                  <option value="Faculty Of Computing">Faculty Of Computing</option>
+                  <option value="Faculty Of Engineering">Faculty Of Engineering</option>
+                  <option value="Faculty Of Business">Faculty Of Business</option>
+                  <option value="Faculty Of Humanities and Sciences">Faculty Of Humanities and Sciences</option>
+                </select>
+                <select
+                  className="search-input"
+                  value={lecturerFilters.designation}
+                  onChange={(e) => setLecturerFilters((p) => ({ ...p, designation: e.target.value }))}
+                >
+                  <option value="">All Designations</option>
+                  <option value="Lecturer">Lecturer</option>
+                  <option value="Lecturer In Charge">Lecturer In Charge</option>
+                  <option value="Senior Lecturer">Senior Lecturer</option>
+                  <option value="Professor">Professor</option>
+                </select>
+
+                <div style={{ maxHeight: 180, overflow: 'auto', border: '1px solid var(--line)', borderRadius: 8, background: 'white' }}>
+                  {searchingLecturers && (
+                    <div style={{ padding: 10, color: 'var(--text-muted)', fontSize: '0.82rem' }}>Searching...</div>
+                  )}
+                  {!searchingLecturers && lecturerResults.map((l) => (
+                    <div key={l.id} style={{ padding: 10, borderBottom: '1px solid var(--line)' }}>
+                      <div style={{ fontWeight: 600, fontSize: '0.86rem' }}>{l.name}</div>
+                      <div style={{ fontSize: '0.76rem', color: 'var(--text-muted)' }}>{l.department || 'Department N/A'} · {l.designation || 'Lecturer'}</div>
+                      {l.expertise && <div style={{ fontSize: '0.74rem', color: 'var(--text-muted)', marginTop: 2 }}>{l.expertise}</div>}
+                      <button className="btn btn-ghost" style={{ marginTop: 6, padding: '4px 8px' }} onClick={() => handleStartDirectChat(l.id)}>
+                        Send Message
+                      </button>
+                    </div>
+                  ))}
+                  {!searchingLecturers && lecturerResults.length === 0 && (
+                    <div style={{ padding: 10, color: 'var(--text-muted)', fontSize: '0.82rem' }}>No lecturers found for this filter.</div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
         <div className="sidebar-list">
-          {appointments.filter((a) => roomsMap[a.id]).map((appt) => {
-            const room = roomsMap[appt.id];
-            const counterpart = isLecturer ? appt.student : appt.lecturer;
-            const isActive = room?.id === selectedRoomId;
+          {roomSummaries.map((room) => {
+            const counterpart = isLecturer
+              ? { name: room.studentName }
+              : { name: room.lecturerName };
+            const isActive = room?.roomId === selectedRoomId;
+            const isResolved = room?.roomStatus === 'RESOLVED' || room?.roomStatus === 'CLOSED';
+            const isOpenIssue = room?.roomStatus === 'OPEN';
+            const displayUnread = isResolved ? 0 : (unreadByRoom[room.roomId] || 0);
             return (
               <div
-                key={appt.id}
-                className={`sidebar-item ${isActive ? 'active' : ''}`}
-                onClick={() => setSelectedRoomId(room.id)}
+                key={room.roomId}
+                className={`sidebar-item ${isActive ? 'active' : ''} ${isOpenIssue ? 'needs-attention' : ''} ${isResolved ? 'resolved' : ''}`}
+                onClick={() => setSelectedRoomId(room.roomId)}
               >
                 <div className="sidebar-item-avatar">
                   {counterpart?.name?.charAt(0).toUpperCase() ?? '?'}
@@ -363,18 +514,18 @@ export default function ChatPage({ currentUser, appointments = [], onLogout, onU
                 <div className="sidebar-item-info">
                   <div className="sidebar-item-name">{counterpart?.name ?? 'Unknown'}</div>
                   <div className="sidebar-item-meta">
-                    {room.status === 'RESOLVED' ? '✓ Resolved' : 'Open'}
+                    {room.roomStatus === 'RESOLVED' ? '✓ Resolved' : 'Open'} · {room.roomType === 'DIRECT' ? `Question Thread #${room.roomId}` : `Session #${room.appointmentId}`}
                   </div>
                 </div>
-                {(unreadByRoom[room.id] || 0) > 0 && (
-                  <span className="unread-badge">{unreadByRoom[room.id]}</span>
+                {displayUnread > 0 && (
+                  <span className="unread-badge">{displayUnread}</span>
                 )}
               </div>
             );
           })}
-          {appointments.filter((a) => roomsMap[a.id]).length === 0 && (
+          {roomSummaries.length === 0 && (
             <div style={{ padding: '20px 16px', color: 'var(--text-muted)', fontSize: '0.85rem', textAlign: 'center' }}>
-              No confirmed appointments yet.
+              No chats yet. Start by finding a lecturer.
             </div>
           )}
         </div>
@@ -403,7 +554,7 @@ export default function ChatPage({ currentUser, appointments = [], onLogout, onU
                     ? `Student · ${otherParty?.department ?? 'University'}`
                     : `Lecturer · ${otherParty?.department ?? 'University'}`
                   }
-                  &nbsp;·&nbsp;Session #{currentAppointment?.id}
+                  &nbsp;·&nbsp;{selectedRoom?.roomType === 'DIRECT' ? `Question Thread #${selectedRoom?.roomId}` : `Session #${selectedRoom?.appointmentId}`}
                 </div>
               </div>
               <div className="chat-header-actions">
@@ -442,6 +593,15 @@ export default function ChatPage({ currentUser, appointments = [], onLogout, onU
               <div className={`room-banner resolved`}>
                 <CheckCircle size={14} />
                 This chat has been resolved. The transcript is read-only.
+                {canStartNewDirectThread && (
+                  <button
+                    className="btn btn-primary"
+                    style={{ marginLeft: 10, padding: '4px 10px', fontSize: '0.78rem' }}
+                    onClick={handleStartNewQuestionThread}
+                  >
+                    Start New Question
+                  </button>
+                )}
               </div>
             )}
 
