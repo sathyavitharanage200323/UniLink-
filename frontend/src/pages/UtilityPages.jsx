@@ -268,7 +268,7 @@ export function ProfilePage({ currentUser, onLogout, onUserUpdate }) {
 			if (onUserUpdate) {
 				onUserUpdate({ ...currentUser, doNotDisturb: dndEnabled, autoReplyMessage });
 			}
-			setTimeout(() => setSaveStatus(null), 3000);
+			setTimeout(() => setSaveStatus(null), 3006);
 		} catch {
 			setSaveStatus({ type: 'error', message: 'Failed to save auto-reply message. Please try again.' });
 		} finally {

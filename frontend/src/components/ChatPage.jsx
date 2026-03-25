@@ -78,7 +78,7 @@ export default function ChatPage({ currentUser, appointments = [], onLogout }) {
         setTypingInfo(payload.typing ? payload : null);
         clearTimeout(typingTimer.current);
         if (payload.typing) {
-          typingTimer.current = setTimeout(() => setTypingInfo(null), 3000);
+          typingTimer.current = setTimeout(() => setTypingInfo(null), 3006);
         }
       }
     }

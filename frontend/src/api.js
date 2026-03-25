@@ -3,7 +3,6 @@
  * Every function returns parsed JSON or throws an Error.
  */
 
-// 🔥 DIRECT BASE URL (no config.js needed)
 const BASE_URL = 'http://localhost:9090';
 
 async function apiFetch(path, options = {}) {
@@ -12,13 +11,28 @@ async function apiFetch(path, options = {}) {
     ...options,
   });
 
-  if (!res.ok) {
-    const text = await res.text().catch(() => res.statusText);
-    throw new Error(`${res.status}: ${text}`);
+  // delete / no-content responses
+  if (res.status === 204) {
+    return null;
   }
 
-  if (res.status === 204) return null;
-  return res.json();
+  const text = await res.text().catch(() => '');
+
+  let data = null;
+  try {
+    data = text ? JSON.parse(text) : null;
+  } catch {
+    data = text || null;
+  }
+
+  if (!res.ok) {
+    if (typeof data === 'object' && data !== null) {
+      throw new Error(data.message || `Request failed with status ${res.status}`);
+    }
+    throw new Error(data || `Request failed with status ${res.status}`);
+  }
+
+  return data;
 }
 
 // ── Users ─────────────────────────────────────────────────
@@ -99,7 +113,7 @@ export function getMessages(roomId) {
   return apiFetch(`/api/chat/rooms/${roomId}/messages`);
 }
 
-// ── Slots (🔥 YOUR FEATURE) ───────────────────────────────
+// ── Slots ───────────────────────────────────────────────
 
 export function getSlots(lecturerId) {
   return apiFetch(`/api/slots/lecturer/${lecturerId}`);
@@ -118,8 +132,6 @@ export function updateSlot(id, data) {
     body: JSON.stringify(data),
   });
 }
-
-
 
 export function deleteSlot(id) {
   return apiFetch(`/api/slots/${id}`, {

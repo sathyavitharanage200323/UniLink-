@@ -2,22 +2,25 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   CalendarDays,
-  Clock3,
+  ArrowLeft,
   Plus,
+  Clock3,
   Pencil,
   Trash2,
-  ArrowLeft,
-  AlertCircle,
+  Search,
+  Filter,
   CheckCircle2,
+  AlertCircle,
+  CalendarRange,
   Layers3,
+  X,
 } from 'lucide-react';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
-import SlotModuleNav from '../components/SlotModuleNav';
 import { createSlot, deleteSlot, getSlots, updateSlot } from '../api';
-import './LecturerHome.css';
+import './LecturerSlotsPage.css';
 
-const emptyForm = {
+const initialForm = {
   slotDate: '',
   startTime: '',
   endTime: '',
@@ -25,40 +28,26 @@ const emptyForm = {
 
 export default function LecturerSlotsPage({ currentUser, onLogout }) {
   const navigate = useNavigate();
-  const lecturerId = currentUser?.id;
 
   const [slots, setSlots] = useState([]);
-  const [form, setForm] = useState(emptyForm);
+  const [form, setForm] = useState(initialForm);
   const [editingId, setEditingId] = useState(null);
-  const [loading, setLoading] = useState(false);
+
   const [pageLoading, setPageLoading] = useState(true);
-  const [message, setMessage] = useState('');
+  const [saving, setSaving] = useState(false);
+
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
 
-  const sortedSlots = useMemo(() => {
-    return [...slots].sort((a, b) => {
-      const aValue = `${a.slotDate} ${a.startTime}`;
-      const bValue = `${b.slotDate} ${b.startTime}`;
-      return aValue.localeCompare(bValue);
-    });
-  }, [slots]);
+  const [search, setSearch] = useState('');
+  const [filter, setFilter] = useState('ALL');
 
-  const todayISO = new Date().toISOString().split('T')[0];
-
-  const summary = useMemo(() => {
-    const total = sortedSlots.length;
-    const todayCount = sortedSlots.filter((slot) => slot.slotDate === todayISO).length;
-    const upcoming = sortedSlots.filter((slot) => slot.slotDate >= todayISO).length;
-
-    return { total, todayCount, upcoming };
-  }, [sortedSlots, todayISO]);
+  const lecturerId = Number(currentUser?.id) || 1;
+  const todayDateString = new Date().toISOString().split('T')[0];
 
   useEffect(() => {
-    if (lecturerId) {
-      loadSlots();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [lecturerId]);
+    loadSlots();
+  }, []);
 
   async function loadSlots() {
     try {
@@ -67,52 +56,153 @@ export default function LecturerSlotsPage({ currentUser, onLogout }) {
       const data = await getSlots(lecturerId);
       setSlots(Array.isArray(data) ? data : []);
     } catch (err) {
-      setError('Could not load available slots from backend.');
-      setSlots([]);
+      setError(err.message || 'Could not load available slots from backend.');
     } finally {
       setPageLoading(false);
     }
   }
 
-  function handleChange(e) {
-    const { name, value } = e.target;
-    setForm((prev) => ({ ...prev, [name]: value }));
+  function timeToMinutes(time) {
+    const [h, m] = time.split(':').map(Number);
+    return h * 60 + m;
   }
 
-  function resetForm() {
-    setForm(emptyForm);
-    setEditingId(null);
-    setError('');
-    setMessage('');
+  function normalizeTime(value) {
+    return String(value).slice(0, 5);
   }
 
-  function isPastDate(date) {
-    return date < todayISO;
+  function generateValidStartTimes() {
+    const times = [];
+
+    for (let h = 0; h < 24; h++) {
+      for (let m = 0; m < 60; m += 15) {
+        const hh = String(h).padStart(2, '0');
+        const mm = String(m).padStart(2, '0');
+        const time = `${hh}:${mm}`;
+
+        const mins = timeToMinutes(time);
+
+        // earliest start = 09:00, last allowed start = 20:30
+        if (mins >= timeToMinutes('09:00') && mins <= timeToMinutes('20:30')) {
+          times.push(time);
+        }
+      }
+    }
+
+    return times;
   }
 
-  function hasOverlap() {
-    const newStart = `${form.slotDate}T${form.startTime}`;
-    const newEnd = `${form.slotDate}T${form.endTime}`;
+  const allTimes = generateValidStartTimes();
 
-    return sortedSlots.some((slot) => {
-      if (editingId && slot.id === editingId) return false;
-      if (slot.slotDate !== form.slotDate) return false;
+  function addThirtyMinutes(time) {
+    const [hours, minutes] = time.split(':').map(Number);
+    const totalMinutes = hours * 60 + minutes + 30;
+    const newHours = Math.floor(totalMinutes / 60) % 24;
+    const newMinutes = totalMinutes % 60;
 
-      const existingStart = `${slot.slotDate}T${String(slot.startTime).slice(0, 5)}`;
-      const existingEnd = `${slot.slotDate}T${String(slot.endTime).slice(0, 5)}`;
+    return `${String(newHours).padStart(2, '0')}:${String(newMinutes).padStart(2, '0')}`;
+  }
 
-      return newStart < existingEnd && newEnd > existingStart;
+  function getDurationMinutes(start, end) {
+    return timeToMinutes(end) - timeToMinutes(start);
+  }
+
+  function isPastDate(dateStr) {
+    if (!dateStr) return false;
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const selected = new Date(dateStr);
+    selected.setHours(0, 0, 0, 0);
+
+    return selected < today;
+  }
+
+  function getValidStartTimesForDate(date) {
+    if (!date) return allTimes;
+
+    const sameDaySlots = slots.filter(
+      (slot) => slot.slotDate === date && slot.id !== editingId
+    );
+
+    return allTimes.filter((time) => {
+      const newStart = timeToMinutes(time);
+      const newEnd = newStart + 30;
+
+      // must stay within 09:00 AM to 09:00 PM window
+      if (newStart < timeToMinutes('09:00')) {
+        return false;
+      }
+
+      if (newEnd > timeToMinutes('21:00')) {
+        return false;
+      }
+
+      for (const slot of sameDaySlots) {
+        const existingStart = timeToMinutes(normalizeTime(slot.startTime));
+        const existingEnd = timeToMinutes(normalizeTime(slot.endTime));
+
+        const gapAfterExisting = newStart - existingEnd;
+        const gapBeforeExisting = existingStart - newEnd;
+
+        const enoughGapAfterExisting = gapAfterExisting >= 15;
+        const enoughGapBeforeExisting = gapBeforeExisting >= 15;
+
+        if (!(enoughGapAfterExisting || enoughGapBeforeExisting)) {
+          return false;
+        }
+      }
+
+      return true;
     });
   }
 
+  function handleChange(e) {
+    const { name, value } = e.target;
+
+    setForm((prev) => {
+      const updated = {
+        ...prev,
+        [name]: value,
+      };
+
+      if (name === 'slotDate') {
+        updated.startTime = '';
+        updated.endTime = '';
+      }
+
+      if (name === 'startTime' && value) {
+        updated.endTime = addThirtyMinutes(value);
+      }
+
+      return updated;
+    });
+  }
+
+  function resetForm() {
+    setForm(initialForm);
+    setEditingId(null);
+    setError('');
+    setSuccess('');
+  }
+
   function validateForm() {
+    setError('');
+    setSuccess('');
+
+    if (!lecturerId) {
+      setError('Lecturer ID is missing.');
+      return false;
+    }
+
     if (!form.slotDate || !form.startTime || !form.endTime) {
-      setError('Please fill in date, start time, and end time.');
+      setError('Please fill in all required fields.');
       return false;
     }
 
     if (isPastDate(form.slotDate)) {
-      setError('You cannot create a slot for a past date.');
+      setError('You cannot add a slot for a past date.');
       return false;
     }
 
@@ -121,8 +211,46 @@ export default function LecturerSlotsPage({ currentUser, onLogout }) {
       return false;
     }
 
-    if (hasOverlap()) {
-      setError('This slot overlaps with an existing slot. Please choose another time range.');
+    const startMinutes = timeToMinutes(form.startTime);
+    const endMinutes = timeToMinutes(form.endTime);
+    const duration = getDurationMinutes(form.startTime, form.endTime);
+
+    if (startMinutes < timeToMinutes('09:00')) {
+      setError('Slots can start only from 9:00 AM onwards.');
+      return false;
+    }
+
+    if (endMinutes > timeToMinutes('21:00')) {
+      setError('Slots cannot go beyond 9:00 PM.');
+      return false;
+    }
+
+    if (duration !== 30) {
+      setError('Each slot must be exactly 30 minutes long.');
+      return false;
+    }
+
+    const duplicate = slots.find((slot) => {
+      if (slot.id === editingId) return false;
+
+      return (
+        slot.slotDate === form.slotDate &&
+        normalizeTime(slot.startTime) === form.startTime &&
+        normalizeTime(slot.endTime) === form.endTime
+      );
+    });
+
+    if (duplicate) {
+      setError('This exact slot already exists.');
+      return false;
+    }
+
+    const validTimes = getValidStartTimesForDate(form.slotDate);
+
+    if (!validTimes.includes(form.startTime)) {
+      setError(
+        'Invalid time. There must be a 15-minute break between slots, slots start from 9:00 AM, and cannot go beyond 9:00 PM.'
+      );
       return false;
     }
 
@@ -131,8 +259,6 @@ export default function LecturerSlotsPage({ currentUser, onLogout }) {
 
   async function handleSubmit(e) {
     e.preventDefault();
-    setError('');
-    setMessage('');
 
     if (!validateForm()) return;
 
@@ -144,36 +270,32 @@ export default function LecturerSlotsPage({ currentUser, onLogout }) {
     };
 
     try {
-      setLoading(true);
+      setSaving(true);
+      setError('');
+      setSuccess('');
 
       if (editingId) {
-        await updateSlot(editingId, payload);
-        setMessage('Slot updated successfully.');
+        const updated = await updateSlot(editingId, payload);
+
+        setSlots((prev) =>
+          prev.map((slot) => (slot.id === editingId ? updated : slot))
+        );
+
+        setSuccess('Slot updated successfully.');
       } else {
-        await createSlot(payload);
-        setMessage('Slot added successfully.');
+        const created = await createSlot(payload);
+
+        setSlots((prev) => [...prev, created]);
+        setSuccess('Slot added successfully.');
       }
 
-      setForm(emptyForm);
-      setEditingId(null);
+      resetForm();
       await loadSlots();
     } catch (err) {
-      setError('Something went wrong while saving the slot.');
+      setError(err.message || 'Something went wrong while saving the slot.');
     } finally {
-      setLoading(false);
+      setSaving(false);
     }
-  }
-
-  function handleEdit(slot) {
-    setEditingId(slot.id);
-    setForm({
-      slotDate: slot.slotDate || '',
-      startTime: String(slot.startTime || '').slice(0, 5),
-      endTime: String(slot.endTime || '').slice(0, 5),
-    });
-    setMessage('');
-    setError('');
-    window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
   async function handleDelete(id) {
@@ -182,246 +304,358 @@ export default function LecturerSlotsPage({ currentUser, onLogout }) {
 
     try {
       setError('');
-      setMessage('');
+      setSuccess('');
+
       await deleteSlot(id);
-      setMessage('Slot deleted successfully.');
-      await loadSlots();
+
+      setSlots((prev) => prev.filter((slot) => slot.id !== id));
+
+      if (editingId === id) {
+        resetForm();
+      }
+
+      setSuccess('Slot deleted successfully.');
     } catch (err) {
-      setError('Could not delete the slot.');
+      setError(err.message || 'Could not delete slot.');
     }
   }
 
+  function handleEdit(slot) {
+    setEditingId(slot.id);
+    setForm({
+      slotDate: slot.slotDate,
+      startTime: normalizeTime(slot.startTime),
+      endTime: normalizeTime(slot.endTime),
+    });
+    setError('');
+    setSuccess('');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  const filteredSlots = useMemo(() => {
+    let data = [...slots];
+
+    data.sort((a, b) => {
+      const first = `${a.slotDate} ${normalizeTime(a.startTime)}`;
+      const second = `${b.slotDate} ${normalizeTime(b.startTime)}`;
+      return first.localeCompare(second);
+    });
+
+    if (filter === 'TODAY') {
+      data = data.filter((slot) => slot.slotDate === todayDateString);
+    } else if (filter === 'UPCOMING') {
+      data = data.filter((slot) => slot.slotDate >= todayDateString);
+    }
+
+    if (search.trim()) {
+      const q = search.trim().toLowerCase();
+      data = data.filter((slot) => {
+        const date = slot.slotDate?.toLowerCase?.() ?? '';
+        const start = normalizeTime(slot.startTime).toLowerCase();
+        const end = normalizeTime(slot.endTime).toLowerCase();
+        return date.includes(q) || start.includes(q) || end.includes(q);
+      });
+    }
+
+    return data;
+  }, [slots, filter, search, todayDateString]);
+
+  const totalSlots = slots.length;
+  const todaySlots = slots.filter((slot) => slot.slotDate === todayDateString).length;
+  const upcomingSlots = slots.filter((slot) => slot.slotDate > todayDateString).length;
+
+  const formDuration =
+    form.startTime && form.endTime && form.startTime < form.endTime
+      ? getDurationMinutes(form.startTime, form.endTime)
+      : 0;
+
+  const validStartTimes = getValidStartTimesForDate(form.slotDate);
+
   return (
-    <div className="lh-layout">
+    <div className="ls-layout">
       <Header currentUser={currentUser} onLogout={onLogout} unreadCount={0} />
-      <SlotModuleNav />
 
-      <main className="lh-main">
-        <section className="lh-hero">
-          <div className="lh-hero__inner">
-            <div className="lh-hero__text">
-              <div className="lh-hero__badge">
-                <CalendarDays size={13} /> Available Slot Management
+      <main className="ls-main">
+        <section className="ls-hero">
+          <div className="ls-hero__content">
+            <div>
+              <div className="ls-badge">
+                <CalendarDays size={14} />
+                Lecturer Availability
               </div>
-
-              <h1 className="lh-hero__name">Manage Your Available Slots</h1>
-
-              <p className="lh-hero__dept">
-                Add, update, and remove your available appointment times.
+              <h1>Manage Your Available Slots</h1>
+              <p>
+                Add, edit, search, and organize your lecturer availability for appointments.
               </p>
 
-              <div className="lh-hero__actions">
+              <div className="ls-hero__actions">
                 <button
-                  className="lh-btn lh-btn--outline"
+                  className="ls-btn ls-btn--outline"
                   onClick={() => navigate('/lecturer/home')}
                 >
-                  <ArrowLeft size={16} /> Back to Dashboard
+                  <ArrowLeft size={16} />
+                  Back to Dashboard
                 </button>
 
                 <button
-                  className="lh-btn lh-btn--outline"
+                  className="ls-btn ls-btn--soft"
                   onClick={() => navigate('/lecturer/slots/calendar')}
                 >
-                  <CalendarDays size={16} /> Calendar View
+                  <CalendarRange size={16} />
+                  Calendar View
                 </button>
               </div>
             </div>
 
-            <div className="lh-hero__visual">
-              <div className="lh-hero__avatar-ring">
-                {currentUser?.name?.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase() || 'L'}
-              </div>
-
-              <div className="lh-hero__role-tag">
-                <Clock3 size={13} /> Lecturer Availability
-              </div>
+            <div className="ls-hero__avatar">
+              {getInitials(currentUser?.name)}
             </div>
           </div>
         </section>
 
-        <div style={summaryGridStyle}>
-          <div style={summaryCardStyle}>
-            <div style={summaryIconStyle('#ede9fe', '#7c3aed')}>
-              <Layers3 size={20} />
+        <section className="ls-stats">
+          <div className="ls-stat-card">
+            <div className="ls-stat-icon purple">
+              <Layers3 size={22} />
             </div>
             <div>
-              <div style={summaryValueStyle}>{summary.total}</div>
-              <div style={summaryLabelStyle}>Total Slots</div>
+              <h3>{totalSlots}</h3>
+              <p>Total Slots</p>
             </div>
           </div>
 
-          <div style={summaryCardStyle}>
-            <div style={summaryIconStyle('#dbeafe', '#2563eb')}>
-              <CalendarDays size={20} />
+          <div className="ls-stat-card">
+            <div className="ls-stat-icon blue">
+              <CalendarDays size={22} />
             </div>
             <div>
-              <div style={summaryValueStyle}>{summary.todayCount}</div>
-              <div style={summaryLabelStyle}>Today&apos;s Slots</div>
+              <h3>{todaySlots}</h3>
+              <p>Today&apos;s Slots</p>
             </div>
           </div>
 
-          <div style={summaryCardStyle}>
-            <div style={summaryIconStyle('#dcfce7', '#16a34a')}>
-              <Clock3 size={20} />
+          <div className="ls-stat-card">
+            <div className="ls-stat-icon green">
+              <Clock3 size={22} />
             </div>
             <div>
-              <div style={summaryValueStyle}>{summary.upcoming}</div>
-              <div style={summaryLabelStyle}>Upcoming Slots</div>
+              <h3>{upcomingSlots}</h3>
+              <p>Upcoming Slots</p>
             </div>
           </div>
-        </div>
+        </section>
 
-        <div className="lh-content-grid">
-          <section className="lh-card">
-            <div className="lh-card__header">
+        <section className="ls-grid">
+          <div className="ls-card">
+            <div className="ls-card__header">
               <h2>
-                <Plus size={17} style={{ color: '#16a34a' }} />{' '}
+                <Plus size={20} />
                 {editingId ? 'Edit Slot' : 'Add New Slot'}
               </h2>
+              {editingId && (
+                <button className="ls-small-btn" onClick={resetForm}>
+                  <X size={15} />
+                  Cancel Edit
+                </button>
+              )}
             </div>
 
-            <div className="lh-card__body">
-              <form onSubmit={handleSubmit}>
-                <div style={{ display: 'grid', gap: 14 }}>
-                  <div>
-                    <label style={labelStyle}>Date</label>
-                    <input
-                      type="date"
-                      name="slotDate"
-                      value={form.slotDate}
-                      onChange={handleChange}
-                      min={todayISO}
-                      style={inputStyle}
-                    />
-                  </div>
+            <form onSubmit={handleSubmit} className="ls-form">
+              <div className="ls-field">
+                <label>Date</label>
+                <input
+                  className="ls-input"
+                  type="date"
+                  name="slotDate"
+                  value={form.slotDate}
+                  onChange={handleChange}
+                  min={todayDateString}
+                />
+              </div>
 
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-                    <div>
-                      <label style={labelStyle}>Start Time</label>
-                      <input
-                        type="time"
-                        name="startTime"
-                        value={form.startTime}
-                        onChange={handleChange}
-                        style={inputStyle}
-                      />
-                    </div>
-
-                    <div>
-                      <label style={labelStyle}>End Time</label>
-                      <input
-                        type="time"
-                        name="endTime"
-                        value={form.endTime}
-                        onChange={handleChange}
-                        style={inputStyle}
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {error && (
-                  <div style={errorStyle}>
-                    <AlertCircle size={16} />
-                    <span>{error}</span>
-                  </div>
-                )}
-
-                {message && (
-                  <div style={successStyle}>
-                    <CheckCircle2 size={16} />
-                    <span>{message}</span>
-                  </div>
-                )}
-
-                <div style={{ display: 'flex', gap: 12, marginTop: 18, flexWrap: 'wrap' }}>
-                  <button className="lh-btn lh-btn--primary" type="submit" disabled={loading}>
-                    {loading ? 'Saving...' : editingId ? 'Update Slot' : 'Add Slot'}
-                  </button>
-
-                  <button
-                    className="lh-btn lh-btn--outline"
-                    type="button"
-                    onClick={resetForm}
+              <div className="ls-row">
+                <div className="ls-field">
+                  <label>Start Time</label>
+                  <select
+                    className="ls-select"
+                    name="startTime"
+                    value={form.startTime}
+                    onChange={handleChange}
+                    disabled={!form.slotDate}
                   >
-                    Clear
-                  </button>
+                    <option value="">Select time</option>
+                    {validStartTimes.map((time) => (
+                      <option key={time} value={time}>
+                        {time}
+                      </option>
+                    ))}
+                  </select>
                 </div>
-              </form>
-            </div>
-          </section>
 
-          <section className="lh-card">
-            <div className="lh-card__header">
+                <div className="ls-field">
+                  <label>End Time</label>
+                  <input
+                    className="ls-input"
+                    type="time"
+                    name="endTime"
+                    value={form.endTime}
+                    readOnly
+                  />
+                </div>
+              </div>
+
+              {form.slotDate && (
+                <div className="ls-note">
+                  <strong>Only valid times are shown.</strong> Slots start from 9:00 AM, each
+                  slot is 30 minutes, there must be a 15-minute break, and slots cannot go beyond
+                  9:00 PM.
+                </div>
+              )}
+
+              <div className="ls-helper-box">
+                <div className="ls-helper-item">
+                  <strong>Lecturer:</strong> {currentUser?.name ?? 'Demo Lecturer'}
+                </div>
+                <div className="ls-helper-item">
+                  <strong>Duration:</strong> {formDuration > 0 ? `${formDuration} minutes` : '--'}
+                </div>
+              </div>
+
+              {error && (
+                <div className="ls-message ls-message--error">
+                  <AlertCircle size={18} />
+                  <span>{error}</span>
+                </div>
+              )}
+
+              {success && (
+                <div className="ls-message ls-message--success">
+                  <CheckCircle2 size={18} />
+                  <span>{success}</span>
+                </div>
+              )}
+
+              <div className="ls-form-actions">
+                <button className="ls-btn ls-btn--primary" type="submit" disabled={saving}>
+                  {saving ? 'Saving...' : editingId ? 'Update Slot' : 'Add Slot'}
+                </button>
+
+                <button
+                  className="ls-btn ls-btn--ghost"
+                  type="button"
+                  onClick={resetForm}
+                >
+                  Clear
+                </button>
+              </div>
+            </form>
+          </div>
+
+          <div className="ls-card">
+            <div className="ls-card__header">
               <h2>
-                <CalendarDays size={17} style={{ color: '#7c3aed' }} /> My Available Slots
+                <CalendarDays size={20} />
+                My Available Slots
               </h2>
             </div>
 
-            <div className="lh-card__body">
-              {pageLoading ? (
-                <div className="lh-empty">
-                  <Clock3 size={38} />
-                  <p>Loading slots...</p>
-                </div>
-              ) : sortedSlots.length === 0 ? (
-                <div className="lh-empty">
-                  <CalendarDays size={38} />
-                  <p>No available slots added yet</p>
-                  <span style={{ color: '#94a3b8', fontSize: '0.92rem', marginTop: 6 }}>
-                    Add your first available slot using the form.
-                  </span>
-                </div>
-              ) : (
-                <div style={{ display: 'grid', gap: 14 }}>
-                  {sortedSlots.map((slot) => (
-                    <div
-                      key={slot.id}
-                      style={{
-                        border: '1px solid #e5e7eb',
-                        borderRadius: 16,
-                        padding: 16,
-                        background: '#f8fafc',
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                        gap: 14,
-                        flexWrap: 'wrap',
-                      }}
-                    >
-                      <div>
-                        <div style={{ fontWeight: 800, color: '#0f172a', marginBottom: 4 }}>
-                          {slot.slotDate}
+            <div className="ls-toolbar">
+              <div className="ls-search">
+                <Search size={16} />
+                <input
+                  type="text"
+                  placeholder="Search by date or time"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                />
+              </div>
+
+              <div className="ls-filters">
+                <button
+                  className={`ls-filter-btn ${filter === 'ALL' ? 'active' : ''}`}
+                  onClick={() => setFilter('ALL')}
+                  type="button"
+                >
+                  <Filter size={14} />
+                  All
+                </button>
+                <button
+                  className={`ls-filter-btn ${filter === 'TODAY' ? 'active' : ''}`}
+                  onClick={() => setFilter('TODAY')}
+                  type="button"
+                >
+                  Today
+                </button>
+                <button
+                  className={`ls-filter-btn ${filter === 'UPCOMING' ? 'active' : ''}`}
+                  onClick={() => setFilter('UPCOMING')}
+                  type="button"
+                >
+                  Upcoming
+                </button>
+              </div>
+            </div>
+
+            {pageLoading ? (
+              <div className="ls-empty-state">
+                <p>Loading slots...</p>
+              </div>
+            ) : filteredSlots.length === 0 ? (
+              <div className="ls-empty-state">
+                <CalendarRange size={54} />
+                <p>No available slots found</p>
+                <span>Add your first slot using the form or change the current filter.</span>
+              </div>
+            ) : (
+              <div className="ls-slot-list">
+                {filteredSlots.map((slot) => {
+                  const status = getSlotStatus(slot.slotDate);
+                  const duration = getDurationMinutes(
+                    normalizeTime(slot.startTime),
+                    normalizeTime(slot.endTime)
+                  );
+
+                  return (
+                    <div className="ls-slot-item" key={slot.id}>
+                      <div className="ls-slot-item__left">
+                        <div className="ls-slot-date">{formatDate(slot.slotDate)}</div>
+                        <div className="ls-slot-time">
+                          {normalizeTime(slot.startTime)} - {normalizeTime(slot.endTime)}
                         </div>
-                        <div style={{ color: '#475569', fontSize: '0.95rem' }}>
-                          {String(slot.startTime).slice(0, 5)} - {String(slot.endTime).slice(0, 5)}
+                        <div className="ls-slot-meta">
+                          <span>{duration} mins</span>
+                          <span className={`ls-status-badge ${status.className}`}>
+                            {status.label}
+                          </span>
                         </div>
                       </div>
 
-                      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                      <div className="ls-slot-item__right">
                         <button
-                          className="lh-btn lh-btn--sm"
-                          style={{ background: '#dbeafe', color: '#1d4ed8' }}
+                          className="ls-action-btn edit"
                           onClick={() => handleEdit(slot)}
+                          type="button"
                         >
-                          <Pencil size={13} /> Edit
+                          <Pencil size={15} />
+                          Edit
                         </button>
 
                         <button
-                          className="lh-btn lh-btn--sm"
-                          style={{ background: '#fee2e2', color: '#dc2626' }}
+                          className="ls-action-btn delete"
                           onClick={() => handleDelete(slot.id)}
+                          type="button"
                         >
-                          <Trash2 size={13} /> Delete
+                          <Trash2 size={15} />
+                          Delete
                         </button>
                       </div>
                     </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </section>
-        </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </section>
       </main>
 
       <Footer />
@@ -429,87 +663,37 @@ export default function LecturerSlotsPage({ currentUser, onLogout }) {
   );
 }
 
-const labelStyle = {
-  display: 'block',
-  marginBottom: 8,
-  fontWeight: 700,
-  color: '#334155',
-};
+function formatDate(dateString) {
+  const d = new Date(dateString);
+  return d.toLocaleDateString('en-GB', {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  });
+}
 
-const inputStyle = {
-  width: '100%',
-  padding: '12px 14px',
-  borderRadius: 12,
-  border: '1px solid #dbe2ea',
-  fontSize: '14px',
-  outline: 'none',
-  boxSizing: 'border-box',
-};
+function getSlotStatus(slotDate) {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
 
-const errorStyle = {
-  marginTop: 14,
-  background: '#fee2e2',
-  color: '#b91c1c',
-  padding: '12px 14px',
-  borderRadius: 12,
-  fontSize: '14px',
-  display: 'flex',
-  alignItems: 'center',
-  gap: 8,
-};
+  const selected = new Date(slotDate);
+  selected.setHours(0, 0, 0, 0);
 
-const successStyle = {
-  marginTop: 14,
-  background: '#dcfce7',
-  color: '#166534',
-  padding: '12px 14px',
-  borderRadius: 12,
-  fontSize: '14px',
-  display: 'flex',
-  alignItems: 'center',
-  gap: 8,
-};
+  if (selected.getTime() === today.getTime()) {
+    return { label: 'Today', className: 'today' };
+  }
+  if (selected > today) {
+    return { label: 'Upcoming', className: 'upcoming' };
+  }
+  return { label: 'Past', className: 'past' };
+}
 
-const summaryGridStyle = {
-  maxWidth: '1200px',
-  margin: '24px auto 0',
-  display: 'grid',
-  gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-  gap: '18px',
-  padding: '0 20px',
-};
-
-const summaryCardStyle = {
-  background: '#ffffff',
-  borderRadius: 20,
-  padding: '18px',
-  boxShadow: '0 10px 25px rgba(15, 23, 42, 0.06)',
-  display: 'flex',
-  alignItems: 'center',
-  gap: '14px',
-};
-
-const summaryIconStyle = (bg, color) => ({
-  width: 48,
-  height: 48,
-  borderRadius: 14,
-  background: bg,
-  color,
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  flexShrink: 0,
-});
-
-const summaryValueStyle = {
-  fontSize: '1.45rem',
-  fontWeight: 800,
-  color: '#0f172a',
-  lineHeight: 1.1,
-};
-
-const summaryLabelStyle = {
-  fontSize: '0.92rem',
-  color: '#64748b',
-  marginTop: 4,
-};
+function getInitials(name) {
+  return (name ?? 'U')
+    .split(' ')
+    .map((n) => n[0])
+    .join('')
+    .slice(0, 2)
+    .toUpperCase();
+}
