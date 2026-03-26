@@ -1,9 +1,11 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { toast } from 'react-toastify';
 import {
   Bell, LogOut, MessageSquare, Menu, X,
   Home, Calendar, User, GraduationCap,
 } from 'lucide-react';
+import { chatApi } from '../api/chatApi';
 import './Header.css';
 
 /**
@@ -16,10 +18,15 @@ import './Header.css';
  */
 export default function Header({ currentUser, onLogout, unreadCount = 0 }) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [notifOpen, setNotifOpen] = useState(false);
+  const [liveUnreadCount, setLiveUnreadCount] = useState(null);
+  const [notifications, setNotifications] = useState([]);
+  const prevUnreadRef = useRef(0);
   const navigate = useNavigate();
 
   const isLecturer = currentUser?.role === 'LECTURER';
   const homeRoute  = isLecturer ? '/lecturer/home' : '/student/home';
+  const effectiveUnreadCount = liveUnreadCount === null ? unreadCount : liveUnreadCount;
   const initials   = (currentUser?.name ?? 'U')
     .split(' ')
     .map((n) => n[0])
@@ -28,6 +35,66 @@ export default function Header({ currentUser, onLogout, unreadCount = 0 }) {
     .toUpperCase();
 
   function close() { setMenuOpen(false); }
+
+  useEffect(() => {
+    let timerId;
+    let isMounted = true;
+
+    async function loadNotifications() {
+      if (!currentUser?.id) return;
+      try {
+        const roomsRes = await chatApi.getRoomsForUser(currentUser.id);
+        const rooms = roomsRes.data || [];
+
+        const withUnread = await Promise.all(
+          rooms.map(async (room) => {
+            if (room?.roomStatus === 'RESOLVED' || room?.roomStatus === 'CLOSED') {
+              return { ...room, unread: 0 };
+            }
+            try {
+              const unreadRes = await chatApi.getUnreadCount(room.roomId, currentUser.id);
+              return { ...room, unread: unreadRes.data?.count || 0 };
+            } catch {
+              return { ...room, unread: 0 };
+            }
+          })
+        );
+
+        const totalUnread = withUnread.reduce((sum, r) => sum + (r.unread || 0), 0);
+        const newNotifications = withUnread
+          .filter((r) => (r.unread || 0) > 0)
+          .map((r) => ({
+            roomId: r.roomId,
+            unread: r.unread,
+            name: isLecturer ? (r.studentName || 'Student') : (r.lecturerName || 'Lecturer'),
+            roomType: r.roomType,
+            label: r.roomType === 'DIRECT' ? 'Direct message' : `Session #${r.appointmentId}`,
+          }));
+
+        if (!isMounted) return;
+        setLiveUnreadCount(totalUnread);
+        setNotifications(newNotifications);
+
+        if (totalUnread > prevUnreadRef.current) {
+          const delta = totalUnread - prevUnreadRef.current;
+          toast.info(`${delta} new message${delta > 1 ? 's' : ''} received`, {
+            position: 'bottom-right',
+            autoClose: 2500,
+          });
+        }
+        prevUnreadRef.current = totalUnread;
+      } catch {
+        // Keep existing count on polling failures
+      }
+    }
+
+    loadNotifications();
+    timerId = setInterval(loadNotifications, 8000);
+    return () => {
+      isMounted = false;
+      clearInterval(timerId);
+    };
+  }, [currentUser?.id, isLecturer]);
 
   return (
     <header className={`header ${isLecturer ? 'header--lecturer' : 'header--student'}`}>
@@ -53,8 +120,8 @@ export default function Header({ currentUser, onLogout, unreadCount = 0 }) {
           </Link>
           <Link to="/chat" className="header__nav-link" onClick={close}>
             <MessageSquare size={15} /><span>Messages</span>
-            {unreadCount > 0 && (
-              <span className="header__nav-badge">{unreadCount}</span>
+            {effectiveUnreadCount > 0 && (
+              <span className="header__nav-badge">{effectiveUnreadCount}</span>
             )}
           </Link>
           <Link to="/profile" className="header__nav-link" onClick={close}>
@@ -65,10 +132,37 @@ export default function Header({ currentUser, onLogout, unreadCount = 0 }) {
         {/* ── Right cluster ── */}
         <div className="header__right">
           {/* Notifications */}
-          <button className="header__icon-btn" title="Notifications" aria-label="Notifications">
+          <button
+            className="header__icon-btn"
+            title="Notifications"
+            aria-label="Notifications"
+            onClick={() => setNotifOpen((v) => !v)}
+          >
             <Bell size={19} />
-            {unreadCount > 0 && <span className="header__notif-dot" />}
+            {effectiveUnreadCount > 0 && <span className="header__notif-dot" />}
           </button>
+          {notifOpen && (
+            <div className="header__notif-panel">
+              <div className="header__notif-title">Notifications</div>
+              {notifications.length === 0 ? (
+                <div className="header__notif-empty">No new messages</div>
+              ) : (
+                notifications.map((n) => (
+                  <button
+                    key={n.roomId}
+                    className="header__notif-item"
+                    onClick={() => {
+                      setNotifOpen(false);
+                      navigate('/chat');
+                    }}
+                  >
+                    <div className="header__notif-item-name">{n.name}</div>
+                    <div className="header__notif-item-meta">{n.label} · {n.unread} unread</div>
+                  </button>
+                ))
+              )}
+            </div>
+          )}
 
           {/* User chip */}
           <button className="header__user-chip" onClick={() => navigate('/profile')} title="Profile">
