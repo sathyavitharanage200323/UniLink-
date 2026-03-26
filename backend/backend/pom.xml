@@ -41,14 +41,13 @@
 			<artifactId>mysql-connector-j</artifactId>
 			<scope>runtime</scope>
 		</dependency>
-<<<<<<< HEAD
-=======
+
 		<dependency>
 			<groupId>com.h2database</groupId>
 			<artifactId>h2</artifactId>
 			<scope>runtime</scope>
 		</dependency>
->>>>>>> 49765ff (version 3)
+
 
 		<!-- Web MVC (REST APIs) -->
 		<dependency>

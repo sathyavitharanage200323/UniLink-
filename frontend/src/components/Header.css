@@ -1,6 +1,5 @@
 /* ──────────────────────────────────────────
    Header.css — UniLink Global Navigation Bar
-<<<<<<< HEAD
    Brand palette: #0F2854 · #1C4D8D · #4988C4 · #BDE8F5
    ────────────────────────────────────────── */
 
@@ -32,10 +31,6 @@
 }
 
 /* ── Base ── */
-=======
-   ────────────────────────────────────────── */
-
->>>>>>> 49765ff (version 3)
 .header {
   position: sticky;
   top: 0;
@@ -43,7 +38,6 @@
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   transition: box-shadow 0.2s ease;
-<<<<<<< HEAD
   animation: headerSlideDown 0.45s cubic-bezier(0.22,1,0.36,1) both;
 }
 
@@ -73,20 +67,6 @@
              gradientShift 14s ease infinite;
   box-shadow: 0 2px 30px rgba(15, 40, 84, 0.35);
   border-bottom: 1px solid rgba(189, 232, 245, 0.18);
-=======
-}
-
-/* Role-based colour themes */
-.header--student {
-  background: linear-gradient(100deg, #1d4ed8 0%, #0891b2 100%);
-  box-shadow: 0 2px 30px rgba(29, 78, 216, 0.30);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.15);
-}
-.header--lecturer {
-  background: linear-gradient(100deg, #6d28d9 0%, #be185d 100%);
-  box-shadow: 0 2px 30px rgba(109, 40, 217, 0.30);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.15);
->>>>>>> 49765ff (version 3)
 }
 
 /* ── Inner wrapper ── */
@@ -108,7 +88,6 @@
   text-decoration: none;
   color: white;
   flex-shrink: 0;
-<<<<<<< HEAD
   transition: opacity 0.18s;
 }
 .header__brand:hover { opacity: 0.88; }
@@ -118,19 +97,10 @@
   height: 38px;
   background: rgba(189, 232, 245, 0.18);
   border: 1.5px solid rgba(189, 232, 245, 0.40);
-=======
-}
-.header__logo-box {
-  width: 38px;
-  height: 38px;
-  background: rgba(255, 255, 255, 0.20);
-  border: 1.5px solid rgba(255, 255, 255, 0.35);
->>>>>>> 49765ff (version 3)
   border-radius: 11px;
   display: flex;
   align-items: center;
   justify-content: center;
-<<<<<<< HEAD
   color: var(--sky);
   transition: background 0.18s, transform 0.22s cubic-bezier(0.22,1,0.36,1);
 }
@@ -139,10 +109,6 @@
   transform: rotate(-5deg) scale(1.08);
 }
 
-=======
-  color: white;
-}
->>>>>>> 49765ff (version 3)
 .header__brand-text {
   font-size: 1.30rem;
   font-weight: 600;
@@ -164,7 +130,6 @@
   gap: 6px;
   padding: 8px 13px;
   border-radius: 9px;
-<<<<<<< HEAD
   color: rgba(255, 255, 255, 0.78);
   text-decoration: none;
   font-size: 0.875rem;
@@ -202,22 +167,6 @@
   border-radius: 999px;
   opacity: 0.80;
 }
-
-=======
-  color: rgba(255, 255, 255, 0.80);
-  text-decoration: none;
-  font-size: 0.875rem;
-  font-weight: 500;
-  transition: background 0.15s, color 0.15s;
-  position: relative;
-  white-space: nowrap;
-}
-.header__nav-link:hover,
-.header__nav-link.active {
-  background: rgba(255, 255, 255, 0.20);
-  color: white;
-}
->>>>>>> 49765ff (version 3)
 .header__nav-badge {
   background: #ef4444;
   color: white;
@@ -245,19 +194,13 @@
   width: 38px;
   height: 38px;
   border-radius: 10px;
-<<<<<<< HEAD
   border: 1.5px solid rgba(189, 232, 245, 0.28);
   background: rgba(189, 232, 245, 0.10);
-=======
-  border: 1.5px solid rgba(255, 255, 255, 0.25);
-  background: rgba(255, 255, 255, 0.12);
->>>>>>> 49765ff (version 3)
   color: white;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-<<<<<<< HEAD
   transition: background 0.15s, transform 0.18s cubic-bezier(0.22,1,0.36,1), border-color 0.15s;
   flex-shrink: 0;
 }
@@ -266,12 +209,6 @@
   border-color: rgba(189, 232, 245, 0.50);
   transform: translateY(-1px);
 }
-=======
-  transition: background 0.15s;
-  flex-shrink: 0;
-}
-.header__icon-btn:hover { background: rgba(255, 255, 255, 0.24); }
->>>>>>> 49765ff (version 3)
 
 .header__notif-dot {
   position: absolute;
@@ -282,10 +219,7 @@
   background: #f97316;
   border-radius: 50%;
   border: 1.5px solid white;
-<<<<<<< HEAD
   animation: notifPulse 2.2s ease-in-out infinite;
-=======
->>>>>>> 49765ff (version 3)
 }
 
 /* User chip */
@@ -295,7 +229,6 @@
   gap: 9px;
   padding: 5px 12px 5px 5px;
   border-radius: 999px;
-<<<<<<< HEAD
   background: rgba(189, 232, 245, 0.12);
   border: 1.5px solid rgba(189, 232, 245, 0.26);
   text-decoration: none;
@@ -308,28 +241,13 @@
   border-color: rgba(189, 232, 245, 0.45);
   transform: translateY(-1px);
 }
-=======
-  background: rgba(255, 255, 255, 0.14);
-  border: 1.5px solid rgba(255, 255, 255, 0.22);
-  text-decoration: none;
-  color: white;
-  transition: background 0.15s;
-  cursor: pointer;
-}
-.header__user-chip:hover { background: rgba(255, 255, 255, 0.22); }
->>>>>>> 49765ff (version 3)
 
 .header__avatar {
   width: 32px;
   height: 32px;
   border-radius: 50%;
-<<<<<<< HEAD
   background: rgba(189, 232, 245, 0.25);
   border: 2px solid rgba(189, 232, 245, 0.55);
-=======
-  background: rgba(255, 255, 255, 0.30);
-  border: 2px solid rgba(255, 255, 255, 0.50);
->>>>>>> 49765ff (version 3)
   color: white;
   font-size: 0.75rem;
   font-weight: 800;
@@ -338,14 +256,10 @@
   justify-content: center;
   flex-shrink: 0;
   letter-spacing: 0.5px;
-<<<<<<< HEAD
   transition: transform 0.22s cubic-bezier(0.22,1,0.36,1);
 }
 .header__user-chip:hover .header__avatar { transform: scale(1.10); }
 
-=======
-}
->>>>>>> 49765ff (version 3)
 .header__user-meta {
   display: flex;
   flex-direction: column;
@@ -366,10 +280,7 @@
   font-weight: 500;
   text-transform: uppercase;
   letter-spacing: 0.4px;
-<<<<<<< HEAD
   color: var(--sky);
-=======
->>>>>>> 49765ff (version 3)
 }
 
 /* Logout button */
@@ -379,18 +290,12 @@
   gap: 6px;
   padding: 8px 14px;
   border-radius: 9px;
-<<<<<<< HEAD
   border: 1.5px solid rgba(255, 255, 255, 0.22);
   background: rgba(239, 68, 68, 0.16);
-=======
-  border: 1.5px solid rgba(255, 255, 255, 0.28);
-  background: rgba(239, 68, 68, 0.18);
->>>>>>> 49765ff (version 3)
   color: white;
   font-size: 0.80rem;
   font-weight: 600;
   cursor: pointer;
-<<<<<<< HEAD
   transition: background 0.15s, transform 0.18s cubic-bezier(0.22,1,0.36,1), border-color 0.15s;
   white-space: nowrap;
 }
@@ -399,12 +304,6 @@
   border-color: rgba(239, 68, 68, 0.50);
   transform: translateY(-1px);
 }
-=======
-  transition: background 0.15s;
-  white-space: nowrap;
-}
-.header__logout-btn:hover { background: rgba(239, 68, 68, 0.38); }
->>>>>>> 49765ff (version 3)
 
 /* Hamburger (mobile) */
 .header__hamburger {
@@ -412,26 +311,17 @@
   width: 38px;
   height: 38px;
   border-radius: 10px;
-<<<<<<< HEAD
   border: 1.5px solid rgba(189, 232, 245, 0.28);
   background: rgba(189, 232, 245, 0.10);
-=======
-  border: 1.5px solid rgba(255, 255, 255, 0.25);
-  background: rgba(255, 255, 255, 0.12);
->>>>>>> 49765ff (version 3)
   color: white;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   transition: background 0.15s;
 }
-<<<<<<< HEAD
 .header__hamburger:hover {
   background: rgba(189, 232, 245, 0.22);
 }
-=======
-.header__hamburger:hover { background: rgba(255, 255, 255, 0.22); }
->>>>>>> 49765ff (version 3)
 
 /* ── Responsive ── */
 @media (max-width: 900px) {
@@ -451,7 +341,6 @@
     align-items: flex-start;
     padding: 10px 12px 16px;
     gap: 2px;
-<<<<<<< HEAD
     border-bottom: 1px solid rgba(189, 232, 245, 0.16);
     z-index: 199;
   }
@@ -463,15 +352,6 @@
     display: flex;
     animation: navLinkFadeIn 0.3s cubic-bezier(0.22,1,0.36,1) both;
   }
-=======
-    border-bottom: 1px solid rgba(255, 255, 255, 0.14);
-    z-index: 199;
-  }
-  .header--student .header__nav { background: #1d4ed8; }
-  .header--lecturer .header__nav { background: #6d28d9; }
-
-  .header__nav.header__nav--open { display: flex; }
->>>>>>> 49765ff (version 3)
   .header__nav-link { width: 100%; border-radius: 8px; }
   .header__hamburger { display: flex; }
 }
@@ -479,7 +359,6 @@
 @media (max-width: 480px) {
   .header__inner { padding: 0 16px; gap: 10px; }
 }
-<<<<<<< HEAD
 
 /* ── Reduced-motion override ── */
 @media (prefers-reduced-motion: reduce) {
@@ -488,5 +367,3 @@
     transition-duration: 0.01ms !important;
   }
 }
-=======
->>>>>>> 49765ff (version 3)
