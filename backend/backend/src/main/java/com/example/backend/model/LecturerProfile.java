@@ -24,6 +24,9 @@ public class LecturerProfile {
     @Column(name = "employee_code", nullable = false, unique = true, length = 50)
     private String employeeCode;
 
+    @Column(name = "designation", length = 50)
+    private String designation;
+
     @Column(name = "office_location", length = 100)
     private String officeLocation;
 

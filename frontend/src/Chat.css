@@ -100,6 +100,25 @@ body { font-family: 'Inter', system-ui, sans-serif; background: var(--bg); color
 }
 .sidebar-item:hover { background: var(--surface2); }
 .sidebar-item.active { background: var(--primary-light); border-left-color: var(--primary); }
+.sidebar-item.needs-attention {
+  background: #fff7ed;
+  border-left-color: #f59e0b;
+}
+.sidebar-item.needs-attention:hover { background: #ffedd5; }
+.sidebar-item.needs-attention.active {
+  background: #ffedd5;
+  border-left-color: #ea580c;
+}
+.sidebar-item.resolved {
+  background: var(--surface);
+  border-left-color: transparent;
+}
+.sidebar-item.resolved:hover { background: var(--surface2); }
+.sidebar-item.resolved.active {
+  background: var(--surface2);
+  border-left-color: var(--border);
+}
+.sidebar-item.resolved .sidebar-item-meta { color: var(--success); }
 .sidebar-item-avatar {
   width: 36px; height: 36px;
   border-radius: 50%;

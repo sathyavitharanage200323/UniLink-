@@ -25,6 +25,7 @@ public class AuthUserResponse {
     private String semester;
 
     private String employeeCode;
+    private String designation;
     private String officeLocation;
     private String officeHours;
     private String bio;
@@ -45,6 +46,7 @@ public class AuthUserResponse {
                 .academicYear(student != null ? student.getAcademicYear() : null)
                 .semester(student != null ? student.getSemester() : null)
                 .employeeCode(lecturer != null ? lecturer.getEmployeeCode() : null)
+                .designation(lecturer != null ? lecturer.getDesignation() : null)
                 .officeLocation(lecturer != null ? lecturer.getOfficeLocation() : null)
                 .officeHours(lecturer != null ? lecturer.getOfficeHours() : null)
                 .bio(lecturer != null ? lecturer.getBio() : null)

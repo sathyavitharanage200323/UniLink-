@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Calendar, MessageSquare, Clock, CheckCircle,
@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
+import { chatApi } from '../api/chatApi';
 import './StudentHome.css';
 
 /**
@@ -19,6 +20,8 @@ import './StudentHome.css';
  */
 export default function StudentHome({ currentUser, appointments = [], onLogout }) {
   const navigate   = useNavigate();
+  const [displayThreads, setDisplayThreads] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   /* ── Derived appointment lists ── */
   const confirmedAppts = appointments.filter((a) => a.status === 'CONFIRMED');
@@ -26,16 +29,44 @@ export default function StudentHome({ currentUser, appointments = [], onLogout }
   const completedCount = appointments.filter((a) => a.status === 'COMPLETED').length;
 
   const displayAppts = confirmedAppts;
-  const displayThreads = confirmedAppts.map((a) => ({
-    id: a.id,
-    name: a.lecturer?.name ?? 'Lecturer',
-    dept: a.lecturer?.department ?? '',
-    lastMsg: 'Click to open the conversation',
-    unread: 0,
-    time: a.startTime,
-    appointment: a,
-  }));
-  const unreadCount = displayThreads.reduce((sum, t) => sum + (t.unread || 0), 0);
+
+  useEffect(() => {
+    async function loadThreads() {
+      if (!currentUser?.id) return;
+      try {
+        const roomsRes = await chatApi.getRoomsForUser(currentUser.id);
+        const rooms = roomsRes.data || [];
+        const mapped = await Promise.all(
+          rooms.map(async (r) => {
+            const isResolved = r.roomStatus === 'RESOLVED' || r.roomStatus === 'CLOSED';
+            let unread = 0;
+            if (!isResolved) {
+              try {
+                const unreadRes = await chatApi.getUnreadCount(r.roomId, currentUser.id);
+                unread = unreadRes.data?.count || 0;
+              } catch {
+                unread = 0;
+              }
+            }
+            return {
+              id: r.roomId,
+              name: r.lecturerName || 'Lecturer',
+              dept: r.lecturerDepartment || '',
+              lastMsg: r.roomType === 'DIRECT' ? 'Direct message' : `Session #${r.appointmentId}`,
+              unread,
+              status: r.roomStatus,
+            };
+          })
+        );
+        setDisplayThreads(mapped);
+        setUnreadCount(mapped.reduce((sum, t) => sum + (t.unread || 0), 0));
+      } catch {
+        setDisplayThreads([]);
+        setUnreadCount(0);
+      }
+    }
+    loadThreads();
+  }, [currentUser?.id]);
 
   /* Stats */
   const stats = [
@@ -204,7 +235,7 @@ export default function StudentHome({ currentUser, appointments = [], onLogout }
                   <div className="sh-chat-info">
                     <div className="sh-chat-row1">
                       <strong>Chat with {t.name}</strong>
-                      <span className="sh-chat-time">{fmtRelative(t.time)}</span>
+                      <span className="sh-chat-time">{t.status === 'RESOLVED' || t.status === 'CLOSED' ? 'resolved' : 'open'}</span>
                     </div>
                     <div className="sh-chat-preview">{t.lastMsg}</div>
                     {t.dept && (
@@ -311,11 +342,4 @@ function fmtDate(iso) {
     weekday: 'short', day: 'numeric', month: 'short',
     hour: '2-digit', minute: '2-digit',
   });
-}
-function fmtRelative(iso) {
-  const diff = Date.now() - new Date(iso).getTime();
-  if (diff < 60000) return 'just now';
-  if (diff < 3600000) return `${Math.floor(diff / 60000)}m ago`;
-  if (diff < 86400000) return `${Math.floor(diff / 3600000)}h ago`;
-  return new Date(iso).toLocaleDateString();
 }
