@@ -83,7 +83,6 @@ public class ManagementService {
         }
 
         profile.setEmployeeCode(req.getEmployeeCode());
-        profile.setDesignation(req.getDesignation());
         profile.setOfficeLocation(req.getOfficeLocation());
         profile.setOfficeHours(req.getOfficeHours());
         profile.setBio(req.getBio());

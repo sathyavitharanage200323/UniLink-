@@ -45,25 +45,11 @@ public class ChatExportService {
             Font bodyFont  = FontFactory.getFont(FontFactory.HELVETICA, 10);
 
             doc.add(new Paragraph("UniLink – Chat Transcript", titleFont));
-                if (room.getAppointment() != null) {
-                doc.add(new Paragraph(
+            doc.add(new Paragraph(
                     "Appointment #" + room.getAppointment().getId() +
                     "  |  Student: " + room.getAppointment().getStudent().getName() +
                     "  |  Lecturer: " + room.getAppointment().getLecturer().getName(),
                     metaFont));
-                } else {
-                String studentName = room.getParticipantStudent() != null
-                    ? room.getParticipantStudent().getName()
-                    : "Student";
-                String lecturerName = room.getParticipantLecturer() != null
-                    ? room.getParticipantLecturer().getName()
-                    : "Lecturer";
-                doc.add(new Paragraph(
-                    "Direct Question Thread #" + room.getId() +
-                    "  |  Student: " + studentName +
-                    "  |  Lecturer: " + lecturerName,
-                    metaFont));
-                }
             doc.add(new Paragraph(
                     "Exported: " + java.time.LocalDateTime.now().format(FMT),
                     metaFont));
@@ -114,21 +100,9 @@ public class ChatExportService {
         List<ChatMessage> messages = chatMessageRepository.findByRoomOrderBySentAtAsc(room);
         StringBuilder sb = new StringBuilder();
         sb.append("UniLink Chat Transcript\n");
-        if (room.getAppointment() != null) {
-            sb.append("Appointment #").append(room.getAppointment().getId()).append("\n");
-            sb.append("Student: ").append(room.getAppointment().getStudent().getName()).append("\n");
-            sb.append("Lecturer: ").append(room.getAppointment().getLecturer().getName()).append("\n");
-        } else {
-            String studentName = room.getParticipantStudent() != null
-                ? room.getParticipantStudent().getName()
-                : "Student";
-            String lecturerName = room.getParticipantLecturer() != null
-                ? room.getParticipantLecturer().getName()
-                : "Lecturer";
-            sb.append("Direct Question Thread #").append(room.getId()).append("\n");
-            sb.append("Student: ").append(studentName).append("\n");
-            sb.append("Lecturer: ").append(lecturerName).append("\n");
-        }
+        sb.append("Appointment #").append(room.getAppointment().getId()).append("\n");
+        sb.append("Student: ").append(room.getAppointment().getStudent().getName()).append("\n");
+        sb.append("Lecturer: ").append(room.getAppointment().getLecturer().getName()).append("\n");
         sb.append("-".repeat(60)).append("\n\n");
 
         for (ChatMessage msg : messages) {

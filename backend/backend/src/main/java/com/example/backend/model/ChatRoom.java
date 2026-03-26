@@ -19,16 +19,8 @@ public class ChatRoom {
     private Long id;
 
     @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "appointment_id", unique = true)
+    @JoinColumn(name = "appointment_id", nullable = false, unique = true)
     private Appointment appointment;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "participant_student_id")
-    private User participantStudent;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "participant_lecturer_id")
-    private User participantLecturer;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)

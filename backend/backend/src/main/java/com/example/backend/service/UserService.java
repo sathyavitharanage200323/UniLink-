@@ -16,8 +16,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 import java.util.List;
-import java.util.Locale;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -123,9 +121,6 @@ public class UserService {
             if (request.getEmployeeCode() != null) {
                 lecturer.setEmployeeCode(request.getEmployeeCode().trim());
             }
-            if (request.getDesignation() != null) {
-                lecturer.setDesignation(trimToNull(request.getDesignation()));
-            }
             if (request.getOfficeLocation() != null) {
                 lecturer.setOfficeLocation(trimToNull(request.getOfficeLocation()));
             }
@@ -168,44 +163,6 @@ public class UserService {
         userRepository.delete(user);
     }
 
-    @Transactional(readOnly = true)
-    public List<AuthUserResponse> searchLecturers(String query, String department, String designation) {
-        final String q = query == null ? "" : query.trim().toLowerCase(Locale.ROOT);
-        final String dept = department == null ? "" : department.trim().toLowerCase(Locale.ROOT);
-        final String desig = designation == null ? "" : designation.trim().toLowerCase(Locale.ROOT);
-
-        return userRepository.findByRole(User.Role.LECTURER).stream()
-            .map(this::toLecturerSearchResponse)
-                .filter(r -> q.isEmpty()
-                        || containsIgnoreCase(r.getName(), q)
-                        || containsIgnoreCase(r.getEmail(), q)
-                        || containsIgnoreCase(r.getExpertise(), q)
-                        || containsIgnoreCase(r.getEmployeeCode(), q))
-                .filter(r -> dept.isEmpty() || containsIgnoreCase(r.getDepartment(), dept))
-                .filter(r -> desig.isEmpty() || containsIgnoreCase(r.getDesignation(), desig))
-                .collect(Collectors.toList());
-    }
-
-    private AuthUserResponse toLecturerSearchResponse(User user) {
-        try {
-            LecturerProfile profile = lecturerProfileRepository.findById(user.getId()).orElse(null);
-            return AuthUserResponse.from(user, null, profile);
-        } catch (Exception ignored) {
-            // Fall back to base user data so lecturer search still works.
-            return AuthUserResponse.builder()
-                    .id(user.getId())
-                    .name(user.getName())
-                    .email(user.getEmail())
-                    .role(user.getRole().name())
-                    .department(user.getDepartment())
-                    .phone(user.getPhone())
-                    .expertise(user.getExpertise())
-                    .doNotDisturb(user.isDoNotDisturb())
-                    .autoReplyMessage(user.getAutoReplyMessage())
-                    .build();
-        }
-    }
-
     private boolean isBlank(String value) {
         return value == null || value.trim().isEmpty();
     }
@@ -216,9 +173,5 @@ public class UserService {
         }
         String trimmed = value.trim();
         return trimmed.isEmpty() ? null : trimmed;
-    }
-
-    private boolean containsIgnoreCase(String source, String needleLower) {
-        return source != null && source.toLowerCase(Locale.ROOT).contains(needleLower);
     }
 }

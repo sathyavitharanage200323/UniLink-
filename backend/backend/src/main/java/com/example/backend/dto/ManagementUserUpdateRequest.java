@@ -19,7 +19,6 @@ public class ManagementUserUpdateRequest {
 
     // Lecturer-specific
     private String employeeCode;
-    private String designation;
     private String officeLocation;
     private String officeHours;
     private String bio;
