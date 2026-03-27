@@ -1,11 +1,11 @@
-import React, {
+﻿import React, {
   useState, useEffect, useRef,
 } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import {
   Search, Download, CheckCircle, Shield, Pin,
-  Zap, Bell, BellOff, MessageSquare, ChevronDown, ArrowLeft, X
+  Zap, Bell, BellOff, MessageSquare, ChevronDown, ArrowLeft,
 } from 'lucide-react';
 
 import '../Chat.css';
@@ -13,7 +13,6 @@ import Header from './Header';
 import MessageList from './MessageList';
 import ComposeBar from './ComposeBar';
 import DisciplineModal from './DisciplineModal';
-import ProfileModal from './ProfileModal';
 import CannedResponseManager from './CannedResponseManager';
 import { useWebSocket } from '../hooks/useWebSocket';
 import { chatApi, cannedApi, userApi, disciplineApi } from '../api/chatApi';
@@ -22,13 +21,13 @@ import { chatApi, cannedApi, userApi, disciplineApi } from '../api/chatApi';
  * Main Chat Page.
  *
  * Props:
- *   currentUser – { id, name, role, doNotDisturb, autoReplyMessage, ... }
- *   appointments – array of { id, student, lecturer, startTime, status }
+ *   currentUser ΓÇô { id, name, role, doNotDisturb, autoReplyMessage, ... }
+ *   appointments ΓÇô array of { id, student, lecturer, startTime, status }
  *   (In a real app these come from a global context / router params.)
  */
 export default function ChatPage({ currentUser, appointments = [], onLogout, onUserUpdate }) {
   const navigate = useNavigate();
-  // ── State ──────────────────────────────────────────────────────
+  // ΓöÇΓöÇ State ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
   const [selectedRoomId, setSelectedRoomId] = useState(null);
   const [roomData, setRoomData] = useState(null); // ChatRoom object
   const [messages, setMessages] = useState([]);
@@ -39,7 +38,6 @@ export default function ChatPage({ currentUser, appointments = [], onLogout, onU
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState('ALL');
   const [showPinned, setShowPinned] = useState(false);
-  const [showProfile, setShowProfile] = useState(false);
   const [showDiscipline, setShowDiscipline] = useState(false);
   const [showCannedMgr, setShowCannedMgr] = useState(false);
   const [cannedResponses, setCannedResponses] = useState([]);
@@ -49,7 +47,6 @@ export default function ChatPage({ currentUser, appointments = [], onLogout, onU
   const [loading, setLoading] = useState(false);
   const [roomSummaries, setRoomSummaries] = useState([]);
   const [isBlocked, setIsBlocked] = useState(false);
-  const [studentDisciplines, setStudentDisciplines] = useState([]);
   const [unreadByRoom, setUnreadByRoom] = useState({});
   const [showLecturerFinder, setShowLecturerFinder] = useState(false);
   const [searchingLecturers, setSearchingLecturers] = useState(false);
@@ -63,7 +60,7 @@ export default function ChatPage({ currentUser, appointments = [], onLogout, onU
 
   const isLecturer = currentUser?.role === 'LECTURER';
 
-  // ── Current selected room summary ───────────────────────────────
+  // ΓöÇΓöÇ Current selected room summary ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
   const selectedRoom = roomSummaries.find((r) => r.roomId === selectedRoomId) || null;
   const otherParty = selectedRoom
     ? (isLecturer
@@ -76,7 +73,7 @@ export default function ChatPage({ currentUser, appointments = [], onLogout, onU
       })
     : null;
 
-  // ── WebSocket ──────────────────────────────────────────────────
+  // ΓöÇΓöÇ WebSocket ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
   const { sendTyping, sendReadReceipt, isConnected } = useWebSocket(
     selectedRoomId,
     (msg) => {
@@ -107,7 +104,7 @@ export default function ChatPage({ currentUser, appointments = [], onLogout, onU
     }
   );
 
-  // ── On mount: load rooms (appointment + direct) ─────────────────
+  // ΓöÇΓöÇ On mount: load rooms (appointment + direct) ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
   useEffect(() => {
     async function loadRooms() {
       if (!currentUser?.id) return;
@@ -121,7 +118,7 @@ export default function ChatPage({ currentUser, appointments = [], onLogout, onU
     loadRooms();
   }, [currentUser?.id]);
 
-  // ── Load messages when room changes ───────────────────────────
+  // ΓöÇΓöÇ Load messages when room changes ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
   useEffect(() => {
     if (!selectedRoomId) return;
     setLoading(true);
@@ -153,7 +150,7 @@ export default function ChatPage({ currentUser, appointments = [], onLogout, onU
       .finally(() => setLoading(false));
   }, [selectedRoomId, currentUser?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── Load unread counters for room list ───────────────────────────────────
+  // ΓöÇΓöÇ Load unread counters for room list ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
   useEffect(() => {
     async function loadUnreadCounts() {
       const roomIds = roomSummaries.map((r) => r?.roomId).filter(Boolean);
@@ -196,7 +193,7 @@ export default function ChatPage({ currentUser, appointments = [], onLogout, onU
     }
   }, [showLecturerFinder, lecturerFilters, isLecturer]);
 
-  // ── Check discipline block status for student -> lecturer chat ───────────
+  // ΓöÇΓöÇ Check discipline block status for student -> lecturer chat ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
   useEffect(() => {
     async function checkBlocked() {
       if (!selectedRoomId || isLecturer || !otherParty?.id || !currentUser?.id) {
@@ -213,49 +210,7 @@ export default function ChatPage({ currentUser, appointments = [], onLogout, onU
     checkBlocked();
   }, [selectedRoomId, isLecturer, otherParty?.id, currentUser?.id]);
 
-  // ── Fetch discipline records ───────────────────────────
-  useEffect(() => {
-    async function fetchDisciplines() {
-      if (!selectedRoomId || !otherParty?.id || !currentUser?.id) {
-        setStudentDisciplines([]);
-        return;
-      }
-      try {
-        const targetStudentId = isLecturer ? otherParty.id : currentUser.id;
-        const res = await disciplineApi.getByStudent(targetStudentId);
-        
-        let activeRecords = (res.data || []).filter((d) => d.active);
-        // If student, only show records applied by this specific lecturer
-        if (!isLecturer) {
-          activeRecords = activeRecords.filter(d => d.lecturer?.id === otherParty.id);
-        }
-        
-        setStudentDisciplines(activeRecords);
-      } catch (err) {
-        setStudentDisciplines([]);
-      }
-    }
-    fetchDisciplines();
-  }, [selectedRoomId, isLecturer, otherParty?.id, currentUser?.id]);
-
-  const handleRevokeDiscipline = async (id) => {
-    if (!window.confirm("Are you sure you want to remove this label?")) return;
-    try {
-      await disciplineApi.revoke(id);
-      setStudentDisciplines(prev => {
-        const next = prev.filter(d => d.id !== id);
-        if (!next.some(d => d.type === 'PERM_BLOCK' || d.type === 'TEMP_BLOCK')) {
-          setIsBlocked(false);
-        }
-        return next;
-      });
-      toast.success('Label removed successfully.');
-    } catch {
-      toast.error('Failed to remove label.');
-    }
-  };
-
-  // ── Load room data ─────────────────────────────────────────────
+  // ΓöÇΓöÇ Load room data ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
   useEffect(() => {
     if (!selectedRoomId) {
       setRoomData(null);
@@ -267,7 +222,7 @@ export default function ChatPage({ currentUser, appointments = [], onLogout, onU
       .catch(() => {});
   }, [selectedRoomId]);
 
-  // ── Load canned responses for lecturer ────────────────────────
+  // ΓöÇΓöÇ Load canned responses for lecturer ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
   useEffect(() => {
     if (!isLecturer || !currentUser?.id) return;
     cannedApi.getByLecturer(currentUser.id)
@@ -275,7 +230,7 @@ export default function ChatPage({ currentUser, appointments = [], onLogout, onU
       .catch(() => {});
   }, [isLecturer, currentUser?.id]);
 
-  // ── Auto-scroll to bottom ─────────────────────────────────────
+  // ΓöÇΓöÇ Auto-scroll to bottom ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, filteredMessages]);
@@ -284,7 +239,7 @@ export default function ChatPage({ currentUser, appointments = [], onLogout, onU
     setDnd(currentUser?.doNotDisturb ?? false);
   }, [currentUser?.doNotDisturb]);
 
-  // ── Actions ───────────────────────────────────────────────────
+  // ΓöÇΓöÇ Actions ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
   async function handleSend(payload) {
     if (!selectedRoomId) return;
     try {
@@ -451,7 +406,7 @@ export default function ChatPage({ currentUser, appointments = [], onLogout, onU
     }
   }
 
-  // ── Derived ────────────────────────────────────────────────────
+  // ΓöÇΓöÇ Derived ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
   const displayMessages = filteredMessages ?? messages;
   const effectiveRoomStatus = selectedRoom?.roomStatus || roomData?.status;
   const roomClosed = effectiveRoomStatus === 'RESOLVED' || effectiveRoomStatus === 'CLOSED';
@@ -460,12 +415,12 @@ export default function ChatPage({ currentUser, appointments = [], onLogout, onU
     && roomClosed;
   const latestPinned = pinnedMessages[pinnedMessages.length - 1];
 
-  // ── Render ────────────────────────────────────────────────────
+  // ΓöÇΓöÇ Render ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
   return (
     <div className="chat-layout">
       <Header currentUser={currentUser} onLogout={onLogout} unreadCount={totalUnread} />
       <div className="chat-page">
-      {/* ── Sidebar ─────────────────────────── */}
+      {/* ΓöÇΓöÇ Sidebar ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ */}
       <aside className="chat-sidebar">
         <div className="sidebar-header">
           <button
@@ -477,7 +432,7 @@ export default function ChatPage({ currentUser, appointments = [], onLogout, onU
           </button>
           <div className="sidebar-header-text">
             <h2>UniLink Chat</h2>
-            <p>{currentUser?.name} · {isLecturer ? 'Lecturer' : 'Student'}</p>
+            <p>{currentUser?.name} ┬╖ {isLecturer ? 'Lecturer' : 'Student'}</p>
           </div>
         </div>
         {!isLecturer && (
@@ -523,7 +478,7 @@ export default function ChatPage({ currentUser, appointments = [], onLogout, onU
                   {!searchingLecturers && lecturerResults.map((l) => (
                     <div key={l.id} style={{ padding: 10, borderBottom: '1px solid var(--line)' }}>
                       <div style={{ fontWeight: 600, fontSize: '0.86rem' }}>{l.name}</div>
-                      <div style={{ fontSize: '0.76rem', color: 'var(--text-muted)' }}>{l.department || 'Department N/A'} · {l.designation || 'Lecturer'}</div>
+                      <div style={{ fontSize: '0.76rem', color: 'var(--text-muted)' }}>{l.department || 'Department N/A'} ┬╖ {l.designation || 'Lecturer'}</div>
                       {l.expertise && <div style={{ fontSize: '0.74rem', color: 'var(--text-muted)', marginTop: 2 }}>{l.expertise}</div>}
                       <button className="btn btn-ghost" style={{ marginTop: 6, padding: '4px 8px' }} onClick={() => handleStartDirectChat(l.id)}>
                         Send Message
@@ -559,7 +514,7 @@ export default function ChatPage({ currentUser, appointments = [], onLogout, onU
                 <div className="sidebar-item-info">
                   <div className="sidebar-item-name">{counterpart?.name ?? 'Unknown'}</div>
                   <div className="sidebar-item-meta">
-                    {room.roomStatus === 'RESOLVED' ? '✓ Resolved' : 'Open'} · {room.roomType === 'DIRECT' ? `Question Thread #${room.roomId}` : `Session #${room.appointmentId}`}
+                    {room.roomStatus === 'RESOLVED' ? 'Γ£ô Resolved' : 'Open'} ┬╖ {room.roomType === 'DIRECT' ? `Question Thread #${room.roomId}` : `Session #${room.appointmentId}`}
                   </div>
                 </div>
                 {displayUnread > 0 && (
@@ -576,7 +531,7 @@ export default function ChatPage({ currentUser, appointments = [], onLogout, onU
         </div>
       </aside>
 
-      {/* ── Main ────────────────────────────── */}
+      {/* ΓöÇΓöÇ Main ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ */}
       <main className="chat-main">
         {!selectedRoomId ? (
           <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 12, color: 'var(--text-muted)' }}>
@@ -591,38 +546,21 @@ export default function ChatPage({ currentUser, appointments = [], onLogout, onU
                 {otherParty?.name?.charAt(0).toUpperCase() ?? '?'}
               </div>
               <div className="chat-header-info">
-                <div className="chat-header-name" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  Chat with <button onClick={() => setShowProfile(true)} style={{ background: 'none', border: 'none', color: 'inherit', padding: 0, font: 'inherit', cursor: 'pointer', textDecoration: 'underline' }}>{otherParty?.name ?? '—'}</button>
-                  {studentDisciplines.map(d => (
-                    <span key={d.id} title={d.reason} style={{
-                      fontSize: '0.7rem', padding: '2px 6px', borderRadius: '4px',
-                      backgroundColor: d.type === 'WARNING' ? '#fef08a' : '#fecaca',
-                      color: d.type === 'WARNING' ? '#854d0e' : '#991b1b',
-                      display: 'inline-flex', alignItems: 'center', gap: '4px', border: '1px solid currentColor'
-                    }}>
-                      {d.type === 'WARNING' ? '⚠️ Warning' : '🚫 Blocked'}
-                      {isLecturer && (
-                        <button onClick={(e) => { e.stopPropagation(); handleRevokeDiscipline(d.id); }} style={{
-                          background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center'
-                        }} title="Remove label">
-                          <X size={12} />
-                        </button>
-                      )}
-                    </span>
-                  ))}
+                <div className="chat-header-name">
+                  Chat with {otherParty?.name ?? 'ΓÇö'}
                 </div>
                 <div className="chat-header-status">
                   {isLecturer
-                    ? `Student · ${otherParty?.department ?? 'University'}`
-                    : `Lecturer · ${otherParty?.department ?? 'University'}`
+                    ? `Student ┬╖ ${otherParty?.department ?? 'University'}`
+                    : `Lecturer ┬╖ ${otherParty?.department ?? 'University'}`
                   }
-                  &nbsp;·&nbsp;{selectedRoom?.roomType === 'DIRECT' ? `Question Thread #${selectedRoom?.roomId}` : `Session #${selectedRoom?.appointmentId}`}
+                  &nbsp;┬╖&nbsp;{selectedRoom?.roomType === 'DIRECT' ? `Question Thread #${selectedRoom?.roomId}` : `Session #${selectedRoom?.appointmentId}`}
                 </div>
               </div>
               <div className="chat-header-actions">
                 {!isConnected && (
                   <span style={{ fontSize: '0.72rem', color: 'var(--warning)', alignSelf: 'center', marginRight: 4 }}>
-                    reconnecting…
+                    reconnectingΓÇª
                   </span>
                 )}
                 <button className={`icon-btn ${searchOpen ? 'active' : ''}`} title="Search" onClick={() => setSearchOpen((v) => !v)}>
@@ -649,18 +587,6 @@ export default function ChatPage({ currentUser, appointments = [], onLogout, onU
                 )}
               </div>
             </div>
-
-            {/* Warnings / Discipline Banner for Students */}
-            {!isLecturer && studentDisciplines.length > 0 && (
-              <div className="room-banner" style={{ background: '#fef08a', color: '#854d0e', borderBottom: '1px solid #fde047', flexDirection: 'column', alignItems: 'flex-start', padding: '8px 16px', gap: '4px' }}>
-                {studentDisciplines.map(d => (
-                  <div key={d.id} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    {d.type === 'WARNING' ? '⚠️' : '🚫'}
-                    <span><strong>{d.type === 'WARNING' ? 'Warning' : 'Blocked'}:</strong> {d.reason}</span>
-                  </div>
-                ))}
-              </div>
-            )}
 
             {/* Room status */}
             {roomClosed && (
@@ -691,7 +617,7 @@ export default function ChatPage({ currentUser, appointments = [], onLogout, onU
               <div className="search-panel">
                 <input
                   className="search-input"
-                  placeholder="Search messages…"
+                  placeholder="Search messagesΓÇª"
                   value={searchQuery}
                   onChange={handleSearch}
                 />
@@ -722,7 +648,7 @@ export default function ChatPage({ currentUser, appointments = [], onLogout, onU
             {/* Messages */}
             <div className="messages-area">
               {loading ? (
-                <div style={{ textAlign: 'center', color: 'var(--text-muted)', marginTop: 40 }}>Loading messages…</div>
+                <div style={{ textAlign: 'center', color: 'var(--text-muted)', marginTop: 40 }}>Loading messagesΓÇª</div>
               ) : (
                 <MessageList
                   messages={displayMessages}
@@ -780,26 +706,14 @@ export default function ChatPage({ currentUser, appointments = [], onLogout, onU
         )}
       </main>
 
-      {/* ── Modals ──────────────────────────── */}
-      {showProfile && otherParty?.id && (
-        <ProfileModal 
-          userId={otherParty.id} 
-          onClose={() => setShowProfile(false)} 
-        />
-      )}
-
+      {/* ΓöÇΓöÇ Modals ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ */}
       {showDiscipline && isLecturer && (
         <DisciplineModal
           studentId={otherParty?.id}
           studentName={otherParty?.name}
           lecturerId={currentUser?.id}
           onClose={() => setShowDiscipline(false)}
-          onApplied={(record) => {
-            setStudentDisciplines(prev => [...prev, record]);
-            if (record.type === 'PERM_BLOCK' || record.type === 'TEMP_BLOCK') {
-              setIsBlocked(true);
-            }
-          }}
+          onApplied={() => {}}
         />
       )}
 
@@ -816,7 +730,7 @@ export default function ChatPage({ currentUser, appointments = [], onLogout, onU
   );
 }
 
-// ── helpers ────────────────────────────────────────────────────
+// ΓöÇΓöÇ helpers ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 function downloadBlob(data, filename) {
   const url = window.URL.createObjectURL(new Blob([data]));
   const a = document.createElement('a');

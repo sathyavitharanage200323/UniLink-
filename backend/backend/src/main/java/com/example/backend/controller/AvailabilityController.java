@@ -32,7 +32,12 @@ public class AvailabilityController {
      */
     @GetMapping("/lecturer/{lecturerId}/available")
     public ResponseEntity<List<AvailabilitySlotDTO>> getLecturerAvailableSlots(@PathVariable Long lecturerId) {
-        return ResponseEntity.ok(availabilityService.getLecturerAvailableSlots(lecturerId));
+        try {
+            return ResponseEntity.ok(availabilityService.getLecturerAvailableSlots(lecturerId));
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw e;
+        }
     }
 
     /**
@@ -42,7 +47,12 @@ public class AvailabilityController {
     public ResponseEntity<List<AvailabilitySlotDTO>> updateLecturerAvailability(
             @PathVariable Long lecturerId,
             @RequestBody List<AvailabilitySlotDTO> slots) {
-        return ResponseEntity.ok(availabilityService.updateLecturerAvailability(lecturerId, slots));
+        try {
+            return ResponseEntity.ok(availabilityService.updateLecturerAvailability(lecturerId, slots));
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw e;
+        }
     }
 
     /**

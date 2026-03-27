@@ -165,11 +165,25 @@ function BookingForm({ formData, onChange, onConfirm, isValid, loading, loadingM
         />
       </div>
 
-      <button
-        className="bp-confirm-btn"
-        disabled={!isValid || loading}
-        onClick={onConfirm}
-      >
+        {!isValid && (
+          <div style={{ fontSize: '0.85rem', color: '#d32f2f', marginBottom: '15px', padding: '10px', background: '#ffebee', borderRadius: '5px' }}>
+            <strong>Please complete the following to enable confirmation:</strong>
+            <ul style={{ margin: '5px 0 0 20px', padding: 0 }}>
+              {!selectedSlot && <li>Select an available time slot above.</li>}
+              {formData.studentName.trim().length <= 2 && <li>Enter your full name.</li>}
+              {!itValid && <li>Enter a valid IT number (e.g. IT12345678).</li>}
+              {!formData.academicYear && <li>Select your academic year.</li>}
+              {!formData.semester && <li>Select your semester.</li>}
+              {formData.reason.trim().length <= 10 && <li>Provide a valid reason (more than 10 characters).</li>}
+            </ul>
+          </div>
+        )}
+
+        <button
+          className="bp-confirm-btn"
+          disabled={!isValid || loading}
+          onClick={onConfirm}
+        >
         {loading
           ? <><Loader2 size={16} className="bp-spin" /> {loadingMsg}</>
           : 'Confirm Appointment'}
@@ -230,14 +244,18 @@ export default function BookingPage({ currentUser, onLogout }) {
     api.get(`/availability/lecturer/${selectedLecturer.id}/available`)
       .then(r => {
         // Convert availability slots to display format
-        const availableSlots = r.data.map(slot => ({
-          id: slot.id,
-          day: slot.dayOfWeek.charAt(0) + slot.dayOfWeek.slice(1).toLowerCase(),
-          time: formatTimeRange(slot.startTime, slot.endTime),
-          startTime: `2026-03-24T${slot.startTime}:00`,
-          endTime: `2026-03-24T${slot.endTime}:00`,
-          status: 'OPEN'
-        }));
+        const availableSlots = r.data.map(slot => {
+          const startT = slot.startTime.length === 5 ? slot.startTime + ':00' : slot.startTime;
+          const endT = slot.endTime.length === 5 ? slot.endTime + ':00' : slot.endTime;
+          return {
+            id: slot.id,
+            day: slot.dayOfWeek.charAt(0) + slot.dayOfWeek.slice(1).toLowerCase(),
+            time: formatTimeRange(startT, endT),
+            startTime: `2026-03-24T${startT}`,
+            endTime: `2026-03-24T${endT}`,
+            status: 'OPEN'
+          };
+        });
         setSlots(availableSlots);
       })
       .catch(err => console.error('Failed to load slots', err))

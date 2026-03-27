@@ -17,6 +17,7 @@ public class UserProfileUpdateRequest {
     private String semester;
 
     private String employeeCode;
+    private String designation;
     private String officeLocation;
     private String officeHours;
     private String bio;

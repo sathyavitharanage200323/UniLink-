@@ -78,8 +78,6 @@ PREPARE stmt FROM @tighten_type_sql;
 EXECUTE stmt;
 DEALLOCATE PREPARE stmt;
 
-DROP PROCEDURE IF EXISTS add_column_if_missing //
-
 DELIMITER ;
 
 -- 4) missing profile tables used by auth/profile/management features
@@ -99,6 +97,7 @@ CREATE TABLE IF NOT EXISTS student_profiles (
 CREATE TABLE IF NOT EXISTS lecturer_profiles (
   user_id BIGINT NOT NULL,
   employee_code VARCHAR(50) NOT NULL,
+    designation VARCHAR(50) NULL,
   office_location VARCHAR(100) NULL,
   office_hours VARCHAR(100) NULL,
   bio VARCHAR(1000) NULL,
@@ -108,6 +107,57 @@ CREATE TABLE IF NOT EXISTS lecturer_profiles (
     FOREIGN KEY (user_id) REFERENCES users(id)
     ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 5) direct-chat support in chat_rooms
+CALL add_column_if_missing('chat_rooms', 'participant_student_id', 'BIGINT NULL');
+CALL add_column_if_missing('chat_rooms', 'participant_lecturer_id', 'BIGINT NULL');
+
+SET @has_participant_student_fk := (
+    SELECT COUNT(*) FROM information_schema.TABLE_CONSTRAINTS
+    WHERE TABLE_SCHEMA = DATABASE()
+      AND TABLE_NAME = 'chat_rooms'
+      AND CONSTRAINT_NAME = 'fk_room_participant_student'
+);
+SET @add_participant_student_fk := IF(
+    @has_participant_student_fk = 0,
+    'ALTER TABLE chat_rooms ADD CONSTRAINT fk_room_participant_student FOREIGN KEY (participant_student_id) REFERENCES users(id) ON DELETE CASCADE',
+    'SELECT 1'
+);
+PREPARE stmt FROM @add_participant_student_fk;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+SET @has_participant_lecturer_fk := (
+    SELECT COUNT(*) FROM information_schema.TABLE_CONSTRAINTS
+    WHERE TABLE_SCHEMA = DATABASE()
+      AND TABLE_NAME = 'chat_rooms'
+      AND CONSTRAINT_NAME = 'fk_room_participant_lecturer'
+);
+SET @add_participant_lecturer_fk := IF(
+    @has_participant_lecturer_fk = 0,
+    'ALTER TABLE chat_rooms ADD CONSTRAINT fk_room_participant_lecturer FOREIGN KEY (participant_lecturer_id) REFERENCES users(id) ON DELETE CASCADE',
+    'SELECT 1'
+);
+PREPARE stmt FROM @add_participant_lecturer_fk;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+SET @appt_nullable := (
+    SELECT IS_NULLABLE FROM information_schema.COLUMNS
+    WHERE TABLE_SCHEMA = DATABASE()
+      AND TABLE_NAME = 'chat_rooms'
+      AND COLUMN_NAME = 'appointment_id'
+);
+SET @make_appt_nullable_sql := IF(
+    @appt_nullable = 'NO',
+    'ALTER TABLE chat_rooms MODIFY COLUMN appointment_id BIGINT NULL',
+    'SELECT 1'
+);
+PREPARE stmt FROM @make_appt_nullable_sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+DROP PROCEDURE IF EXISTS add_column_if_missing;
 
 SET FOREIGN_KEY_CHECKS = 1;
 

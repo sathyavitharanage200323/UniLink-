@@ -7,9 +7,9 @@ import StudentHome from './pages/StudentHome';
 import LecturerHome from './pages/LecturerHome';
 import ManagementPage from './pages/ManagementPage';
 import { AppointmentsPage, ProfilePage, ComingSoonPage } from './pages/UtilityPages';
-import BookingPage from './pages/BookingPage';
-import LecturerSchedulePage from './pages/LecturerSchedulePage';
-import LecturerAvailabilityPage from './pages/LecturerAvailabilityPage';
+import BookingPage from './pages/BookingPage.jsx';
+import LecturerSchedulePage from './pages/LecturerSchedulePage.jsx';
+import LecturerAvailabilityPage from './pages/LecturerAvailabilityPage.jsx';
 import {
   loginUser,
   registerUser,
@@ -49,6 +49,13 @@ const ACADEMIC_PERIODS = [
   { academicYear: 'Year 4', semester: 'Semester 2', label: 'Year 4 Semester 2' },
 ];
 
+const LECTURER_DESIGNATIONS = [
+  'Lecturer',
+  'Lecturer In Charge',
+  'Senior Lecturer',
+  'Professor',
+];
+
 /* ── Login/Register screen ── */
 function LoginPage({ onLogin }) {
   const [tab, setTab] = useState('LOGIN');
@@ -68,6 +75,7 @@ function LoginPage({ onLogin }) {
     academicYear: '',
     semester: '',
     employeeCode: '',
+    designation: '',
     officeLocation: '',
     officeHours: '',
     expertise: '',
@@ -95,6 +103,9 @@ function LoginPage({ onLogin }) {
     }
     if (registerForm.role === 'LECTURER' && !registerForm.employeeCode.trim()) {
       return 'Employee code is required for lecturer';
+    }
+    if (registerForm.role === 'LECTURER' && !registerForm.designation.trim()) {
+      return 'Designation is required for lecturer';
     }
     return null;
   };
@@ -139,6 +150,7 @@ function LoginPage({ onLogin }) {
         academicYear: registerForm.academicYear.trim(),
         semester: registerForm.semester.trim(),
         employeeCode: registerForm.employeeCode.trim(),
+        designation: registerForm.designation.trim(),
         officeLocation: registerForm.officeLocation.trim(),
         officeHours: registerForm.officeHours.trim(),
         expertise: registerForm.expertise.trim(),
@@ -302,6 +314,12 @@ function LoginPage({ onLogin }) {
               ) : (
                 <>
                   <input className="auth-field" value={registerForm.employeeCode} onChange={(e) => setRegisterForm((p) => ({ ...p, employeeCode: e.target.value }))} placeholder="Employee code" style={authInputStyle} />
+                  <select className="auth-field" value={registerForm.designation} onChange={(e) => setRegisterForm((p) => ({ ...p, designation: e.target.value }))} style={authInputStyle}>
+                    <option value="">Select designation</option>
+                    {LECTURER_DESIGNATIONS.map((d) => (
+                      <option key={d} value={d}>{d}</option>
+                    ))}
+                  </select>
                   <input className="auth-field" value={registerForm.expertise} onChange={(e) => setRegisterForm((p) => ({ ...p, expertise: e.target.value }))} placeholder="Expertise" style={authInputStyle} />
                   <input className="auth-field" value={registerForm.officeLocation} onChange={(e) => setRegisterForm((p) => ({ ...p, officeLocation: e.target.value }))} placeholder="Office location" style={authInputStyle} />
                   <input className="auth-field" value={registerForm.officeHours} onChange={(e) => setRegisterForm((p) => ({ ...p, officeHours: e.target.value }))} placeholder="Office hours" style={authInputStyle} />
