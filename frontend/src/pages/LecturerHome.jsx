@@ -9,7 +9,7 @@ import {
 } from 'lucide-react';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
-import { chatApi, userApi } from '../api/chatApi';
+import { userApi } from '../api/chatApi';
 import './LecturerHome.css';
 
 /**
@@ -24,8 +24,6 @@ export default function LecturerHome({ currentUser, appointments = [], onLogout,
   const navigate = useNavigate();
   const [dnd, setDnd] = useState(currentUser?.doNotDisturb ?? false);
   const [savingDnd, setSavingDnd] = useState(false);
-  const [studentThreads, setStudentThreads] = useState([]);
-  const [unreadCount, setUnreadCount] = useState(0);
 
   useEffect(() => {
     setDnd(currentUser?.doNotDisturb ?? false);
@@ -60,45 +58,16 @@ export default function LecturerHome({ currentUser, appointments = [], onLogout,
   const pendingAppts   = appointments.filter((a) => a.status === 'PENDING');
 
   const todaySchedule = confirmedAppts;
+  const studentThreads = confirmedAppts.map((a) => ({
+    id: a.id,
+    name: a.student?.name ?? 'Student',
+    dept: a.student?.department ?? '',
+    lastMsg: 'Click to open the conversation',
+    unread: 0,
+    time: a.startTime,
+    appointment: a,
+  }));
   const pendingRequests = pendingAppts;
-
-  useEffect(() => {
-    async function loadThreads() {
-      if (!currentUser?.id) return;
-      try {
-        const roomsRes = await chatApi.getRoomsForUser(currentUser.id);
-        const rooms = roomsRes.data || [];
-        const mapped = await Promise.all(
-          rooms.map(async (r) => {
-            const isResolved = r.roomStatus === 'RESOLVED' || r.roomStatus === 'CLOSED';
-            let unread = 0;
-            if (!isResolved) {
-              try {
-                const unreadRes = await chatApi.getUnreadCount(r.roomId, currentUser.id);
-                unread = unreadRes.data?.count || 0;
-              } catch {
-                unread = 0;
-              }
-            }
-            return {
-              id: r.roomId,
-              name: r.studentName || 'Student',
-              dept: r.studentDepartment || '',
-              lastMsg: r.roomType === 'DIRECT' ? 'Direct message' : `Session #${r.appointmentId}`,
-              unread,
-              status: r.roomStatus,
-            };
-          })
-        );
-        setStudentThreads(mapped);
-        setUnreadCount(mapped.reduce((sum, t) => sum + (t.unread || 0), 0));
-      } catch {
-        setStudentThreads([]);
-        setUnreadCount(0);
-      }
-    }
-    loadThreads();
-  }, [currentUser?.id]);
 
   /* Stats */
   const stats = [
@@ -112,7 +81,7 @@ export default function LecturerHome({ currentUser, appointments = [], onLogout,
 
   return (
     <div className="lh-layout">
-      <Header currentUser={currentUser} onLogout={onLogout} unreadCount={unreadCount} />
+      <Header currentUser={currentUser} onLogout={onLogout} unreadCount={studentThreads.filter((t) => t.unread > 0).length} />
 
       <main className="lh-main">
 
@@ -135,9 +104,15 @@ export default function LecturerHome({ currentUser, appointments = [], onLogout,
               <div className="lh-hero__actions">
                 <button
                   className="lh-btn lh-btn--primary"
-                  onClick={() => navigate('/appointments')}
+                  onClick={() => navigate('/lecturer/availability')}
                 >
-                  <Calendar size={16} /> View Schedule
+                  <Calendar size={16} /> Manage Availability
+                </button>
+                <button
+                  className="lh-btn lh-btn--outline"
+                  onClick={() => navigate('/lecturer/schedule')}
+                >
+                  <Clock size={16} /> View Requests
                 </button>
                 <button
                   className="lh-btn lh-btn--outline"
@@ -191,7 +166,7 @@ export default function LecturerHome({ currentUser, appointments = [], onLogout,
           <section className="lh-card">
             <div className="lh-card__header">
               <h2><Calendar size={17} style={{ color: '#7c3aed' }} /> Today's Schedule</h2>
-              <button className="lh-link-btn" onClick={() => navigate('/appointments')}>
+              <button className="lh-link-btn" onClick={() => navigate('/lecturer/schedule')}>
                 Full schedule <ChevronRight size={14} />
               </button>
             </div>
@@ -253,7 +228,7 @@ export default function LecturerHome({ currentUser, appointments = [], onLogout,
                   <div className="lh-chat-info">
                     <div className="lh-chat-row1">
                       <strong>Chat with {t.name}</strong>
-                      <span className="lh-chat-time">{t.status === 'RESOLVED' || t.status === 'CLOSED' ? 'resolved' : 'open'}</span>
+                      <span className="lh-chat-time">{fmtRelative(t.time)}</span>
                     </div>
                     <div className="lh-chat-preview">{t.lastMsg}</div>
                     {t.dept && (
@@ -276,7 +251,7 @@ export default function LecturerHome({ currentUser, appointments = [], onLogout,
           <section className="lh-card">
             <div className="lh-card__header">
               <h2><Clock size={17} style={{ color: '#ea580c' }} /> Pending Requests</h2>
-              <button className="lh-link-btn" onClick={() => navigate('/appointments')}>
+              <button className="lh-link-btn" onClick={() => navigate('/lecturer/schedule')}>
                 View all <ChevronRight size={14} />
               </button>
             </div>
@@ -385,7 +360,7 @@ export default function LecturerHome({ currentUser, appointments = [], onLogout,
                 </div>
                 <span>Student Chats</span>
               </button>
-              <button className="lh-quick-btn" onClick={() => navigate('/appointments')}>
+              <button className="lh-quick-btn" onClick={() => navigate('/lecturer/schedule')}>
                 <div className="lh-quick-icon" style={{ background: '#fff7ed', color: '#ea580c' }}>
                   <Calendar size={24} />
                 </div>
@@ -455,4 +430,11 @@ function fmtDate(iso) {
     weekday: 'short', day: 'numeric', month: 'short',
     hour: '2-digit', minute: '2-digit',
   });
+}
+function fmtRelative(iso) {
+  const diff = Date.now() - new Date(iso).getTime();
+  if (diff < 60000)    return 'just now';
+  if (diff < 3600000)  return `${Math.floor(diff / 60000)}m ago`;
+  if (diff < 86400000) return `${Math.floor(diff / 3600000)}h ago`;
+  return new Date(iso).toLocaleDateString();
 }

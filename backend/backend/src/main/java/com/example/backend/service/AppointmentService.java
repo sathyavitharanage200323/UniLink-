@@ -62,6 +62,14 @@ public class AppointmentService {
     }
 
     @Transactional
+    public Appointment updateTime(Long id, LocalDateTime newStartTime, LocalDateTime newEndTime) {
+        Appointment appt = getById(id);
+        appt.setStartTime(newStartTime);
+        appt.setEndTime(newEndTime);
+        return appointmentRepository.save(appt);
+    }
+
+    @Transactional
     public void delete(Long id) {
         appointmentRepository.deleteById(id);
     }
