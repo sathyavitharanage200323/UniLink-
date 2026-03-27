@@ -33,6 +33,18 @@ public class UserService {
                 .orElseThrow(() -> new ResourceNotFoundException("User", id));
     }
 
+    public AuthUserResponse getFullUser(Long id) {
+        User user = getUser(id);
+        StudentProfile student = null;
+        LecturerProfile lecturer = null;
+        if (user.getRole() == User.Role.STUDENT) {
+            student = studentProfileRepository.findById(user.getId()).orElse(null);
+        } else if (user.getRole() == User.Role.LECTURER) {
+            lecturer = lecturerProfileRepository.findById(user.getId()).orElse(null);
+        }
+        return AuthUserResponse.from(user, student, lecturer);
+    }
+
     public User getUserByEmail(String email) {
         return userRepository.findByEmail(email)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found with email: " + email));

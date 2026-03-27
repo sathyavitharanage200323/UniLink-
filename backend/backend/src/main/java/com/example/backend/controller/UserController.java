@@ -45,6 +45,16 @@ public class UserController {
         return ResponseEntity.ok(userService.getUser(id));
     }
 
+    @GetMapping("/{id}/full")
+    public ResponseEntity<AuthUserResponse> getFullUser(@PathVariable Long id) {
+        try {
+            return ResponseEntity.ok(userService.getFullUser(id));
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw e;
+        }
+    }
+
     @PostMapping
     public ResponseEntity<User> createUser(@RequestBody User user) {
         return ResponseEntity.ok(userService.save(user));

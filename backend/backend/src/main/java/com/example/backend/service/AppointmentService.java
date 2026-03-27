@@ -17,6 +17,7 @@ public class AppointmentService {
 
     private final AppointmentRepository appointmentRepository;
     private final UserService userService;
+    private final DisciplineService disciplineService;
 
     public List<Appointment> getByStudent(Long studentId) {
         User student = userService.getUser(studentId);
@@ -37,6 +38,9 @@ public class AppointmentService {
     public Appointment create(Long studentId, Long lecturerId,
                                LocalDateTime startTime, LocalDateTime endTime,
                                String notes) {
+        if (disciplineService.isBlocked(studentId, lecturerId)) {
+            throw new RuntimeException("You are blocked by this lecturer and cannot book an appointment.");
+        }
         User student  = userService.getUser(studentId);
         User lecturer = userService.getUser(lecturerId);
         Appointment appt = Appointment.builder()

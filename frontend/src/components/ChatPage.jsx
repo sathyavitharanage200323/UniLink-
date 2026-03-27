@@ -5,7 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import {
   Search, Download, CheckCircle, Shield, Pin,
-  Zap, Bell, BellOff, MessageSquare, ChevronDown, ArrowLeft,
+  Zap, Bell, BellOff, MessageSquare, ChevronDown, ArrowLeft, X
 } from 'lucide-react';
 
 import '../Chat.css';
@@ -13,6 +13,7 @@ import Header from './Header';
 import MessageList from './MessageList';
 import ComposeBar from './ComposeBar';
 import DisciplineModal from './DisciplineModal';
+import ProfileModal from './ProfileModal';
 import CannedResponseManager from './CannedResponseManager';
 import { useWebSocket } from '../hooks/useWebSocket';
 import { chatApi, cannedApi, userApi, disciplineApi } from '../api/chatApi';
@@ -38,6 +39,7 @@ export default function ChatPage({ currentUser, appointments = [], onLogout, onU
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState('ALL');
   const [showPinned, setShowPinned] = useState(false);
+  const [showProfile, setShowProfile] = useState(false);
   const [showDiscipline, setShowDiscipline] = useState(false);
   const [showCannedMgr, setShowCannedMgr] = useState(false);
   const [cannedResponses, setCannedResponses] = useState([]);
@@ -47,6 +49,7 @@ export default function ChatPage({ currentUser, appointments = [], onLogout, onU
   const [loading, setLoading] = useState(false);
   const [roomSummaries, setRoomSummaries] = useState([]);
   const [isBlocked, setIsBlocked] = useState(false);
+  const [studentDisciplines, setStudentDisciplines] = useState([]);
   const [unreadByRoom, setUnreadByRoom] = useState({});
   const [showLecturerFinder, setShowLecturerFinder] = useState(false);
   const [searchingLecturers, setSearchingLecturers] = useState(false);
@@ -209,6 +212,48 @@ export default function ChatPage({ currentUser, appointments = [], onLogout, onU
     }
     checkBlocked();
   }, [selectedRoomId, isLecturer, otherParty?.id, currentUser?.id]);
+
+  // ── Fetch discipline records ───────────────────────────
+  useEffect(() => {
+    async function fetchDisciplines() {
+      if (!selectedRoomId || !otherParty?.id || !currentUser?.id) {
+        setStudentDisciplines([]);
+        return;
+      }
+      try {
+        const targetStudentId = isLecturer ? otherParty.id : currentUser.id;
+        const res = await disciplineApi.getByStudent(targetStudentId);
+        
+        let activeRecords = (res.data || []).filter((d) => d.active);
+        // If student, only show records applied by this specific lecturer
+        if (!isLecturer) {
+          activeRecords = activeRecords.filter(d => d.lecturer?.id === otherParty.id);
+        }
+        
+        setStudentDisciplines(activeRecords);
+      } catch (err) {
+        setStudentDisciplines([]);
+      }
+    }
+    fetchDisciplines();
+  }, [selectedRoomId, isLecturer, otherParty?.id, currentUser?.id]);
+
+  const handleRevokeDiscipline = async (id) => {
+    if (!window.confirm("Are you sure you want to remove this label?")) return;
+    try {
+      await disciplineApi.revoke(id);
+      setStudentDisciplines(prev => {
+        const next = prev.filter(d => d.id !== id);
+        if (!next.some(d => d.type === 'PERM_BLOCK' || d.type === 'TEMP_BLOCK')) {
+          setIsBlocked(false);
+        }
+        return next;
+      });
+      toast.success('Label removed successfully.');
+    } catch {
+      toast.error('Failed to remove label.');
+    }
+  };
 
   // ── Load room data ─────────────────────────────────────────────
   useEffect(() => {
@@ -546,8 +591,25 @@ export default function ChatPage({ currentUser, appointments = [], onLogout, onU
                 {otherParty?.name?.charAt(0).toUpperCase() ?? '?'}
               </div>
               <div className="chat-header-info">
-                <div className="chat-header-name">
-                  Chat with {otherParty?.name ?? '—'}
+                <div className="chat-header-name" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  Chat with <button onClick={() => setShowProfile(true)} style={{ background: 'none', border: 'none', color: 'inherit', padding: 0, font: 'inherit', cursor: 'pointer', textDecoration: 'underline' }}>{otherParty?.name ?? '—'}</button>
+                  {studentDisciplines.map(d => (
+                    <span key={d.id} title={d.reason} style={{
+                      fontSize: '0.7rem', padding: '2px 6px', borderRadius: '4px',
+                      backgroundColor: d.type === 'WARNING' ? '#fef08a' : '#fecaca',
+                      color: d.type === 'WARNING' ? '#854d0e' : '#991b1b',
+                      display: 'inline-flex', alignItems: 'center', gap: '4px', border: '1px solid currentColor'
+                    }}>
+                      {d.type === 'WARNING' ? '⚠️ Warning' : '🚫 Blocked'}
+                      {isLecturer && (
+                        <button onClick={(e) => { e.stopPropagation(); handleRevokeDiscipline(d.id); }} style={{
+                          background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center'
+                        }} title="Remove label">
+                          <X size={12} />
+                        </button>
+                      )}
+                    </span>
+                  ))}
                 </div>
                 <div className="chat-header-status">
                   {isLecturer
@@ -587,6 +649,18 @@ export default function ChatPage({ currentUser, appointments = [], onLogout, onU
                 )}
               </div>
             </div>
+
+            {/* Warnings / Discipline Banner for Students */}
+            {!isLecturer && studentDisciplines.length > 0 && (
+              <div className="room-banner" style={{ background: '#fef08a', color: '#854d0e', borderBottom: '1px solid #fde047', flexDirection: 'column', alignItems: 'flex-start', padding: '8px 16px', gap: '4px' }}>
+                {studentDisciplines.map(d => (
+                  <div key={d.id} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    {d.type === 'WARNING' ? '⚠️' : '🚫'}
+                    <span><strong>{d.type === 'WARNING' ? 'Warning' : 'Blocked'}:</strong> {d.reason}</span>
+                  </div>
+                ))}
+              </div>
+            )}
 
             {/* Room status */}
             {roomClosed && (
@@ -707,13 +781,25 @@ export default function ChatPage({ currentUser, appointments = [], onLogout, onU
       </main>
 
       {/* ── Modals ──────────────────────────── */}
+      {showProfile && otherParty?.id && (
+        <ProfileModal 
+          userId={otherParty.id} 
+          onClose={() => setShowProfile(false)} 
+        />
+      )}
+
       {showDiscipline && isLecturer && (
         <DisciplineModal
           studentId={otherParty?.id}
           studentName={otherParty?.name}
           lecturerId={currentUser?.id}
           onClose={() => setShowDiscipline(false)}
-          onApplied={() => {}}
+          onApplied={(record) => {
+            setStudentDisciplines(prev => [...prev, record]);
+            if (record.type === 'PERM_BLOCK' || record.type === 'TEMP_BLOCK') {
+              setIsBlocked(true);
+            }
+          }}
         />
       )}
 

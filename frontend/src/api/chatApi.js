@@ -79,6 +79,7 @@ export const disciplineApi = {
 
 export const userApi = {
   get: (id) => api.get(`/users/${id}`),
+  getFull: (id) => api.get(`/users/${id}/full`),
   create: (user) => api.post('/users', user),
   searchLecturers: ({ query = '', department = '', designation = '' } = {}) =>
     api.get(`/users/lecturers/search?query=${encodeURIComponent(query)}&department=${encodeURIComponent(department)}&designation=${encodeURIComponent(designation)}`),
