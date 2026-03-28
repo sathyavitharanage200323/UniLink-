@@ -9,7 +9,7 @@ import lombok.*;
 @Builder
 public class AvailabilitySlotDTO {
     private Long id;
-    private String dayOfWeek;
+    private String slotDate;
     private String startTime;
     private String endTime;
     private boolean available;
@@ -17,7 +17,7 @@ public class AvailabilitySlotDTO {
     public static AvailabilitySlotDTO from(AvailabilitySlot slot) {
         return AvailabilitySlotDTO.builder()
                 .id(slot.getId())
-                .dayOfWeek(slot.getDayOfWeek().name())
+                .slotDate(slot.getSlotDate().toString())
                 .startTime(slot.getStartTime().toString())
                 .endTime(slot.getEndTime().toString())
                 .available(slot.isAvailable())
