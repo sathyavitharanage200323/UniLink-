@@ -1,0 +1,35 @@
+.sm-nav {
+  display: flex;
+  gap: 12px;
+  padding: 16px 24px;
+}
+
+.sm-link {
+  text-decoration: none;
+  padding: 10px 16px;
+  border-radius: 12px;
+  background: #f1f5f9;
+  color: #334155;
+  font-weight: 600;
+  transition: 0.2s;
+}
+
+.sm-link:hover {
+  background: #e2e8f0;
+}
+
+/* active page */
+.sm-link.active {
+  background: #7c3aed;
+  color: white;
+}
+
+/* 🔥 guide button special */
+.sm-link.guide {
+  background: #ede9fe;
+  color: #7c3aed;
+}
+
+.sm-link.guide:hover {
+  background: #ddd6fe;
+}

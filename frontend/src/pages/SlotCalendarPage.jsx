@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getSlots, createSlot, updateSlot, deleteSlot } from '../api';
+import './SlotCalendarPage.css';
 
 const monthNames = [
   'January', 'February', 'March', 'April', 'May', 'June',
@@ -63,6 +64,24 @@ function dateToKey(date) {
   return `${year}-${month}-${day}`;
 }
 
+function formatLongDate(date) {
+  return new Date(date).toLocaleDateString('en-US', {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  });
+}
+
+function formatMediumDate(date) {
+  return new Date(date).toLocaleDateString('en-GB', {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  });
+}
+
 function isPastDate(slotDate) {
   const today = new Date();
   const todayOnly = new Date(today.getFullYear(), today.getMonth(), today.getDate());
@@ -78,44 +97,6 @@ function getStatus(slotDate) {
   if (slotOnly.getTime() === todayOnly.getTime()) return 'Today';
   if (slotOnly > todayOnly) return 'Upcoming';
   return 'Past';
-}
-
-function getStatusColors(status) {
-  if (status === 'Today') {
-    return {
-      background: '#dbeafe',
-      color: '#1d4ed8',
-      border: '1px solid #93c5fd',
-    };
-  }
-  if (status === 'Upcoming') {
-    return {
-      background: '#dcfce7',
-      color: '#15803d',
-      border: '1px solid #86efac',
-    };
-  }
-  return {
-    background: '#f1f5f9',
-    color: '#475569',
-    border: '1px solid #cbd5e1',
-  };
-}
-
-function getStartOfWeek(date) {
-  const copy = new Date(date);
-  const day = copy.getDay();
-  copy.setDate(copy.getDate() - day);
-  copy.setHours(0, 0, 0, 0);
-  return copy;
-}
-
-function getEndOfWeek(date) {
-  const start = getStartOfWeek(date);
-  const end = new Date(start);
-  end.setDate(start.getDate() + 6);
-  end.setHours(23, 59, 59, 999);
-  return end;
 }
 
 function hasSlotConflict(existingSlots, newStart, newEnd, ignoreId = null) {
@@ -144,6 +125,16 @@ function generateAllStartTimes() {
   return times;
 }
 
+function getNowRoundedMinutes() {
+  const now = new Date();
+  const raw = now.getHours() * 60 + now.getMinutes();
+  return Math.ceil(raw / BREAK_MINUTES) * BREAK_MINUTES;
+}
+
+function isTodayKey(dateKey) {
+  return dateKey === dateToKey(new Date());
+}
+
 function getValidStartTimesForDate(dateKey, allSlotsByDate, editingSlot = null) {
   if (!dateKey) return [];
 
@@ -158,6 +149,11 @@ function getValidStartTimesForDate(dateKey, allSlotsByDate, editingSlot = null) 
 
     if (start < timeToMinutes(DAY_START)) return false;
     if (end > timeToMinutes(DAY_END)) return false;
+
+    if (isTodayKey(dateKey)) {
+      const roundedNow = getNowRoundedMinutes();
+      if (start < roundedNow) return false;
+    }
 
     for (const slot of sameDaySlots) {
       const existingStart = timeToMinutes(slot.startTime);
@@ -178,12 +174,21 @@ function getValidStartTimesForDate(dateKey, allSlotsByDate, editingSlot = null) 
   });
 }
 
+function getSlotAccentClass(slotDate) {
+  const status = getStatus(slotDate);
+  if (status === 'Today') return 'today';
+  if (status === 'Upcoming') return 'upcoming';
+  return 'past';
+}
+
 export default function SlotCalendarPage({ currentUser, onLogout }) {
   const navigate = useNavigate();
 
   const [slots, setSlots] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [banner, setBanner] = useState({ type: '', text: '' });
+
   const [filter, setFilter] = useState('All');
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState(new Date());
@@ -194,14 +199,17 @@ export default function SlotCalendarPage({ currentUser, onLogout }) {
   const [editEndTime, setEditEndTime] = useState('');
   const [savingEdit, setSavingEdit] = useState(false);
 
-  const [dateModalOpen, setDateModalOpen] = useState(false);
+  const [viewModalOpen, setViewModalOpen] = useState(false);
+  const [viewingSlot, setViewingSlot] = useState(null);
 
   const [quickAddStartTime, setQuickAddStartTime] = useState('');
   const [quickAddEndTime, setQuickAddEndTime] = useState('');
   const [addingSlot, setAddingSlot] = useState(false);
 
   useEffect(() => {
-    loadSlots();
+    if (currentUser?.id) {
+      loadSlots();
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentUser?.id]);
 
@@ -209,6 +217,7 @@ export default function SlotCalendarPage({ currentUser, onLogout }) {
     try {
       setLoading(true);
       setError('');
+      setBanner({ type: '', text: '' });
       const data = await getSlots(currentUser.id);
       setSlots(Array.isArray(data) ? data : []);
     } catch (err) {
@@ -221,6 +230,7 @@ export default function SlotCalendarPage({ currentUser, onLogout }) {
 
   const today = new Date();
   const todayKey = dateToKey(today);
+  const lecturerInitial = currentUser?.name ? currentUser.name.charAt(0).toUpperCase() : 'L';
 
   const filteredSlots = useMemo(() => {
     return slots.filter((slot) => {
@@ -259,8 +269,7 @@ export default function SlotCalendarPage({ currentUser, onLogout }) {
   }, [slots]);
 
   const selectedDateKey = dateToKey(selectedDate);
-  const selectedDateSlots = slotsByDate[selectedDateKey] || [];
-  const selectedDateAllSlots = allSlotsByDate[selectedDateKey] || [];
+  const selectedDateSlots = allSlotsByDate[selectedDateKey] || [];
 
   const validQuickAddStartTimes = getValidStartTimesForDate(selectedDateKey, allSlotsByDate);
   const validEditStartTimes = editingSlot
@@ -270,28 +279,7 @@ export default function SlotCalendarPage({ currentUser, onLogout }) {
   const totalSlots = slots.length;
   const todaySlots = slots.filter((slot) => slot.slotDate === todayKey).length;
   const upcomingSlots = slots.filter((slot) => getStatus(slot.slotDate) === 'Upcoming').length;
-  const thisMonthSlots = slots.filter((slot) => {
-    const d = new Date(slot.slotDate);
-    return (
-      d.getFullYear() === currentMonth.getFullYear() &&
-      d.getMonth() === currentMonth.getMonth()
-    );
-  }).length;
-
-  const weekStart = getStartOfWeek(selectedDate);
-  const weekEnd = getEndOfWeek(selectedDate);
-
-  const thisWeekSlots = slots.filter((slot) => {
-    const slotDate = new Date(slot.slotDate);
-    return slotDate >= weekStart && slotDate <= weekEnd;
-  });
-
-  const thisWeekTodaySlots = thisWeekSlots.filter(
-    (slot) => getStatus(slot.slotDate) === 'Today'
-  ).length;
-  const thisWeekUpcomingSlots = thisWeekSlots.filter(
-    (slot) => getStatus(slot.slotDate) === 'Upcoming'
-  ).length;
+  const pastSlots = slots.filter((slot) => getStatus(slot.slotDate) === 'Past').length;
 
   const monthLabel = `${monthNames[currentMonth.getMonth()]} ${currentMonth.getFullYear()}`;
 
@@ -324,10 +312,15 @@ export default function SlotCalendarPage({ currentUser, onLogout }) {
     const now = new Date();
     setCurrentMonth(new Date(now.getFullYear(), now.getMonth(), 1));
     setSelectedDate(now);
-    setDateModalOpen(true);
   }
 
   function openEditModal(slot) {
+    const status = getStatus(slot.slotDate);
+    if (status === 'Past') {
+      setBanner({ type: 'error', text: 'Past slots cannot be edited.' });
+      return;
+    }
+
     setEditingSlot(slot);
     const start = slot.startTime.slice(0, 5);
     setEditStartTime(start);
@@ -342,17 +335,14 @@ export default function SlotCalendarPage({ currentUser, onLogout }) {
     setEditEndTime('');
   }
 
-  function openDateModal(dateObj) {
-    setSelectedDate(dateObj);
-    setQuickAddStartTime('');
-    setQuickAddEndTime('');
-    setDateModalOpen(true);
+  function openViewModal(slot) {
+    setViewingSlot(slot);
+    setViewModalOpen(true);
   }
 
-  function closeDateModal() {
-    setDateModalOpen(false);
-    setQuickAddStartTime('');
-    setQuickAddEndTime('');
+  function closeViewModal() {
+    setViewingSlot(null);
+    setViewModalOpen(false);
   }
 
   function handleQuickAddStartTimeChange(value) {
@@ -373,11 +363,21 @@ export default function SlotCalendarPage({ currentUser, onLogout }) {
     }
   }
 
+  function validateTodayTime(dateKey, start) {
+    if (!isTodayKey(dateKey)) return '';
+    const roundedNow = getNowRoundedMinutes();
+    const startMinutes = timeToMinutes(start);
+    if (startMinutes < roundedNow) {
+      return 'You cannot add or update a slot for a time that has already passed today.';
+    }
+    return '';
+  }
+
   async function handleSaveEdit() {
     if (!editingSlot) return;
 
     if (!editStartTime || !editEndTime) {
-      alert('Please select a valid start time.');
+      setBanner({ type: 'error', text: 'Please select a valid start time.' });
       return;
     }
 
@@ -385,29 +385,35 @@ export default function SlotCalendarPage({ currentUser, onLogout }) {
     const end = normalizeTime(editEndTime);
 
     if (getDurationMinutes(start, end) !== SLOT_DURATION_MINUTES) {
-      alert(`Each slot must be exactly ${SLOT_DURATION_MINUTES} minutes.`);
+      setBanner({ type: 'error', text: `Each slot must be exactly ${SLOT_DURATION_MINUTES} minutes.` });
       return;
     }
 
     if (timeToMinutes(start) < timeToMinutes(DAY_START)) {
-      alert(`Slots can start only from ${DAY_START}.`);
+      setBanner({ type: 'error', text: `Slots can start only from ${DAY_START}.` });
       return;
     }
 
     if (timeToMinutes(end) > timeToMinutes(DAY_END)) {
-      alert(`Slots cannot go beyond ${DAY_END}.`);
+      setBanner({ type: 'error', text: `Slots cannot go beyond ${DAY_END}.` });
+      return;
+    }
+
+    const todayTimeMessage = validateTodayTime(editingSlot.slotDate, start);
+    if (todayTimeMessage) {
+      setBanner({ type: 'error', text: todayTimeMessage });
       return;
     }
 
     const sameDateSlots = allSlotsByDate[editingSlot.slotDate] || [];
     if (hasSlotConflict(sameDateSlots, start, end, editingSlot.id)) {
-      alert('This time overlaps with another slot on the same date.');
+      setBanner({ type: 'error', text: 'This time overlaps with another slot on the same date.' });
       return;
     }
 
     const validTimes = getValidStartTimesForDate(editingSlot.slotDate, allSlotsByDate, editingSlot);
     if (!validTimes.includes(start.slice(0, 5))) {
-      alert(`Invalid time. Keep a ${BREAK_MINUTES}-minute break between slots.`);
+      setBanner({ type: 'error', text: `Invalid time. Keep a ${BREAK_MINUTES}-minute break between slots.` });
       return;
     }
 
@@ -420,40 +426,49 @@ export default function SlotCalendarPage({ currentUser, onLogout }) {
       });
       await loadSlots();
       closeEditModal();
-      alert('Slot updated successfully.');
+      setBanner({ type: 'success', text: 'Slot updated successfully.' });
     } catch (err) {
-      alert(err.message || 'Failed to update slot.');
+      setBanner({ type: 'error', text: err.message || 'Failed to update slot.' });
     } finally {
       setSavingEdit(false);
     }
   }
 
-  async function handleDelete(slotId) {
+  async function handleDelete(slotId, slotDate) {
+    const status = getStatus(slotDate);
+    if (status === 'Past') {
+      setBanner({ type: 'error', text: 'Past slots cannot be deleted from this calendar view.' });
+      return;
+    }
+
     const confirmed = window.confirm('Are you sure you want to delete this slot?');
     if (!confirmed) return;
 
     try {
       await deleteSlot(slotId);
+      if (viewingSlot?.id === slotId) {
+        closeViewModal();
+      }
       await loadSlots();
-      alert('Slot deleted successfully.');
+      setBanner({ type: 'success', text: 'Slot deleted successfully.' });
     } catch (err) {
-      alert(err.message || 'Failed to delete slot.');
+      setBanner({ type: 'error', text: err.message || 'Failed to delete slot.' });
     }
   }
 
   async function handleQuickAddSlot() {
     if (isPastDate(selectedDateKey)) {
-      alert('You cannot add slots to a past date.');
+      setBanner({ type: 'error', text: 'You cannot add slots to a past date.' });
       return;
     }
 
-    if (selectedDateAllSlots.length >= MAX_SLOTS_PER_DAY) {
-      alert(`Maximum ${MAX_SLOTS_PER_DAY} slots allowed per day.`);
+    if (selectedDateSlots.length >= MAX_SLOTS_PER_DAY) {
+      setBanner({ type: 'error', text: `Maximum ${MAX_SLOTS_PER_DAY} slots allowed per day.` });
       return;
     }
 
     if (!quickAddStartTime || !quickAddEndTime) {
-      alert('Please select a valid start time.');
+      setBanner({ type: 'error', text: 'Please select a valid start time.' });
       return;
     }
 
@@ -461,36 +476,42 @@ export default function SlotCalendarPage({ currentUser, onLogout }) {
     const end = normalizeTime(quickAddEndTime);
 
     if (getDurationMinutes(start, end) !== SLOT_DURATION_MINUTES) {
-      alert(`Each slot must be exactly ${SLOT_DURATION_MINUTES} minutes.`);
+      setBanner({ type: 'error', text: `Each slot must be exactly ${SLOT_DURATION_MINUTES} minutes.` });
       return;
     }
 
     if (timeToMinutes(start) < timeToMinutes(DAY_START)) {
-      alert(`Slots can start only from ${DAY_START}.`);
+      setBanner({ type: 'error', text: `Slots can start only from ${DAY_START}.` });
       return;
     }
 
     if (timeToMinutes(end) > timeToMinutes(DAY_END)) {
-      alert(`Slots cannot go beyond ${DAY_END}.`);
+      setBanner({ type: 'error', text: `Slots cannot go beyond ${DAY_END}.` });
       return;
     }
 
-    const exactDuplicate = selectedDateAllSlots.some(
+    const todayTimeMessage = validateTodayTime(selectedDateKey, start);
+    if (todayTimeMessage) {
+      setBanner({ type: 'error', text: todayTimeMessage });
+      return;
+    }
+
+    const exactDuplicate = selectedDateSlots.some(
       (slot) => slot.startTime === start && slot.endTime === end
     );
 
     if (exactDuplicate) {
-      alert('This exact slot already exists for the selected date.');
+      setBanner({ type: 'error', text: 'This exact slot already exists for the selected date.' });
       return;
     }
 
-    if (hasSlotConflict(selectedDateAllSlots, start, end)) {
-      alert('This time overlaps with another slot on the selected date.');
+    if (hasSlotConflict(selectedDateSlots, start, end)) {
+      setBanner({ type: 'error', text: 'This time overlaps with another slot on the selected date.' });
       return;
     }
 
     if (!validQuickAddStartTimes.includes(start.slice(0, 5))) {
-      alert(`Invalid time. There must be a ${BREAK_MINUTES}-minute break between slots.`);
+      setBanner({ type: 'error', text: `Invalid time. There must be a ${BREAK_MINUTES}-minute break between slots.` });
       return;
     }
 
@@ -505,334 +526,150 @@ export default function SlotCalendarPage({ currentUser, onLogout }) {
       setQuickAddStartTime('');
       setQuickAddEndTime('');
       await loadSlots();
-      alert('Slot added successfully.');
+      setBanner({ type: 'success', text: 'Slot added successfully.' });
     } catch (err) {
-      alert(err.message || 'Failed to add slot.');
+      setBanner({ type: 'error', text: err.message || 'Failed to add slot.' });
     } finally {
       setAddingSlot(false);
     }
   }
 
-  const pageStyles = {
-    minHeight: '100vh',
-    background: '#f3f4f6',
-    fontFamily: 'Arial, sans-serif',
-    color: '#0f172a',
-  };
-
-  const topBarStyles = {
-    background: 'linear-gradient(90deg, #7c3aed, #db2777)',
-    color: '#fff',
-    padding: '22px 32px 28px',
-    borderBottomLeftRadius: '28px',
-    borderBottomRightRadius: '28px',
-    boxShadow: '0 8px 24px rgba(0,0,0,0.08)',
-  };
-
-  const innerContainer = {
-    maxWidth: '1400px',
-    margin: '0 auto',
-  };
-
-  const navRow = {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    gap: '14px',
-    flexWrap: 'wrap',
-  };
-
-  const buttonBase = {
-    border: 'none',
-    borderRadius: '14px',
-    padding: '12px 18px',
-    fontWeight: 700,
-    fontSize: '15px',
-    cursor: 'pointer',
-  };
-
-  const whiteGlassButton = {
-    ...buttonBase,
-    background: 'rgba(255,255,255,0.16)',
-    color: '#fff',
-    border: '1px solid rgba(255,255,255,0.22)',
-  };
-
-  const statsGrid = {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-    gap: '20px',
-    marginTop: '26px',
-  };
-
-  const statCard = {
-    background: '#fff',
-    borderRadius: '24px',
-    padding: '24px',
-    boxShadow: '0 6px 16px rgba(15, 23, 42, 0.05)',
-  };
-
-  const contentGrid = {
-    display: 'grid',
-    gridTemplateColumns: '2fr 1fr',
-    gap: '24px',
-    marginTop: '24px',
-    alignItems: 'start',
-  };
-
-  const panelCard = {
-    background: '#fff',
-    borderRadius: '24px',
-    boxShadow: '0 6px 16px rgba(15, 23, 42, 0.05)',
-    overflow: 'hidden',
-  };
-
-  const panelHeader = {
-    padding: '22px 24px',
-    borderBottom: '1px solid #e5e7eb',
-  };
-
-  const panelBody = {
-    padding: '22px 24px',
-  };
-
-  const inputStyle = {
-    width: '100%',
-    padding: '12px 14px',
-    borderRadius: '12px',
-    border: '1px solid #cbd5e1',
-    fontSize: '14px',
-    outline: 'none',
-    boxSizing: 'border-box',
-    background: '#fff',
-  };
-
   const selectedDateStatus = getStatus(selectedDateKey);
-  const selectedDateStatusStyle = getStatusColors(selectedDateStatus);
-  const usedSlotsForDay = selectedDateAllSlots.length;
+  const usedSlotsForDay = selectedDateSlots.length;
   const remainingSlotsForDay = Math.max(MAX_SLOTS_PER_DAY - usedSlotsForDay, 0);
 
-  const capacityCardGrid = {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(3, 1fr)',
-    gap: '12px',
-    marginBottom: '20px',
-  };
-
-  const capacityBaseCard = {
-    borderRadius: '18px',
-    padding: '16px',
-    border: '1px solid',
-    boxShadow: '0 8px 18px rgba(15, 23, 42, 0.05)',
-  };
-
   return (
-    <div style={pageStyles}>
-      <div style={topBarStyles}>
-        <div style={innerContainer}>
-          <div style={navRow}>
+    <div className="sc-layout">
+      <div className="sc-main">
+        <section className="sc-hero">
+          <div className="sc-hero__content">
             <div>
-              <h1 style={{ margin: 0, fontSize: '30px', fontWeight: 800 }}>
-                Slot Calendar View
-              </h1>
-              <p style={{ margin: '8px 0 0', opacity: 0.9 }}>
-                View and manage lecturer availability by date
+              <div className="sc-badge">📅 Smart Availability Calendar</div>
+              <h1>Slot Calendar View</h1>
+              <p>
+                View lecturer availability by date, manage daily slots, and update the schedule
+                from one professional calendar dashboard.
               </p>
+
+              <div className="sc-hero__actions">
+                <button
+                  type="button"
+                  className="sc-btn sc-btn--outline"
+                  onClick={() => navigate('/lecturer/slots')}
+                >
+                  ← Back to Slots
+                </button>
+
+                <button
+                  type="button"
+                  className="sc-btn sc-btn--soft"
+                  onClick={onLogout}
+                >
+                  Logout
+                </button>
+              </div>
             </div>
 
-            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-              <button
-                type="button"
-                style={whiteGlassButton}
-                onClick={() => navigate('/lecturer/slots')}
-              >
-                ← Back to Slots
-              </button>
+            <div className="sc-hero__avatar">{lecturerInitial}</div>
+          </div>
+        </section>
 
-              <button
-                type="button"
-                style={whiteGlassButton}
-                onClick={onLogout}
-              >
-                Logout
-              </button>
+        <section className="sc-stats">
+          <div className="sc-stat-card">
+            <div className="sc-stat-icon purple">📊</div>
+            <div>
+              <h3>{totalSlots}</h3>
+              <p>Total Slots</p>
             </div>
           </div>
-        </div>
-      </div>
 
-      <div style={{ ...innerContainer, padding: '24px' }}>
-        <div style={statsGrid}>
-          <div style={statCard}>
-            <div style={{ fontSize: '14px', color: '#64748b', marginBottom: '8px' }}>
-              Total Slots
+          <div className="sc-stat-card">
+            <div className="sc-stat-icon blue">🕒</div>
+            <div>
+              <h3>{todaySlots}</h3>
+              <p>Today&apos;s Slots</p>
             </div>
-            <div style={{ fontSize: '34px', fontWeight: 800 }}>{totalSlots}</div>
           </div>
 
-          <div style={statCard}>
-            <div style={{ fontSize: '14px', color: '#64748b', marginBottom: '8px' }}>
-              This Month
+          <div className="sc-stat-card">
+            <div className="sc-stat-icon green">✨</div>
+            <div>
+              <h3>{upcomingSlots}</h3>
+              <p>Upcoming Slots</p>
             </div>
-            <div style={{ fontSize: '34px', fontWeight: 800 }}>{thisMonthSlots}</div>
           </div>
 
-          <div style={statCard}>
-            <div style={{ fontSize: '14px', color: '#64748b', marginBottom: '8px' }}>
-              Today&apos;s Slots
+          <div className="sc-stat-card">
+            <div className="sc-stat-icon gray">⌛</div>
+            <div>
+              <h3>{pastSlots}</h3>
+              <p>Past Slots</p>
             </div>
-            <div style={{ fontSize: '34px', fontWeight: 800 }}>{todaySlots}</div>
           </div>
+        </section>
 
-          <div style={statCard}>
-            <div style={{ fontSize: '14px', color: '#64748b', marginBottom: '8px' }}>
-              Upcoming Slots
-            </div>
-            <div style={{ fontSize: '34px', fontWeight: 800 }}>{upcomingSlots}</div>
-          </div>
-        </div>
+        <section className="sc-grid">
+          <div className="sc-card">
+            <div className="sc-card__header">
+              <div className="sc-header-row">
+                <div>
+                  <h2>{monthLabel}</h2>
+                  <p className="sc-subtitle">Click a date to review or manage its availability.</p>
+                </div>
 
-        <div style={contentGrid}>
-          <div style={panelCard}>
-            <div style={panelHeader}>
-              <div
-                style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  gap: '12px',
-                  flexWrap: 'wrap',
-                }}
-              >
-                <h2 style={{ margin: 0, fontSize: '20px' }}>{monthLabel}</h2>
-
-                <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-                  <button
-                    type="button"
-                    style={{ ...buttonBase, background: '#ede9fe', color: '#6d28d9' }}
-                    onClick={goToPreviousMonth}
-                  >
+                <div className="sc-month-actions">
+                  <button type="button" className="sc-btn sc-btn--ghost" onClick={goToPreviousMonth}>
                     ← Prev
                   </button>
-
-                  <button
-                    type="button"
-                    style={{ ...buttonBase, background: '#ede9fe', color: '#6d28d9' }}
-                    onClick={goToToday}
-                  >
+                  <button type="button" className="sc-btn sc-btn--ghost" onClick={goToToday}>
                     Today
                   </button>
-
-                  <button
-                    type="button"
-                    style={{ ...buttonBase, background: '#ede9fe', color: '#6d28d9' }}
-                    onClick={goToNextMonth}
-                  >
+                  <button type="button" className="sc-btn sc-btn--ghost" onClick={goToNextMonth}>
                     Next →
                   </button>
                 </div>
               </div>
 
-              <div style={{ display: 'flex', gap: '10px', marginTop: '18px', flexWrap: 'wrap' }}>
+              <div className="sc-filter-row">
                 {['All', 'Today', 'Upcoming', 'Past'].map((item) => (
                   <button
                     key={item}
                     type="button"
                     onClick={() => setFilter(item)}
-                    style={{
-                      ...buttonBase,
-                      padding: '10px 16px',
-                      background: filter === item ? '#8b5cf6' : '#f3f4f6',
-                      color: filter === item ? '#fff' : '#475569',
-                      boxShadow: filter === item ? '0 8px 18px rgba(139, 92, 246, 0.25)' : 'none',
-                    }}
+                    className={`sc-filter-btn ${filter === item ? 'active' : ''}`}
                   >
                     {item}
                   </button>
                 ))}
               </div>
 
-              <div
-                style={{
-                  display: 'flex',
-                  gap: '16px',
-                  flexWrap: 'wrap',
-                  marginTop: '18px',
-                  fontSize: '13px',
-                  color: '#475569',
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: '#eff6ff', padding: '8px 12px', borderRadius: '999px', border: '1px solid #bfdbfe' }}>
-                  <span style={{ width: 14, height: 14, borderRadius: 999, background: '#2563eb', display: 'inline-block' }} />
-                  Today
-                </div>
-
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: '#ecfdf5', padding: '8px 12px', borderRadius: '999px', border: '1px solid #a7f3d0' }}>
-                  <span style={{ width: 14, height: 14, borderRadius: 999, background: '#16a34a', display: 'inline-block' }} />
-                  Upcoming
-                </div>
-
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: '#f8fafc', padding: '8px 12px', borderRadius: '999px', border: '1px solid #cbd5e1' }}>
-                  <span style={{ width: 14, height: 14, borderRadius: 999, background: '#64748b', display: 'inline-block' }} />
-                  Past
-                </div>
-
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: '#faf5ff', padding: '8px 12px', borderRadius: '999px', border: '1px solid #d8b4fe' }}>
-                  <span style={{ width: 14, height: 14, borderRadius: 999, background: '#8b5cf6', display: 'inline-block' }} />
-                  Selected
-                </div>
+              <div className="sc-legend-row">
+                <div className="sc-legend-pill today"><span />Today</div>
+                <div className="sc-legend-pill upcoming"><span />Upcoming</div>
+                <div className="sc-legend-pill past"><span />Past</div>
+                <div className="sc-legend-pill selected"><span />Selected</div>
               </div>
             </div>
 
-            <div style={panelBody}>
+            <div className="sc-card__body">
               {loading ? (
-                <p style={{ margin: 0 }}>Loading calendar...</p>
+                <div className="sc-empty">Loading calendar...</div>
               ) : error ? (
-                <p style={{ margin: 0, color: '#dc2626' }}>{error}</p>
+                <div className="sc-error">{error}</div>
               ) : (
                 <>
-                  <div
-                    style={{
-                      display: 'grid',
-                      gridTemplateColumns: 'repeat(7, 1fr)',
-                      gap: '10px',
-                      marginBottom: '12px',
-                    }}
-                  >
+                  <div className="sc-days-header">
                     {dayNames.map((day) => (
-                      <div
-                        key={day}
-                        style={{
-                          textAlign: 'center',
-                          fontWeight: 700,
-                          color: '#64748b',
-                          padding: '10px 0',
-                        }}
-                      >
+                      <div key={day} className="sc-day-name">
                         {day}
                       </div>
                     ))}
                   </div>
 
-                  <div
-                    style={{
-                      display: 'grid',
-                      gridTemplateColumns: 'repeat(7, 1fr)',
-                      gap: '10px',
-                    }}
-                  >
+                  <div className="sc-calendar-grid">
                     {calendarDays.map((dateObj, index) => {
                       if (!dateObj) {
-                        return (
-                          <div
-                            key={`empty-${index}`}
-                            style={{
-                              minHeight: '130px',
-                              background: '#f8fafc',
-                              borderRadius: '18px',
-                            }}
-                          />
-                        );
+                        return <div key={`empty-${index}`} className="sc-calendar-empty" />;
                       }
 
                       const key = dateToKey(dateObj);
@@ -844,116 +681,38 @@ export default function SlotCalendarPage({ currentUser, onLogout }) {
                         <button
                           type="button"
                           key={key}
-                          onClick={() => openDateModal(dateObj)}
-                          style={{
-                            minHeight: '130px',
-                            borderRadius: '18px',
-                            border: isSelected
-                              ? '2px solid #8b5cf6'
-                              : isToday
-                              ? '2px solid #93c5fd'
-                              : '1px solid #e5e7eb',
-                            background: isSelected
-                              ? 'linear-gradient(180deg, #faf5ff 0%, #ffffff 100%)'
-                              : isToday
-                              ? 'linear-gradient(180deg, #eff6ff 0%, #ffffff 100%)'
-                              : '#fff',
-                            textAlign: 'left',
-                            padding: '12px',
-                            cursor: 'pointer',
-                            boxShadow: isSelected
-                              ? '0 10px 20px rgba(139, 92, 246, 0.12)'
-                              : isToday
-                              ? '0 8px 16px rgba(37, 99, 235, 0.10)'
-                              : 'none',
-                          }}
+                          onClick={() => setSelectedDate(dateObj)}
+                          className={`sc-day-card ${isToday ? 'today' : ''} ${isSelected ? 'selected' : ''} ${daySlots.length > 0 ? 'has-slots' : 'empty-day'}`}
                         >
-                          <div
-                            style={{
-                              display: 'flex',
-                              justifyContent: 'space-between',
-                              alignItems: 'center',
-                              marginBottom: '10px',
-                            }}
-                          >
-                            <span style={{ fontWeight: 800, color: '#0f172a' }}>
-                              {dateObj.getDate()}
-                            </span>
+                          <div className="sc-day-card__top">
+                            <span className="sc-day-number">{dateObj.getDate()}</span>
 
                             {isSelected ? (
-                              <span
-                                style={{
-                                  fontSize: '11px',
-                                  fontWeight: 700,
-                                  background: '#ede9fe',
-                                  color: '#6d28d9',
-                                  padding: '4px 8px',
-                                  borderRadius: '999px',
-                                  border: '1px solid #d8b4fe',
-                                }}
-                              >
-                                Selected
-                              </span>
+                              <span className="sc-mini-badge selected">Selected</span>
                             ) : isToday ? (
-                              <span
-                                style={{
-                                  fontSize: '11px',
-                                  fontWeight: 700,
-                                  background: '#dbeafe',
-                                  color: '#1d4ed8',
-                                  padding: '4px 8px',
-                                  borderRadius: '999px',
-                                  border: '1px solid #93c5fd',
-                                }}
-                              >
-                                Today
-                              </span>
+                              <span className="sc-mini-badge today">Today</span>
                             ) : null}
                           </div>
 
-                          <div style={{ fontSize: '13px', color: '#64748b', marginBottom: '8px', fontWeight: 600 }}>
+                          <div className="sc-day-slot-count">
                             {daySlots.length} slot{daySlots.length !== 1 ? 's' : ''}
                           </div>
 
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                            {daySlots.slice(0, 2).map((slot) => {
-                              const status = getStatus(slot.slotDate);
-                              const statusStyles = getStatusColors(status);
-
-                              return (
-                                <div
-                                  key={slot.id}
-                                  style={{
-                                    background: '#f8fafc',
-                                    borderRadius: '10px',
-                                    padding: '6px 8px',
-                                    border: '1px solid #e2e8f0',
-                                  }}
-                                >
-                                  <div style={{ fontSize: '12px', fontWeight: 700, color: '#1e293b' }}>
-                                    {formatTimeDisplay(slot.startTime)} - {formatTimeDisplay(slot.endTime)}
-                                  </div>
-                                  <div
-                                    style={{
-                                      marginTop: '4px',
-                                      display: 'inline-block',
-                                      fontSize: '11px',
-                                      fontWeight: 700,
-                                      padding: '3px 8px',
-                                      borderRadius: '999px',
-                                      ...statusStyles,
-                                    }}
-                                  >
-                                    {status}
-                                  </div>
+                          <div className="sc-day-slot-preview">
+                            {daySlots.slice(0, 2).map((slot) => (
+                              <div key={slot.id} className={`sc-slot-chip ${getSlotAccentClass(slot.slotDate)}`}>
+                                <div className="sc-slot-chip__top-line" />
+                                <div className="sc-slot-chip__time">
+                                  {formatTimeDisplay(slot.startTime)} - {formatTimeDisplay(slot.endTime)}
                                 </div>
-                              );
-                            })}
+                                <div className={`sc-slot-chip__status ${getStatus(slot.slotDate).toLowerCase()}`}>
+                                  {getStatus(slot.slotDate)}
+                                </div>
+                              </div>
+                            ))}
 
                             {daySlots.length > 2 && (
-                              <div style={{ fontSize: '12px', fontWeight: 700, color: '#7c3aed' }}>
-                                +{daySlots.length - 2} more
-                              </div>
+                              <div className="sc-more-text">+{daySlots.length - 2} more</div>
                             )}
                           </div>
                         </button>
@@ -965,661 +724,104 @@ export default function SlotCalendarPage({ currentUser, onLogout }) {
             </div>
           </div>
 
-          <div style={panelCard}>
-            <div style={panelHeader}>
-              <h2 style={{ margin: 0, fontSize: '20px' }}>Selected Date Details</h2>
-            </div>
-
-            <div style={panelBody}>
-              <div style={{ marginBottom: '18px' }}>
-                <div style={{ fontSize: '14px', color: '#64748b', marginBottom: '6px' }}>
-                  Date
-                </div>
-                <div style={{ fontSize: '22px', fontWeight: 800 }}>
-                  {selectedDate.toDateString()}
-                </div>
-              </div>
-
-              <div style={{ marginBottom: '12px' }}>
-                <span
-                  style={{
-                    display: 'inline-block',
-                    padding: '6px 12px',
-                    borderRadius: '999px',
-                    fontSize: '12px',
-                    fontWeight: 700,
-                    ...selectedDateStatusStyle,
-                  }}
-                >
-                  {selectedDateStatus}
-                </span>
-              </div>
-
-              <div style={{ marginBottom: '18px' }}>
-                <div style={{ fontSize: '14px', color: '#64748b', marginBottom: '6px' }}>
-                  Lecturer
-                </div>
-                <div style={{ fontSize: '16px', fontWeight: 700 }}>
-                  {currentUser?.name || 'Lecturer'}
-                </div>
-              </div>
-
-              <div style={capacityCardGrid}>
-                <div
-                  style={{
-                    ...capacityBaseCard,
-                    background: 'linear-gradient(180deg, #ede9fe 0%, #faf5ff 100%)',
-                    borderColor: '#d8b4fe',
-                  }}
-                >
-                  <div style={{ fontSize: '12px', color: '#6d28d9', fontWeight: 700, marginBottom: '8px' }}>
-                    Daily Limit
-                  </div>
-                  <div style={{ fontSize: '28px', fontWeight: 900, color: '#581c87' }}>
-                    {MAX_SLOTS_PER_DAY}
-                  </div>
-                </div>
-
-                <div
-                  style={{
-                    ...capacityBaseCard,
-                    background: 'linear-gradient(180deg, #dbeafe 0%, #eff6ff 100%)',
-                    borderColor: '#93c5fd',
-                  }}
-                >
-                  <div style={{ fontSize: '12px', color: '#1d4ed8', fontWeight: 700, marginBottom: '8px' }}>
-                    Used Slots
-                  </div>
-                  <div style={{ fontSize: '28px', fontWeight: 900, color: '#1e3a8a' }}>
-                    {usedSlotsForDay}
-                  </div>
-                </div>
-
-                <div
-                  style={{
-                    ...capacityBaseCard,
-                    background: 'linear-gradient(180deg, #dcfce7 0%, #f0fdf4 100%)',
-                    borderColor: '#86efac',
-                  }}
-                >
-                  <div style={{ fontSize: '12px', color: '#15803d', fontWeight: 700, marginBottom: '8px' }}>
-                    Remaining
-                  </div>
-                  <div style={{ fontSize: '28px', fontWeight: 900, color: '#166534' }}>
-                    {remainingSlotsForDay}
-                  </div>
-                </div>
-              </div>
-
-              <div
-                style={{
-                  marginBottom: '20px',
-                  padding: '14px 16px',
-                  borderRadius: '16px',
-                  background: '#f8fafc',
-                  border: '1px solid #e2e8f0',
-                }}
-              >
-                <div style={{ fontSize: '13px', color: '#64748b', marginBottom: '8px', fontWeight: 700 }}>
-                  Daily Capacity Overview
-                </div>
-                <div
-                  style={{
-                    width: '100%',
-                    height: '12px',
-                    background: '#e2e8f0',
-                    borderRadius: '999px',
-                    overflow: 'hidden',
-                    marginBottom: '10px',
-                  }}
-                >
-                  <div
-                    style={{
-                      width: `${(usedSlotsForDay / MAX_SLOTS_PER_DAY) * 100}%`,
-                      height: '100%',
-                      background: usedSlotsForDay >= MAX_SLOTS_PER_DAY ? '#ef4444' : '#8b5cf6',
-                      borderRadius: '999px',
-                      transition: 'width 0.3s ease',
-                    }}
-                  />
-                </div>
-                <div style={{ fontSize: '13px', color: '#475569' }}>
-                  {usedSlotsForDay} of {MAX_SLOTS_PER_DAY} daily slots used
-                </div>
-              </div>
-
-              <div
-                style={{
-                  background: '#f8fafc',
-                  borderRadius: '18px',
-                  padding: '16px',
-                  marginBottom: '20px',
-                }}
-              >
-                <div style={{ fontWeight: 800, marginBottom: '12px' }}>This Week Summary</div>
-                <div style={{ display: 'grid', gap: '8px', color: '#475569' }}>
-                  <div>Total weekly slots: <strong>{thisWeekSlots.length}</strong></div>
-                  <div>Today in this week: <strong>{thisWeekTodaySlots}</strong></div>
-                  <div>Upcoming in this week: <strong>{thisWeekUpcomingSlots}</strong></div>
-                </div>
-              </div>
-
-              <div
-                style={{
-                  background: '#faf5ff',
-                  borderRadius: '18px',
-                  padding: '16px',
-                  marginBottom: '20px',
-                  border: '1px solid #e9d5ff',
-                }}
-              >
-                <div style={{ fontWeight: 800, marginBottom: '12px', color: '#6b21a8' }}>
-                  Quick Add Slot
-                </div>
-
-                <div
-                  style={{
-                    marginBottom: '12px',
-                    padding: '10px 12px',
-                    borderRadius: '12px',
-                    background: '#f8fafc',
-                    border: '1px solid #e2e8f0',
-                    fontSize: '13px',
-                    color: '#475569',
-                    lineHeight: 1.6,
-                  }}
-                >
-                  <div><strong>Allowed hours:</strong> {DAY_START} - {DAY_END}</div>
-                  <div><strong>Slot duration:</strong> {SLOT_DURATION_MINUTES} mins</div>
-                  <div><strong>Minimum break:</strong> {BREAK_MINUTES} mins</div>
-                  <div><strong>Maximum slots per day:</strong> {MAX_SLOTS_PER_DAY}</div>
-                  <div><strong>Remaining slots for this date:</strong> {remainingSlotsForDay}</div>
-                </div>
-
-                {isPastDate(selectedDateKey) && (
-                  <div
-                    style={{
-                      marginBottom: '12px',
-                      padding: '10px 12px',
-                      borderRadius: '12px',
-                      background: '#fff7ed',
-                      color: '#c2410c',
-                      border: '1px solid #fdba74',
-                      fontSize: '13px',
-                      fontWeight: 600,
-                    }}
-                  >
-                    You cannot add new slots to a past date.
-                  </div>
-                )}
-
-                {selectedDateAllSlots.length >= MAX_SLOTS_PER_DAY && !isPastDate(selectedDateKey) && (
-                  <div
-                    style={{
-                      marginBottom: '12px',
-                      padding: '10px 12px',
-                      borderRadius: '12px',
-                      background: '#fef2f2',
-                      color: '#b91c1c',
-                      border: '1px solid #fecaca',
-                      fontSize: '13px',
-                      fontWeight: 600,
-                    }}
-                  >
-                    Maximum slots reached for this date.
-                  </div>
-                )}
-
-                <div style={{ display: 'grid', gap: '12px' }}>
-                  <div>
-                    <label
-                      style={{
-                        display: 'block',
-                        marginBottom: '6px',
-                        fontSize: '13px',
-                        color: '#64748b',
-                      }}
-                    >
-                      Start Time
-                    </label>
-                    <select
-                      value={quickAddStartTime}
-                      onChange={(e) => handleQuickAddStartTimeChange(e.target.value)}
-                      style={inputStyle}
-                      disabled={isPastDate(selectedDateKey) || selectedDateAllSlots.length >= MAX_SLOTS_PER_DAY}
-                    >
-                      <option value="">Select valid time</option>
-                      {validQuickAddStartTimes.map((time) => (
-                        <option key={time} value={time}>
-                          {time}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div>
-                    <label
-                      style={{
-                        display: 'block',
-                        marginBottom: '6px',
-                        fontSize: '13px',
-                        color: '#64748b',
-                      }}
-                    >
-                      End Time
-                    </label>
-                    <input
-                      type="time"
-                      value={quickAddEndTime}
-                      readOnly
-                      style={{ ...inputStyle, background: '#f8fafc' }}
-                    />
-                  </div>
-
-                  {quickAddStartTime && quickAddEndTime && (
-                    <div
-                      style={{
-                        padding: '10px 12px',
-                        borderRadius: '12px',
-                        background: '#f8fafc',
-                        border: '1px solid #e2e8f0',
-                        fontSize: '13px',
-                        color: '#475569',
-                      }}
-                    >
-                      Duration:{' '}
-                      <strong>
-                        {getDurationMinutes(
-                          normalizeTime(quickAddStartTime),
-                          normalizeTime(quickAddEndTime)
-                        )}{' '}
-                        mins
-                      </strong>
-                    </div>
-                  )}
-
-                  <button
-                    type="button"
-                    onClick={handleQuickAddSlot}
-                    disabled={
-                      addingSlot ||
-                      isPastDate(selectedDateKey) ||
-                      selectedDateAllSlots.length >= MAX_SLOTS_PER_DAY
-                    }
-                    style={{
-                      ...buttonBase,
-                      background:
-                        addingSlot ||
-                        isPastDate(selectedDateKey) ||
-                        selectedDateAllSlots.length >= MAX_SLOTS_PER_DAY
-                          ? '#c4b5fd'
-                          : '#8b5cf6',
-                      color: '#fff',
-                      width: '100%',
-                    }}
-                  >
-                    {addingSlot ? 'Adding...' : 'Add Slot for Selected Date'}
-                  </button>
-                </div>
-              </div>
-
-              {selectedDateSlots.length === 0 ? (
-                <div
-                  style={{
-                    background: '#f8fafc',
-                    borderRadius: '18px',
-                    padding: '18px',
-                    color: '#64748b',
-                    lineHeight: 1.6,
-                  }}
-                >
-                  No slots available for this date.
-                </div>
-              ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                  {selectedDateSlots.map((slot) => {
-                    const status = getStatus(slot.slotDate);
-                    const statusStyles = getStatusColors(status);
-                    const duration = getDurationMinutes(slot.startTime, slot.endTime);
-
-                    return (
-                      <div
-                        key={slot.id}
-                        style={{
-                          border: '1px solid #e5e7eb',
-                          borderRadius: '18px',
-                          padding: '16px',
-                          background: '#fff',
-                        }}
-                      >
-                        <div
-                          style={{
-                            display: 'flex',
-                            justifyContent: 'space-between',
-                            gap: '10px',
-                            alignItems: 'flex-start',
-                            flexWrap: 'wrap',
-                          }}
-                        >
-                          <div>
-                            <div style={{ fontSize: '18px', fontWeight: 800, marginBottom: '8px' }}>
-                              {formatTimeDisplay(slot.startTime)} - {formatTimeDisplay(slot.endTime)}
-                            </div>
-
-                            <div style={{ color: '#64748b', marginBottom: '8px' }}>
-                              Duration: {duration} mins
-                            </div>
-
-                            <span
-                              style={{
-                                display: 'inline-block',
-                                padding: '5px 10px',
-                                borderRadius: '999px',
-                                fontSize: '12px',
-                                fontWeight: 700,
-                                ...statusStyles,
-                              }}
-                            >
-                              {status}
-                            </span>
-                          </div>
-
-                          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                            <button
-                              type="button"
-                              onClick={() => openEditModal(slot)}
-                              style={{
-                                ...buttonBase,
-                                background: '#ede9fe',
-                                color: '#6d28d9',
-                                padding: '10px 14px',
-                              }}
-                            >
-                              Edit
-                            </button>
-
-                            <button
-                              type="button"
-                              onClick={() => handleDelete(slot.id)}
-                              style={{
-                                ...buttonBase,
-                                background: '#fee2e2',
-                                color: '#dc2626',
-                                padding: '10px 14px',
-                              }}
-                            >
-                              Delete
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-
-              <div
-                style={{
-                  marginTop: '20px',
-                  background: '#eff6ff',
-                  borderRadius: '18px',
-                  padding: '16px',
-                  color: '#1d4ed8',
-                  lineHeight: 1.6,
-                }}
-              >
-                Tip: The highlighted cards now clearly show daily limit, used slots, and remaining capacity for the selected date.
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {dateModalOpen && (
-        <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            background: 'rgba(15, 23, 42, 0.45)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: '20px',
-            zIndex: 999,
-          }}
-        >
-          <div
-            style={{
-              width: '100%',
-              maxWidth: '720px',
-              maxHeight: '90vh',
-              overflowY: 'auto',
-              background: '#fff',
-              borderRadius: '24px',
-              boxShadow: '0 20px 50px rgba(0,0,0,0.18)',
-            }}
-          >
-            <div
-              style={{
-                padding: '20px 24px',
-                borderBottom: '1px solid #e5e7eb',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                gap: '10px',
-              }}
-            >
+          <div className="sc-card sc-side-card">
+            <div className="sc-card__header">
               <div>
-                <h3 style={{ margin: 0, fontSize: '22px' }}>Slot Details</h3>
-                <p style={{ margin: '6px 0 0', color: '#64748b' }}>
-                  {selectedDate.toDateString()}
-                </p>
+                <h2>Selected Date Details</h2>
+                <p className="sc-subtitle">Quick review and slot management for the chosen date.</p>
               </div>
-
-              <button
-                type="button"
-                onClick={closeDateModal}
-                style={{
-                  ...buttonBase,
-                  background: '#f3f4f6',
-                  color: '#475569',
-                  padding: '10px 14px',
-                }}
-              >
-                Close
-              </button>
             </div>
 
-            <div style={{ padding: '24px' }}>
-              <div style={capacityCardGrid}>
-                <div
-                  style={{
-                    ...capacityBaseCard,
-                    background: 'linear-gradient(180deg, #ede9fe 0%, #faf5ff 100%)',
-                    borderColor: '#d8b4fe',
-                  }}
-                >
-                  <div style={{ fontSize: '12px', color: '#6d28d9', fontWeight: 700, marginBottom: '8px' }}>
-                    Daily Limit
-                  </div>
-                  <div style={{ fontSize: '28px', fontWeight: 900, color: '#581c87' }}>
-                    {MAX_SLOTS_PER_DAY}
-                  </div>
+            <div className="sc-card__body">
+              {banner.text ? (
+                <div className={`sc-banner ${banner.type === 'error' ? 'error' : 'success'}`}>
+                  {banner.text}
+                </div>
+              ) : null}
+
+              <div className="sc-info-panel">
+                <div className="sc-label">Date</div>
+                <div className="sc-big-date">{formatLongDate(selectedDate)}</div>
+
+                <div className={`sc-status-badge ${selectedDateStatus.toLowerCase()}`}>
+                  {selectedDateStatus}
                 </div>
 
-                <div
-                  style={{
-                    ...capacityBaseCard,
-                    background: 'linear-gradient(180deg, #dbeafe 0%, #eff6ff 100%)',
-                    borderColor: '#93c5fd',
-                  }}
-                >
-                  <div style={{ fontSize: '12px', color: '#1d4ed8', fontWeight: 700, marginBottom: '8px' }}>
-                    Used Slots
+                <div className="sc-capacity-grid">
+                  <div className="sc-capacity-card purple">
+                    <div className="sc-capacity-label">Daily Limit</div>
+                    <div className="sc-capacity-number">{MAX_SLOTS_PER_DAY}</div>
                   </div>
-                  <div style={{ fontSize: '28px', fontWeight: 900, color: '#1e3a8a' }}>
-                    {usedSlotsForDay}
-                  </div>
-                </div>
 
-                <div
-                  style={{
-                    ...capacityBaseCard,
-                    background: 'linear-gradient(180deg, #dcfce7 0%, #f0fdf4 100%)',
-                    borderColor: '#86efac',
-                  }}
-                >
-                  <div style={{ fontSize: '12px', color: '#15803d', fontWeight: 700, marginBottom: '8px' }}>
-                    Remaining
+                  <div className="sc-capacity-card blue">
+                    <div className="sc-capacity-label">Used Slots</div>
+                    <div className="sc-capacity-number">{usedSlotsForDay}</div>
                   </div>
-                  <div style={{ fontSize: '28px', fontWeight: 900, color: '#166534' }}>
-                    {remainingSlotsForDay}
+
+                  <div className="sc-capacity-card green">
+                    <div className="sc-capacity-label">Remaining</div>
+                    <div className="sc-capacity-number">{remainingSlotsForDay}</div>
                   </div>
                 </div>
               </div>
 
-              <div
-                style={{
-                  background: '#faf5ff',
-                  borderRadius: '18px',
-                  padding: '16px',
-                  marginBottom: '20px',
-                  border: '1px solid #e9d5ff',
-                }}
-              >
-                <div style={{ fontWeight: 800, marginBottom: '12px', color: '#6b21a8' }}>
-                  Quick Add Slot
-                </div>
+              <div className="sc-quick-add">
+                <div className="sc-panel-title">Quick Add Slot</div>
 
-                <div
-                  style={{
-                    marginBottom: '12px',
-                    padding: '10px 12px',
-                    borderRadius: '12px',
-                    background: '#f8fafc',
-                    border: '1px solid #e2e8f0',
-                    fontSize: '13px',
-                    color: '#475569',
-                    lineHeight: 1.6,
-                  }}
-                >
+                <div className="sc-quick-add__rules">
                   <div><strong>Allowed hours:</strong> {DAY_START} - {DAY_END}</div>
                   <div><strong>Slot duration:</strong> {SLOT_DURATION_MINUTES} mins</div>
                   <div><strong>Minimum break:</strong> {BREAK_MINUTES} mins</div>
-                  <div><strong>Maximum slots per day:</strong> {MAX_SLOTS_PER_DAY}</div>
-                  <div><strong>Remaining slots for this date:</strong> {remainingSlotsForDay}</div>
+                  <div><strong>Selected date:</strong> {selectedDateKey}</div>
                 </div>
 
                 {isPastDate(selectedDateKey) && (
-                  <div
-                    style={{
-                      marginBottom: '12px',
-                      padding: '10px 12px',
-                      borderRadius: '12px',
-                      background: '#fff7ed',
-                      color: '#c2410c',
-                      border: '1px solid #fdba74',
-                      fontSize: '13px',
-                      fontWeight: 600,
-                    }}
-                  >
+                  <div className="sc-alert warning">
                     You cannot add new slots to a past date.
                   </div>
                 )}
 
-                {selectedDateAllSlots.length >= MAX_SLOTS_PER_DAY && !isPastDate(selectedDateKey) && (
-                  <div
-                    style={{
-                      marginBottom: '12px',
-                      padding: '10px 12px',
-                      borderRadius: '12px',
-                      background: '#fef2f2',
-                      color: '#b91c1c',
-                      border: '1px solid #fecaca',
-                      fontSize: '13px',
-                      fontWeight: 600,
-                    }}
-                  >
+                {selectedDateSlots.length >= MAX_SLOTS_PER_DAY && !isPastDate(selectedDateKey) && (
+                  <div className="sc-alert danger">
                     Maximum slots reached for this date.
                   </div>
                 )}
 
-                <div
-                  style={{
-                    display: 'grid',
-                    gridTemplateColumns: '1fr 1fr auto',
-                    gap: '12px',
-                  }}
-                >
-                  <div>
-                    <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', color: '#64748b' }}>
-                      Start Time
-                    </label>
-                    <select
-                      value={quickAddStartTime}
-                      onChange={(e) => handleQuickAddStartTimeChange(e.target.value)}
-                      style={inputStyle}
-                      disabled={isPastDate(selectedDateKey) || selectedDateAllSlots.length >= MAX_SLOTS_PER_DAY}
-                    >
-                      <option value="">Select valid time</option>
-                      {validQuickAddStartTimes.map((time) => (
-                        <option key={time} value={time}>
-                          {time}
-                        </option>
-                      ))}
-                    </select>
+                {isTodayKey(selectedDateKey) && !isPastDate(selectedDateKey) && (
+                  <div className="sc-alert info">
+                    Only future time slots are available for today.
                   </div>
+                )}
 
-                  <div>
-                    <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', color: '#64748b' }}>
-                      End Time
-                    </label>
-                    <input
-                      type="time"
-                      value={quickAddEndTime}
-                      readOnly
-                      style={{ ...inputStyle, background: '#f8fafc' }}
-                    />
-                  </div>
+                <div className="sc-field">
+                  <label>Start Time</label>
+                  <select
+                    className="sc-input"
+                    value={quickAddStartTime}
+                    onChange={(e) => handleQuickAddStartTimeChange(e.target.value)}
+                    disabled={isPastDate(selectedDateKey) || selectedDateSlots.length >= MAX_SLOTS_PER_DAY}
+                  >
+                    <option value="">Select valid time</option>
+                    {validQuickAddStartTimes.map((time) => (
+                      <option key={time} value={time}>
+                        {time}
+                      </option>
+                    ))}
+                  </select>
+                </div>
 
-                  <div style={{ display: 'flex', alignItems: 'end' }}>
-                    <button
-                      type="button"
-                      onClick={handleQuickAddSlot}
-                      disabled={
-                        addingSlot ||
-                        isPastDate(selectedDateKey) ||
-                        selectedDateAllSlots.length >= MAX_SLOTS_PER_DAY
-                      }
-                      style={{
-                        ...buttonBase,
-                        background:
-                          addingSlot ||
-                          isPastDate(selectedDateKey) ||
-                          selectedDateAllSlots.length >= MAX_SLOTS_PER_DAY
-                            ? '#c4b5fd'
-                            : '#8b5cf6',
-                        color: '#fff',
-                        width: '100%',
-                      }}
-                    >
-                      {addingSlot ? 'Adding...' : 'Add Slot'}
-                    </button>
-                  </div>
+                <div className="sc-field">
+                  <label>End Time</label>
+                  <input
+                    className="sc-input readonly"
+                    type="time"
+                    value={quickAddEndTime}
+                    readOnly
+                  />
                 </div>
 
                 {quickAddStartTime && quickAddEndTime && (
-                  <div
-                    style={{
-                      marginTop: '12px',
-                      padding: '10px 12px',
-                      borderRadius: '12px',
-                      background: '#f8fafc',
-                      border: '1px solid #e2e8f0',
-                      fontSize: '13px',
-                      color: '#475569',
-                    }}
-                  >
+                  <div className="sc-duration-box">
                     Duration:{' '}
                     <strong>
                       {getDurationMinutes(
@@ -1630,148 +832,107 @@ export default function SlotCalendarPage({ currentUser, onLogout }) {
                     </strong>
                   </div>
                 )}
+
+                <button
+                  type="button"
+                  onClick={handleQuickAddSlot}
+                  disabled={
+                    addingSlot ||
+                    isPastDate(selectedDateKey) ||
+                    selectedDateSlots.length >= MAX_SLOTS_PER_DAY
+                  }
+                  className="sc-btn sc-btn--primary sc-btn--full"
+                >
+                  {addingSlot ? 'Adding...' : 'Add Slot'}
+                </button>
               </div>
 
-              {selectedDateSlots.length === 0 ? (
-                <div
-                  style={{
-                    background: '#f8fafc',
-                    borderRadius: '18px',
-                    padding: '18px',
-                    color: '#64748b',
-                    lineHeight: 1.6,
-                  }}
-                >
-                  No slots available for this date.
-                </div>
-              ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                  {selectedDateSlots.map((slot) => {
-                    const status = getStatus(slot.slotDate);
-                    const statusStyles = getStatusColors(status);
-                    const duration = getDurationMinutes(slot.startTime, slot.endTime);
+              <div className="sc-slots-section">
+                <div className="sc-panel-title">Slots for Selected Date</div>
 
-                    return (
-                      <div
-                        key={slot.id}
-                        style={{
-                          border: '1px solid #e5e7eb',
-                          borderRadius: '18px',
-                          padding: '16px',
-                          background: '#fff',
-                        }}
-                      >
-                        <div
-                          style={{
-                            display: 'flex',
-                            justifyContent: 'space-between',
-                            gap: '10px',
-                            alignItems: 'flex-start',
-                            flexWrap: 'wrap',
-                          }}
-                        >
-                          <div>
-                            <div style={{ fontSize: '18px', fontWeight: 800, marginBottom: '8px' }}>
+                {selectedDateSlots.length === 0 ? (
+                  <div className="sc-empty-card">No slots available for this date.</div>
+                ) : (
+                  <div className="sc-selected-slots">
+                    {selectedDateSlots.map((slot) => {
+                      const status = getStatus(slot.slotDate);
+                      const duration = getDurationMinutes(slot.startTime, slot.endTime);
+                      const isPast = status === 'Past';
+
+                      return (
+                        <div key={slot.id} className={`sc-selected-slot-card ${status.toLowerCase()}`}>
+                          <div className={`sc-selected-slot-accent ${status.toLowerCase()}`} />
+
+                          <div className="sc-selected-slot-main">
+                            <div className="sc-selected-slot-time">
                               {formatTimeDisplay(slot.startTime)} - {formatTimeDisplay(slot.endTime)}
                             </div>
-
-                            <div style={{ color: '#64748b', marginBottom: '8px' }}>
+                            <div className="sc-selected-slot-duration">
                               Duration: {duration} mins
                             </div>
-
-                            <span
-                              style={{
-                                display: 'inline-block',
-                                padding: '5px 10px',
-                                borderRadius: '999px',
-                                fontSize: '12px',
-                                fontWeight: 700,
-                                ...statusStyles,
-                              }}
-                            >
+                            <span className={`sc-status-badge ${status.toLowerCase()}`}>
                               {status}
                             </span>
                           </div>
 
-                          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                          <div className="sc-selected-slot-actions">
                             <button
                               type="button"
+                              className="sc-action-btn view"
+                              onClick={() => openViewModal(slot)}
+                            >
+                              View
+                            </button>
+
+                            <button
+                              type="button"
+                              className="sc-action-btn edit"
                               onClick={() => openEditModal(slot)}
-                              style={{
-                                ...buttonBase,
-                                background: '#ede9fe',
-                                color: '#6d28d9',
-                                padding: '10px 14px',
-                              }}
+                              disabled={isPast}
                             >
                               Edit
                             </button>
 
                             <button
                               type="button"
-                              onClick={() => handleDelete(slot.id)}
-                              style={{
-                                ...buttonBase,
-                                background: '#fee2e2',
-                                color: '#dc2626',
-                                padding: '10px 14px',
-                              }}
+                              className="sc-action-btn delete"
+                              onClick={() => handleDelete(slot.id, slot.slotDate)}
+                              disabled={isPast}
                             >
                               Delete
                             </button>
                           </div>
                         </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        </section>
+      </div>
 
       {editModalOpen && (
-        <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            background: 'rgba(15, 23, 42, 0.45)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: '20px',
-            zIndex: 1000,
-          }}
-        >
-          <div
-            style={{
-              width: '100%',
-              maxWidth: '460px',
-              background: '#fff',
-              borderRadius: '24px',
-              boxShadow: '0 20px 50px rgba(0,0,0,0.18)',
-              overflow: 'hidden',
-            }}
-          >
-            <div
-              style={{
-                padding: '20px 24px',
-                borderBottom: '1px solid #e5e7eb',
-              }}
-            >
-              <h3 style={{ margin: 0, fontSize: '22px' }}>Edit Slot</h3>
+        <div className="sc-modal-overlay" onClick={closeEditModal}>
+          <div className="sc-modal sc-modal--small" onClick={(e) => e.stopPropagation()}>
+            <div className="sc-modal__header">
+              <div>
+                <h3>Edit Slot</h3>
+                <p>{editingSlot?.slotDate}</p>
+              </div>
+              <button type="button" className="sc-modal__close" onClick={closeEditModal}>
+                ✕
+              </button>
             </div>
 
-            <div style={{ padding: '24px', display: 'grid', gap: '16px' }}>
-              <div>
-                <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', color: '#64748b' }}>
-                  Start Time
-                </label>
+            <div className="sc-modal__body">
+              <div className="sc-field">
+                <label>Start Time</label>
                 <select
+                  className="sc-input"
                   value={editStartTime}
                   onChange={(e) => handleEditStartTimeChange(e.target.value)}
-                  style={inputStyle}
                 >
                   <option value="">Select valid time</option>
                   {validEditStartTimes.map((time) => (
@@ -1782,29 +943,18 @@ export default function SlotCalendarPage({ currentUser, onLogout }) {
                 </select>
               </div>
 
-              <div>
-                <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', color: '#64748b' }}>
-                  End Time
-                </label>
+              <div className="sc-field">
+                <label>End Time</label>
                 <input
+                  className="sc-input readonly"
                   type="time"
                   value={editEndTime}
                   readOnly
-                  style={{ ...inputStyle, background: '#f8fafc' }}
                 />
               </div>
 
               {editStartTime && editEndTime && (
-                <div
-                  style={{
-                    padding: '10px 12px',
-                    borderRadius: '12px',
-                    background: '#f8fafc',
-                    border: '1px solid #e2e8f0',
-                    fontSize: '13px',
-                    color: '#475569',
-                  }}
-                >
+                <div className="sc-duration-box">
                   Duration:{' '}
                   <strong>
                     {getDurationMinutes(
@@ -1816,46 +966,86 @@ export default function SlotCalendarPage({ currentUser, onLogout }) {
                 </div>
               )}
 
-              <div
-                style={{
-                  padding: '10px 12px',
-                  borderRadius: '12px',
-                  background: '#f8fafc',
-                  border: '1px solid #e2e8f0',
-                  fontSize: '13px',
-                  color: '#475569',
-                  lineHeight: 1.6,
-                }}
-              >
+              <div className="sc-quick-add__rules">
                 <div><strong>Allowed hours:</strong> {DAY_START} - {DAY_END}</div>
                 <div><strong>Fixed duration:</strong> {SLOT_DURATION_MINUTES} mins</div>
                 <div><strong>Required break:</strong> {BREAK_MINUTES} mins</div>
               </div>
 
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '4px' }}>
-                <button
-                  type="button"
-                  onClick={closeEditModal}
-                  style={{
-                    ...buttonBase,
-                    background: '#f3f4f6',
-                    color: '#475569',
-                  }}
-                >
+              <div className="sc-modal-actions">
+                <button type="button" className="sc-btn sc-btn--ghost" onClick={closeEditModal}>
                   Cancel
                 </button>
 
                 <button
                   type="button"
+                  className="sc-btn sc-btn--primary"
                   onClick={handleSaveEdit}
                   disabled={savingEdit}
-                  style={{
-                    ...buttonBase,
-                    background: '#8b5cf6',
-                    color: '#fff',
-                  }}
                 >
                   {savingEdit ? 'Saving...' : 'Save Changes'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {viewModalOpen && viewingSlot && (
+        <div className="sc-modal-overlay" onClick={closeViewModal}>
+          <div className="sc-modal sc-modal--medium" onClick={(e) => e.stopPropagation()}>
+            <div className="sc-modal__header">
+              <div>
+                <h3>Slot Details</h3>
+                <p>{formatMediumDate(viewingSlot.slotDate)}</p>
+              </div>
+              <button type="button" className="sc-modal__close" onClick={closeViewModal}>
+                ✕
+              </button>
+            </div>
+
+            <div className="sc-modal__body">
+              <div className="sc-details-grid">
+                <div className="sc-detail-card">
+                  <span className="sc-detail-label">Slot ID</span>
+                  <span className="sc-detail-value">{viewingSlot.id}</span>
+                </div>
+
+                <div className="sc-detail-card">
+                  <span className="sc-detail-label">Lecturer</span>
+                  <span className="sc-detail-value">{currentUser?.name || 'Lecturer'}</span>
+                </div>
+
+                <div className="sc-detail-card">
+                  <span className="sc-detail-label">Start Time</span>
+                  <span className="sc-detail-value">{formatTimeDisplay(viewingSlot.startTime)}</span>
+                </div>
+
+                <div className="sc-detail-card">
+                  <span className="sc-detail-label">End Time</span>
+                  <span className="sc-detail-value">{formatTimeDisplay(viewingSlot.endTime)}</span>
+                </div>
+
+                <div className="sc-detail-card">
+                  <span className="sc-detail-label">Duration</span>
+                  <span className="sc-detail-value">
+                    {getDurationMinutes(viewingSlot.startTime, viewingSlot.endTime)} minutes
+                  </span>
+                </div>
+
+                <div className="sc-detail-card">
+                  <span className="sc-detail-label">Status</span>
+                  <span className="sc-detail-value">
+                    <span className={`sc-status-badge ${getStatus(viewingSlot.slotDate).toLowerCase()}`}>
+                      {getStatus(viewingSlot.slotDate)}
+                    </span>
+                  </span>
+                </div>
+              </div>
+
+              <div className="sc-modal-actions">
+                <button type="button" className="sc-btn sc-btn--ghost" onClick={closeViewModal}>
+                  Close
                 </button>
               </div>
             </div>
