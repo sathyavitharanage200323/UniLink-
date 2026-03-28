@@ -19,46 +19,61 @@ public class AvailabilityService {
     private final AvailabilitySlotRepository availabilitySlotRepository;
     private final UserService userService;
 
+    /**
+     * Get all availability slots for a lecturer
+     */
     public List<AvailabilitySlotDTO> getLecturerAvailability(Long lecturerId) {
         User lecturer = userService.getUser(lecturerId);
-        return availabilitySlotRepository.findByLecturerOrderBySlotDateAscStartTimeAsc(lecturer)
+        return availabilitySlotRepository.findByLecturerOrderByDayOfWeekAscStartTimeAsc(lecturer)
                 .stream()
                 .map(AvailabilitySlotDTO::from)
                 .collect(Collectors.toList());
     }
 
+    /**
+     * Get only available slots for a lecturer (student view)
+     */
     public List<AvailabilitySlotDTO> getLecturerAvailableSlots(Long lecturerId) {
         User lecturer = userService.getUser(lecturerId);
-        return availabilitySlotRepository.findByLecturerAndAvailableTrueOrderBySlotDateAscStartTimeAsc(lecturer)
+        return availabilitySlotRepository.findByLecturerAndAvailableTrueOrderByDayOfWeekAscStartTimeAsc(lecturer)
                 .stream()
                 .map(AvailabilitySlotDTO::from)
                 .collect(Collectors.toList());
     }
 
+    /**
+     * Bulk update lecturer availability
+     * Replaces all existing slots with the new set
+     */
     @Transactional
     public List<AvailabilitySlotDTO> updateLecturerAvailability(Long lecturerId, List<AvailabilitySlotDTO> slots) {
         User lecturer = userService.getUser(lecturerId);
-
+        
+        // Delete existing slots
         availabilitySlotRepository.deleteByLecturer(lecturer);
         availabilitySlotRepository.flush();
 
+        // Create new slots
         List<AvailabilitySlot> newSlots = slots.stream()
                 .map(dto -> AvailabilitySlot.builder()
                         .lecturer(lecturer)
-                        .slotDate(java.time.LocalDate.parse(dto.getSlotDate()))
-                        .startTime(java.time.LocalTime.parse(dto.getStartTime()))
-                        .endTime(java.time.LocalTime.parse(dto.getEndTime()))
+                        .dayOfWeek(AvailabilitySlot.DayOfWeek.valueOf(dto.getDayOfWeek()))
+                        .startTime(LocalTime.parse(dto.getStartTime()))
+                        .endTime(LocalTime.parse(dto.getEndTime()))
                         .available(dto.isAvailable())
                         .build())
                 .collect(Collectors.toList());
 
         List<AvailabilitySlot> saved = availabilitySlotRepository.saveAll(newSlots);
-
+        
         return saved.stream()
                 .map(AvailabilitySlotDTO::from)
                 .collect(Collectors.toList());
     }
 
+    /**
+     * Toggle a single slot's availability
+     */
     @Transactional
     public AvailabilitySlotDTO toggleSlotAvailability(Long slotId) {
         AvailabilitySlot slot = availabilitySlotRepository.findById(slotId)
