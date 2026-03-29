@@ -99,6 +99,38 @@ function getStatus(slotDate) {
   return 'Past';
 }
 
+function getSlotLiveState(slot) {
+  const now = new Date();
+  const nowKey = dateToKey(now);
+  const nowMinutes = now.getHours() * 60 + now.getMinutes();
+
+  if (!slot?.slotDate) return 'Past';
+
+  if (slot.slotDate < nowKey) return 'Past';
+  if (slot.slotDate > nowKey) return 'Upcoming';
+
+  const startMinutes = timeToMinutes(slot.startTime);
+  const endMinutes = timeToMinutes(slot.endTime);
+
+  if (nowMinutes >= startMinutes && nowMinutes < endMinutes) return 'Ongoing';
+  if (nowMinutes < startMinutes) return 'Today';
+  return 'Past';
+}
+
+function getSlotBadgeClass(slot) {
+  const liveState = getSlotLiveState(slot);
+
+  if (liveState === 'Ongoing') return 'ongoing';
+  if (liveState === 'Today') return 'today';
+  if (liveState === 'Upcoming') return 'upcoming';
+  return 'past';
+}
+
+function hasOngoingSlotForDate(dateKey, allSlotsByDate) {
+  const sameDaySlots = allSlotsByDate[dateKey] || [];
+  return sameDaySlots.some((slot) => getSlotLiveState(slot) === 'Ongoing');
+}
+
 function hasSlotConflict(existingSlots, newStart, newEnd, ignoreId = null) {
   const newStartMinutes = timeToMinutes(newStart);
   const newEndMinutes = timeToMinutes(newEnd);
@@ -174,10 +206,12 @@ function getValidStartTimesForDate(dateKey, allSlotsByDate, editingSlot = null) 
   });
 }
 
-function getSlotAccentClass(slotDate) {
-  const status = getStatus(slotDate);
-  if (status === 'Today') return 'today';
-  if (status === 'Upcoming') return 'upcoming';
+function getSlotAccentClass(slot) {
+  const liveState = getSlotLiveState(slot);
+
+  if (liveState === 'Ongoing') return 'ongoing';
+  if (liveState === 'Today') return 'today';
+  if (liveState === 'Upcoming') return 'upcoming';
   return 'past';
 }
 
@@ -212,6 +246,14 @@ export default function SlotCalendarPage({ currentUser, onLogout }) {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentUser?.id]);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setSlots((prev) => [...prev]);
+    }, 30000);
+
+    return () => clearInterval(timer);
+  }, []);
 
   async function loadSlots() {
     try {
@@ -270,6 +312,7 @@ export default function SlotCalendarPage({ currentUser, onLogout }) {
 
   const selectedDateKey = dateToKey(selectedDate);
   const selectedDateSlots = allSlotsByDate[selectedDateKey] || [];
+  const selectedDateHasOngoing = hasOngoingSlotForDate(selectedDateKey, allSlotsByDate);
 
   const validQuickAddStartTimes = getValidStartTimesForDate(selectedDateKey, allSlotsByDate);
   const validEditStartTimes = editingSlot
@@ -511,7 +554,10 @@ export default function SlotCalendarPage({ currentUser, onLogout }) {
     }
 
     if (!validQuickAddStartTimes.includes(start.slice(0, 5))) {
-      setBanner({ type: 'error', text: `Invalid time. There must be a ${BREAK_MINUTES}-minute break between slots.` });
+      setBanner({
+        type: 'error',
+        text: `Invalid time. There must be a ${BREAK_MINUTES}-minute break between slots.`,
+      });
       return;
     }
 
@@ -644,6 +690,7 @@ export default function SlotCalendarPage({ currentUser, onLogout }) {
               </div>
 
               <div className="sc-legend-row">
+                <div className="sc-legend-pill ongoing"><span />Ongoing</div>
                 <div className="sc-legend-pill today"><span />Today</div>
                 <div className="sc-legend-pill upcoming"><span />Upcoming</div>
                 <div className="sc-legend-pill past"><span />Past</div>
@@ -676,6 +723,7 @@ export default function SlotCalendarPage({ currentUser, onLogout }) {
                       const daySlots = slotsByDate[key] || [];
                       const isToday = key === todayKey;
                       const isSelected = isSameDate(dateObj, selectedDate);
+                      const hasOngoing = daySlots.some((slot) => getSlotLiveState(slot) === 'Ongoing');
 
                       return (
                         <button
@@ -687,7 +735,12 @@ export default function SlotCalendarPage({ currentUser, onLogout }) {
                           <div className="sc-day-card__top">
                             <span className="sc-day-number">{dateObj.getDate()}</span>
 
-                            {isSelected ? (
+                            {hasOngoing ? (
+                              <span className="sc-mini-badge live">
+                                <span className="sc-live-dot" />
+                                Live
+                              </span>
+                            ) : isSelected ? (
                               <span className="sc-mini-badge selected">Selected</span>
                             ) : isToday ? (
                               <span className="sc-mini-badge today">Today</span>
@@ -699,17 +752,32 @@ export default function SlotCalendarPage({ currentUser, onLogout }) {
                           </div>
 
                           <div className="sc-day-slot-preview">
-                            {daySlots.slice(0, 2).map((slot) => (
-                              <div key={slot.id} className={`sc-slot-chip ${getSlotAccentClass(slot.slotDate)}`}>
-                                <div className="sc-slot-chip__top-line" />
-                                <div className="sc-slot-chip__time">
-                                  {formatTimeDisplay(slot.startTime)} - {formatTimeDisplay(slot.endTime)}
+                            {daySlots.slice(0, 2).map((slot) => {
+                              const liveState = getSlotLiveState(slot);
+
+                              return (
+                                <div key={slot.id} className={`sc-slot-chip ${getSlotAccentClass(slot)}`}>
+                                  <div className="sc-slot-chip__top-line" />
+
+                                  <div className="sc-slot-chip__header">
+                                    <div className="sc-slot-chip__time">
+                                      {formatTimeDisplay(slot.startTime)} - {formatTimeDisplay(slot.endTime)}
+                                    </div>
+
+                                    {liveState === 'Ongoing' && (
+                                      <div className="sc-live-pill">
+                                        <span className="sc-live-dot" />
+                                        Live
+                                      </div>
+                                    )}
+                                  </div>
+
+                                  <div className={`sc-slot-chip__status ${getSlotBadgeClass(slot)}`}>
+                                    {liveState}
+                                  </div>
                                 </div>
-                                <div className={`sc-slot-chip__status ${getStatus(slot.slotDate).toLowerCase()}`}>
-                                  {getStatus(slot.slotDate)}
-                                </div>
-                              </div>
-                            ))}
+                              );
+                            })}
 
                             {daySlots.length > 2 && (
                               <div className="sc-more-text">+{daySlots.length - 2} more</div>
@@ -743,8 +811,15 @@ export default function SlotCalendarPage({ currentUser, onLogout }) {
                 <div className="sc-label">Date</div>
                 <div className="sc-big-date">{formatLongDate(selectedDate)}</div>
 
-                <div className={`sc-status-badge ${selectedDateStatus.toLowerCase()}`}>
-                  {selectedDateStatus}
+                <div className={`sc-status-badge ${selectedDateHasOngoing ? 'ongoing' : selectedDateStatus.toLowerCase()}`}>
+                  {selectedDateHasOngoing ? (
+                    <>
+                      <span className="sc-live-dot" />
+                      Ongoing Slot Active
+                    </>
+                  ) : (
+                    selectedDateStatus
+                  )}
                 </div>
 
                 <div className="sc-capacity-grid">
@@ -856,22 +931,35 @@ export default function SlotCalendarPage({ currentUser, onLogout }) {
                   <div className="sc-selected-slots">
                     {selectedDateSlots.map((slot) => {
                       const status = getStatus(slot.slotDate);
+                      const liveState = getSlotLiveState(slot);
+                      const visualClass = getSlotBadgeClass(slot);
                       const duration = getDurationMinutes(slot.startTime, slot.endTime);
                       const isPast = status === 'Past';
 
                       return (
-                        <div key={slot.id} className={`sc-selected-slot-card ${status.toLowerCase()}`}>
-                          <div className={`sc-selected-slot-accent ${status.toLowerCase()}`} />
+                        <div key={slot.id} className={`sc-selected-slot-card ${visualClass}`}>
+                          <div className={`sc-selected-slot-accent ${visualClass}`} />
 
                           <div className="sc-selected-slot-main">
-                            <div className="sc-selected-slot-time">
-                              {formatTimeDisplay(slot.startTime)} - {formatTimeDisplay(slot.endTime)}
+                            <div className="sc-selected-slot-top">
+                              <div className="sc-selected-slot-time">
+                                {formatTimeDisplay(slot.startTime)} - {formatTimeDisplay(slot.endTime)}
+                              </div>
+
+                              {liveState === 'Ongoing' && (
+                                <div className="sc-live-pill sc-live-pill--card">
+                                  <span className="sc-live-dot" />
+                                  Ongoing
+                                </div>
+                              )}
                             </div>
+
                             <div className="sc-selected-slot-duration">
                               Duration: {duration} mins
                             </div>
-                            <span className={`sc-status-badge ${status.toLowerCase()}`}>
-                              {status}
+
+                            <span className={`sc-status-badge ${visualClass}`}>
+                              {liveState}
                             </span>
                           </div>
 
@@ -966,17 +1054,10 @@ export default function SlotCalendarPage({ currentUser, onLogout }) {
                 </div>
               )}
 
-              <div className="sc-quick-add__rules">
-                <div><strong>Allowed hours:</strong> {DAY_START} - {DAY_END}</div>
-                <div><strong>Fixed duration:</strong> {SLOT_DURATION_MINUTES} mins</div>
-                <div><strong>Required break:</strong> {BREAK_MINUTES} mins</div>
-              </div>
-
               <div className="sc-modal-actions">
                 <button type="button" className="sc-btn sc-btn--ghost" onClick={closeEditModal}>
                   Cancel
                 </button>
-
                 <button
                   type="button"
                   className="sc-btn sc-btn--primary"
@@ -1036,8 +1117,11 @@ export default function SlotCalendarPage({ currentUser, onLogout }) {
                 <div className="sc-detail-card">
                   <span className="sc-detail-label">Status</span>
                   <span className="sc-detail-value">
-                    <span className={`sc-status-badge ${getStatus(viewingSlot.slotDate).toLowerCase()}`}>
-                      {getStatus(viewingSlot.slotDate)}
+                    <span className={`sc-status-badge ${getSlotBadgeClass(viewingSlot)}`}>
+                      {getSlotLiveState(viewingSlot) === 'Ongoing' && (
+                        <span className="sc-live-dot" />
+                      )}
+                      {getSlotLiveState(viewingSlot)}
                     </span>
                   </span>
                 </div>

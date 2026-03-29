@@ -315,6 +315,12 @@
   display: inline-block;
 }
 
+.sc-legend-pill.ongoing {
+  background: #fef2f2;
+  border-color: #fca5a5;
+}
+.sc-legend-pill.ongoing span { background: #ef4444; }
+
 .sc-legend-pill.today {
   background: #eff6ff;
   border-color: #bfdbfe;
@@ -436,6 +442,41 @@
   border: 1px solid #d8b4fe;
 }
 
+.sc-mini-badge.live {
+  background: #fef2f2;
+  color: #b91c1c;
+  border: 1px solid #fca5a5;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.sc-live-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #ef4444;
+  display: inline-block;
+  box-shadow: 0 0 0 rgba(239, 68, 68, 0.65);
+  animation: scLivePulse 1.4s infinite;
+  flex-shrink: 0;
+}
+
+@keyframes scLivePulse {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.55);
+  }
+  70% {
+    transform: scale(1.12);
+    box-shadow: 0 0 0 8px rgba(239, 68, 68, 0);
+  }
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
+  }
+}
+
 .sc-day-slot-count {
   font-size: 13px;
   color: #64748b;
@@ -466,6 +507,10 @@
   height: 4px;
 }
 
+.sc-slot-chip.ongoing .sc-slot-chip__top-line {
+  background: linear-gradient(90deg, #fb7185, #ef4444);
+}
+
 .sc-slot-chip.upcoming .sc-slot-chip__top-line {
   background: linear-gradient(90deg, #34d399, #16a34a);
 }
@@ -478,12 +523,38 @@
   background: linear-gradient(90deg, #94a3b8, #64748b);
 }
 
+.sc-slot-chip__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
 .sc-slot-chip__time {
   font-size: 12px;
   font-weight: 800;
   color: #1e293b;
   line-height: 1.35;
   margin-top: 2px;
+}
+
+.sc-live-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #fef2f2;
+  color: #b91c1c;
+  border: 1px solid #fca5a5;
+  border-radius: 999px;
+  padding: 4px 9px;
+  font-size: 11px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.sc-live-pill--card {
+  font-size: 12px;
+  padding: 6px 11px;
 }
 
 .sc-slot-chip__status {
@@ -495,6 +566,11 @@
   font-weight: 700;
   padding: 4px 9px;
   border-radius: 999px;
+}
+
+.sc-slot-chip__status.ongoing {
+  background: #fee2e2;
+  color: #b91c1c;
 }
 
 .sc-slot-chip__status.today {
@@ -568,6 +644,13 @@
   border-radius: 999px;
   font-size: 12px;
   font-weight: 700;
+  gap: 6px;
+}
+
+.sc-status-badge.ongoing {
+  background: #fee2e2;
+  color: #b91c1c;
+  border: 1px solid #fca5a5;
 }
 
 .sc-status-badge.today {
@@ -756,6 +839,10 @@
   overflow: hidden;
 }
 
+.sc-selected-slot-card.ongoing {
+  background: linear-gradient(180deg, #ffffff 0%, #fff5f5 100%);
+}
+
 .sc-selected-slot-card.upcoming {
   background: linear-gradient(180deg, #ffffff 0%, #f7fff9 100%);
 }
@@ -775,6 +862,10 @@
   border-radius: 20px 0 0 20px;
 }
 
+.sc-selected-slot-accent.ongoing {
+  background: linear-gradient(180deg, #fb7185, #ef4444);
+}
+
 .sc-selected-slot-accent.upcoming {
   background: linear-gradient(180deg, #22c55e, #16a34a);
 }
@@ -789,6 +880,14 @@
 
 .sc-selected-slot-main {
   min-width: 200px;
+}
+
+.sc-selected-slot-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
 }
 
 .sc-selected-slot-time {
