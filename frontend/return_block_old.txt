@@ -1,0 +1,144 @@
+  return (
+    <div style={{ backgroundColor: '#f4f7f6', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+      <Header currentUser={user} onLogout={onLogout} />
+      <div className="slots-container dashboard" style={{ flex: 1 }}>
+      <div className="slots-header">
+        <div className="slots-header-content">          <button className="btn-back" onClick={() => navigate('/lecturer/home')}>← Back to Home</button>
+          <br /><br />          <span className="header-tag">?? Available Slot Management</span>
+          <h1>My Available Slots</h1>
+          <p>Set your availability for student appointments by adding specific time slots.</p>
+        </div>
+        <div className="avatar-circle">
+          {user?.name?.[0] || 'L'}
+        </div>
+      </div>
+
+      <div className="stats-grid">
+        <div className="stat-card">
+          <div className="stat-icon" style={{ background: '#f3e8ff', color: '#a855f7' }}>?</div>
+          <div>
+            <h3 className="stat-value">30m</h3>
+            <p className="stat-label">Slot Duration</p>
+          </div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-icon" style={{ background: '#dcfce7', color: '#22c55e' }}>??</div>
+          <div>
+            <h3 className="stat-value">{slots.length}</h3>
+            <p className="stat-label">Total Slots</p>
+          </div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-icon" style={{ background: '#e0f2fe', color: '#3b82f6' }}>??</div>
+          <div>
+            <h3 className="stat-value">{slots.filter(s => !s.available).length}</h3>
+            <p className="stat-label">Booked Slots</p>
+          </div>
+        </div>
+      </div>
+
+      <div className="main-content-grid">
+        <div className="panel-card add-slot-panel">
+          <h2 className="panel-title">Add New Slot</h2>
+          
+          <div className="note-box">
+            Here you can add your availability slots. By default, <strong>appointment duration is 30 minutes</strong>. 
+            There will be a 15-minute gap between consecutive slot options.
+          </div>
+
+          <form onSubmit={handleAddSlot}>
+            <div className="form-group">
+              <label className="form-label">Date</label>
+              <input 
+                type="date" 
+                className="form-control" 
+                value={slotDate} 
+                onChange={(e) => setSlotDate(e.target.value)} 
+                min={new Date().toISOString().split('T')[0]}
+                required
+              />
+            </div>
+
+            <div className="time-row">
+              <div className="form-group">
+                <label className="form-label">Start Time</label>
+                <select className="form-control" value={startTime} onChange={handleStartTimeChange} required>
+                  <option value="" disabled>Select time</option>
+                  {generateTimeOptions().map(t => (
+                    <option key={t} value={t}>{t}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">End Time</label>
+                <input 
+                  type="time" 
+                  className="form-control" 
+                  value={endTime} 
+                  disabled 
+                />
+              </div>
+            </div>
+
+            <div className="rule-box">
+              <p><strong>Lecturer Name:</strong> {user?.name}</p>
+              <p><strong>Duration:</strong> 30 min / appointment</p>
+              <p><strong>Rule:</strong> Automatically checks for conflicts</p>
+            </div>
+
+            <div className="form-actions">
+              <button type="submit" className="btn-primary" disabled={loading}>
+                {loading ? 'Adding...' : 'Add Slot'}
+              </button>
+              <button type="button" className="btn-secondary" onClick={() => {
+                setSlotDate('');
+                setStartTime('');
+                setEndTime('');
+              }}>Cancel</button>
+            </div>
+          </form>
+        </div>
+
+        <div className="panel-card list-panel">
+          <div className="filter-row">
+            <h2 className="panel-title" style={{ margin: 0 }}>Available Slots</h2>
+            <div className="filter-tabs">
+              <button className={`filter-tab ${viewFilter === 'upcoming' ? 'active' : ''}`} onClick={() => setViewFilter('upcoming')}>Upcoming</button>
+              <button className={`filter-tab ${viewFilter === 'past' ? 'active' : ''}`} onClick={() => setViewFilter('past')}>Past</button>
+            </div>
+          </div>
+
+          <div className="list-container">
+            {Object.keys(groupedSlots).sort().map(dateStr => (
+              <div key={dateStr} className="list-date-group">
+                <h4>?? {new Date(dateStr).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}</h4>
+                {groupedSlots[dateStr].sort((a, b) => a.startTime.localeCompare(b.startTime)).map(slot => (
+                  <div key={slot.id || (dateStr+slot.startTime)} className="slot-item">
+                    <div>
+                      <div className="slot-time">{slot.startTime} - {slot.endTime}</div>
+                      <div className={`slot-status ${slot.available ? 'status-available' : ''}`} style={{ background: !slot.available ? '#fee2e2' : '#dcfce7', color: !slot.available ? '#ef4444' : '#166534' }}>
+                        {!slot.available ? 'Booked' : 'Available'}
+                      </div>
+                    </div>
+                    {slot.available && (
+                      <button className="delete-btn" title="Remove Slot" onClick={() => handleDeleteSlot(slot.id)}>?</button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            ))}
+            {Object.keys(groupedSlots).length === 0 && (
+              <div style={{ textAlign: 'center', color: '#64748b', margin: '40px 0' }}>
+                No slots found. Start by adding one.
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+      </div>
+      <Footer />
+    </div>
+  );
+}
+

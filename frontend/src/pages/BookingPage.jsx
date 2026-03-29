@@ -1,392 +1,183 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
-import api from '../api/axiosInstance';
-import { ArrowLeft, Zap, Clock, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useParams, useLocation } from 'react-router-dom';
+import { getUser, getLecturerAvailableSlots, createAppointment } from '../api';
+import './SlotCalendarPage.css'; // Utilizing the calendar CSS styles
 import Header from '../components/Header';
-import './BookingPage.css';
+import Footer from '../components/Footer';
 
-const IT_REGEX = /^IT\d{8}$/;
-const MAX_REASON = 300;
-
-/* ─── AvailabilityGrid ─────────────────────────────────────── */
-function AvailabilityGrid({ slots, selectedSlot, onSelect }) {
-  const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
-
-  return (
-    <div className="bp-sidebar">
-      <div className="bp-sidebar__header">
-        <h2 className="bp-sidebar__title">Availability</h2>
-        <p className="bp-sidebar__sub">Select a time slot</p>
-      </div>
-      <div className="bp-sidebar__scroll">
-        {days.map(day => {
-          const daySlots = slots.filter(s => s.day === day);
-          if (daySlots.length === 0) return null;
-          return (
-            <div key={day} className="bp-day-group">
-              <div className="bp-day-label">{day}</div>
-              {daySlots.map(slot => {
-                const isTaken = slot.status !== 'OPEN';
-                const isSelected = selectedSlot?.id === slot.id;
-                return (
-                  <div
-                    key={slot.id}
-                    className={`bp-slot${isSelected ? ' bp-slot--selected' : ''}${isTaken ? ' bp-slot--taken' : ''}`}
-                    onClick={() => !isTaken && onSelect(slot)}
-                    title={isTaken ? 'This slot is already taken' : slot.time}
-                  >
-                    <div className="bp-slot__row">
-                      <span className="bp-slot__time">
-                        <Clock size={13} style={{ marginRight: 5, flexShrink: 0 }} />
-                        {slot.time}
-                      </span>
-                      {isTaken
-                        ? <span className="bp-slot__badge bp-slot__badge--taken">Taken</span>
-                        : isSelected
-                          ? <span className="bp-slot__badge bp-slot__badge--selected"><CheckCircle size={11} /> Selected</span>
-                          : <span className="bp-slot__badge bp-slot__badge--open">Open</span>
-                      }
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          );
-        })}
-        {slots.length === 0 && (
-          <div className="bp-empty-slots">No slots available for this lecturer.</div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-/* ─── BookingForm ──────────────────────────────────────────── */
-function BookingForm({ formData, onChange, onConfirm, isValid, loading, loadingMsg, selectedSlot }) {
-  const itValid = IT_REGEX.test(formData.itNumber);
-  const reasonLen = formData.reason.length;
-
-  return (
-    <div className="bp-form-card">
-      <div className="bp-form-card__top">
-        <h1 className="bp-form-card__title">Log Consultation Request</h1>
-        {formData.isHighPriority && (
-          <span className="bp-priority-badge">
-            <Zap size={13} /> HIGH PRIORITY — Final Year Student
-          </span>
-        )}
-        {selectedSlot && (
-          <div className="bp-selected-slot-info">
-            <CheckCircle size={14} style={{ color: '#16a34a' }} />
-            <span>Slot selected: <strong>{selectedSlot.time}</strong> ({selectedSlot.day})</span>
-          </div>
-        )}
-      </div>
-
-      {/* Name */}
-      <div className="bp-field">
-        <label className="bp-label">Full Name</label>
-        <input
-          className="bp-input"
-          value={formData.studentName}
-          onChange={e => onChange('studentName', e.target.value)}
-          placeholder="e.g. John Doe"
-        />
-      </div>
-
-      {/* IT Number */}
-      <div className="bp-field">
-        <label className="bp-label">IT Number</label>
-        <div style={{ position: 'relative' }}>
-          <input
-            className={`bp-input${formData.itNumber && !itValid ? ' bp-input--error' : ''}`}
-            value={formData.itNumber}
-            onChange={e => onChange('itNumber', e.target.value)}
-            placeholder="IT21000000"
-          />
-          {formData.itNumber && (
-            <span className="bp-input-icon">
-              {itValid
-                ? <CheckCircle size={16} style={{ color: '#16a34a' }} />
-                : <AlertCircle size={16} style={{ color: '#ef4444' }} />}
-            </span>
-          )}
-        </div>
-        {formData.itNumber && !itValid && (
-          <p className="bp-field-hint bp-field-hint--error">Format: IT + 8 digits (e.g. IT21000000)</p>
-        )}
-      </div>
-
-      {/* Year + Semester */}
-      <div className="bp-row-2">
-        <div className="bp-field">
-          <label className="bp-label">Academic Year</label>
-          <select
-            className="bp-select"
-            value={formData.academicYear}
-            onChange={e => onChange('academicYear', e.target.value)}
-          >
-            <option value="">Select Year</option>
-            <option value="Year 1">1st Year</option>
-            <option value="Year 2">2nd Year</option>
-            <option value="Year 3">3rd Year</option>
-            <option value="Year 4">4th Year</option>
-          </select>
-        </div>
-        <div className="bp-field">
-          <label className="bp-label">Semester</label>
-          <select
-            className="bp-select"
-            value={formData.semester}
-            onChange={e => onChange('semester', e.target.value)}
-          >
-            <option value="">Select Semester</option>
-            <option value="Semester 1">Semester 1</option>
-            <option value="Semester 2">Semester 2</option>
-          </select>
-        </div>
-      </div>
-
-      {/* Reason */}
-      <div className="bp-field">
-        <div className="bp-label-row">
-          <label className="bp-label">Reason for Meeting</label>
-          <span className={`bp-char-count${reasonLen > MAX_REASON ? ' bp-char-count--over' : ''}`}>
-            {reasonLen}/{MAX_REASON}
-          </span>
-        </div>
-        <textarea
-          className="bp-textarea"
-          rows={4}
-          maxLength={MAX_REASON}
-          value={formData.reason}
-          onChange={e => onChange('reason', e.target.value)}
-          placeholder="Describe your query in detail..."
-        />
-      </div>
-
-        {!isValid && (
-          <div style={{ fontSize: '0.85rem', color: '#d32f2f', marginBottom: '15px', padding: '10px', background: '#ffebee', borderRadius: '5px' }}>
-            <strong>Please complete the following to enable confirmation:</strong>
-            <ul style={{ margin: '5px 0 0 20px', padding: 0 }}>
-              {!selectedSlot && <li>Select an available time slot above.</li>}
-              {formData.studentName.trim().length <= 2 && <li>Enter your full name.</li>}
-              {!itValid && <li>Enter a valid IT number (e.g. IT12345678).</li>}
-              {!formData.academicYear && <li>Select your academic year.</li>}
-              {!formData.semester && <li>Select your semester.</li>}
-              {formData.reason.trim().length <= 10 && <li>Provide a valid reason (more than 10 characters).</li>}
-            </ul>
-          </div>
-        )}
-
-        <button
-          className="bp-confirm-btn"
-          disabled={!isValid || loading}
-          onClick={onConfirm}
-        >
-        {loading
-          ? <><Loader2 size={16} className="bp-spin" /> {loadingMsg}</>
-          : 'Confirm Appointment'}
-      </button>
-    </div>
-  );
-}
-
-/* ─── StatusToast ──────────────────────────────────────────── */
-function StatusToast({ show, success, message }) {
-  if (!show) return null;
-  return (
-    <div className={`bp-toast${success ? ' bp-toast--success' : ' bp-toast--error'}`}>
-      <div className="bp-toast__dot" />
-      <div>
-        <div className="bp-toast__title">{success ? 'Request Logged' : 'Booking Failed'}</div>
-        <div className="bp-toast__msg">{message}</div>
-      </div>
-    </div>
-  );
-}
-
-/* ─── Main BookingPage ─────────────────────────────────────── */
-export default function BookingPage({ currentUser, onLogout }) {
+function BookingPage({ user, onLogout }) {
   const navigate = useNavigate();
-  const user = currentUser || JSON.parse(localStorage.getItem('user') || 'null');
+  // Trying both depending on how routing is set up
+  const { lecturerId: paramId } = useParams();
+  const { search } = useLocation();
+  const queryParams = new URLSearchParams(search);
+  const lecturerId = paramId || queryParams.get('lecturerId');
 
-  const [lecturers, setLecturers] = useState([]);
-  const [selectedLecturer, setSelectedLecturer] = useState(null);
+  const [lecturer, setLecturer] = useState(null);
   const [slots, setSlots] = useState([]);
+  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [selectedSlot, setSelectedSlot] = useState(null);
+  
+  // Booking Form State
+  const [notes, setNotes] = useState('');
   const [loading, setLoading] = useState(false);
-  const [loadingMsg, setLoadingMsg] = useState('');
-  const [toast, setToast] = useState({ show: false, success: false, message: '' });
-  const [slotsLoading, setSlotsLoading] = useState(false);
 
-  const [formData, setFormData] = useState({
-    studentName: user?.name || '',
-    itNumber: user?.registrationNumber || '',
-    academicYear: user?.academicYear || '',
-    semester: user?.semester || '',
-    reason: '',
-    isHighPriority: false,
-  });
-
-  // Fetch all lecturers on mount
   useEffect(() => {
-    api.get('/users/role/LECTURER')
-      .then(r => setLecturers(r.data))
-      .catch(err => console.error('Failed to load lecturers', err));
-  }, []);
+    if (!lecturerId) {
+      alert("No lecturer specified!");
+      navigate('/student-home');
+      return;
+    }
 
-  // Fetch slots when lecturer changes
-  useEffect(() => {
-    if (!selectedLecturer) { setSlots([]); return; }
-    setSlotsLoading(true);
-    setSelectedSlot(null);
-    api.get(`/availability/lecturer/${selectedLecturer.id}/available`)
-      .then(r => {
-        // Convert availability slots to display format
-        const availableSlots = r.data.map(slot => {
-          const startT = slot.startTime.length === 5 ? slot.startTime + ':00' : slot.startTime;
-          const endT = slot.endTime.length === 5 ? slot.endTime + ':00' : slot.endTime;
-          return {
-            id: slot.id,
-            day: slot.dayOfWeek.charAt(0) + slot.dayOfWeek.slice(1).toLowerCase(),
-            time: formatTimeRange(startT, endT),
-            startTime: `2026-03-24T${startT}`,
-            endTime: `2026-03-24T${endT}`,
-            status: 'OPEN'
-          };
-        });
-        setSlots(availableSlots);
-      })
-      .catch(err => console.error('Failed to load slots', err))
-      .finally(() => setSlotsLoading(false));
-  }, [selectedLecturer]);
-
-  const formatTimeRange = (start, end) => {
-    const formatTime = (time) => {
-      const [h, m] = time.split(':');
-      const hour = parseInt(h);
-      const ampm = hour >= 12 ? 'PM' : 'AM';
-      const displayHour = hour > 12 ? hour - 12 : hour === 0 ? 12 : hour;
-      return `${displayHour}:${m} ${ampm}`;
+    const fetchData = async () => {
+      try {
+        const lecData = await getUser(lecturerId);
+        setLecturer(lecData);
+        // Only fetch available slots
+        const slotsData = await getLecturerAvailableSlots(lecturerId);
+        setSlots(slotsData || []);
+      } catch (err) {
+        console.error("Error fetching lecturer data", err);
+      }
     };
-    return `${formatTime(start)} - ${formatTime(end)}`;
-  };
+    fetchData();
+  }, [lecturerId, navigate]);
 
-  const handleChange = useCallback((field, value) => {
-    setFormData(prev => ({
-      ...prev,
-      [field]: value,
-      ...(field === 'academicYear' ? { isHighPriority: value === 'Year 4' } : {}),
-    }));
-  }, []);
+  const handleBook = async () => {
+    if (!selectedSlot) return;
 
-  // Validation
-  const isValid =
-    selectedSlot &&
-    formData.studentName.trim().length > 2 &&
-    IT_REGEX.test(formData.itNumber) &&
-    formData.academicYear &&
-    formData.semester &&
-    formData.reason.trim().length > 10 &&
-    formData.reason.length <= MAX_REASON;
+    if (!notes.trim()) {
+      alert("Please provide a reason for the appointment.");
+      return;
+    }
 
-  const handleConfirm = async () => {
-    if (!isValid) return;
     setLoading(true);
-
     try {
-      setLoadingMsg('Connecting to server...');
-      await new Promise(r => setTimeout(r, 800));
-
-      setLoadingMsg('Submitting booking...');
-      await new Promise(r => setTimeout(r, 800));
-
-      await api.post('/appointments', {
-        studentId: user?.id,
-        lecturerId: selectedLecturer.id,
-        startTime: selectedSlot.startTime,
-        endTime: selectedSlot.endTime,
-        notes: `[${formData.academicYear} ${formData.semester}${formData.isHighPriority ? ' | HIGH PRIORITY' : ''}] ${formData.reason}`,
+      await createAppointment({
+        studentId: user.id,
+        lecturerId: lecturerId,
+        startTime: `${selectedSlot.slotDate}T${selectedSlot.startTime}`,
+        endTime: `${selectedSlot.slotDate}T${selectedSlot.endTime}`,
+        notes: notes
       });
-
-      // Optimistic: mark slot as taken locally
-      setSlots(prev => prev.map(s => s.id === selectedSlot.id ? { ...s, status: 'PENDING' } : s));
-      setSelectedSlot(null);
-
-      setToast({ show: true, success: true, message: 'Appointment request submitted. Awaiting lecturer confirmation.' });
-      setTimeout(() => setToast(t => ({ ...t, show: false })), 5000);
-
-      // Reset form reason
-      setFormData(prev => ({ ...prev, reason: '' }));
+      alert('Appointment booked successfully! Wait for lecturer confirmation.');
+      navigate('/student-home');
     } catch (err) {
-      const msg = err?.response?.data?.message || 'Failed to book. Please try again.';
-      setToast({ show: true, success: false, message: msg });
-      setTimeout(() => setToast(t => ({ ...t, show: false })), 5000);
+      console.error('Error booking appointment', err);
+      alert('Failed to book appointment.');
     } finally {
       setLoading(false);
-      setLoadingMsg('');
     }
   };
 
+  // Filter slots for the selected date - must be available
+  const slotsForDate = slots.filter(s => s.slotDate === selectedDate && s.available);
+
+  // Helper date formatter
+  const formattedDate = new Date(selectedDate).toLocaleDateString('en-US', {
+    weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+  });
+
   return (
-    <div className="bp-page">
-      {user && <Header currentUser={user} onLogout={onLogout} unreadCount={0} />}
+    <div style={{ backgroundColor: '#f4f7f6', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+      <Header currentUser={user} onLogout={onLogout} />
+      <div className="calendar-container" style={{ flex: 1 }}>
+        <div className="calendar-header">
+          <div className="calendar-header-content">            <button className="btn-back" onClick={() => navigate('/student/home')}>← Back to Home</button>
+            <br /><br />            <span className="header-badge">?? Book an Appointment</span>
+            <h1>Smart Availability Calendar</h1>
+            <p>Select a date to view {lecturer?.name || 'the lecturer'}'s available time slots, then proceed to book your session.</p>
+          </div>
+        </div>
 
-      <div className="bp-container">
-        {/* Back button */}
-        <button className="bp-back-btn" onClick={() => navigate('/student/home')}>
-          <ArrowLeft size={15} /> Back to Dashboard
-        </button>
+        <div className="calendar-layout">
+          {/* Left Column: Date Picker & Info */}
+          <div className="left-column">
+            <div className="date-picker-card">
+              <h3>Select Date</h3>
+              <div className="date-input-wrapper">
+                <input 
+                  type="date" 
+                  className="calendar-date-input" 
+                  value={selectedDate} 
+                  onChange={(e) => {
+                    setSelectedDate(e.target.value);
+                    setSelectedSlot(null); // reset slot when date changes
+                  }}
+                  min={new Date().toISOString().split('T')[0]}
+                />
+              </div>
+            </div>
 
-        {/* Lecturer selector */}
-        <div className="bp-lecturer-bar">
-          <label className="bp-label" style={{ marginBottom: 8 }}>Select Lecturer</label>
-          <div className="bp-lecturer-grid">
-            {lecturers.map(lec => (
-              <button
-                key={lec.id}
-                className={`bp-lecturer-card${selectedLecturer?.id === lec.id ? ' bp-lecturer-card--active' : ''}`}
-                onClick={() => setSelectedLecturer(lec)}
-              >
-                <div className="bp-lecturer-avatar">
-                  {lec.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
+            <div className="lecturer-info-card">
+              <div className="lecturer-avatar">{lecturer?.name?.[0] || 'L'}</div>
+              <h4>{lecturer?.name || 'Loading...'}</h4>
+              <p>{lecturer?.email || 'N/A'}</p>
+            </div>
+
+            {selectedSlot && (
+              <div className="date-picker-card" style={{ marginTop: '24px', textAlign: 'left' }}>
+                <h3 style={{ fontSize: '1.2rem', marginBottom: '16px' }}>Booking Details</h3>
+                <div className="date-input-wrapper">
+                  <label>Reason for meeting</label>
+                  <textarea
+                    className="calendar-date-input"
+                    rows="3"
+                    placeholder="E.g., Need help with Chapter 3 assignment"
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                    style={{ resize: 'vertical' }}
+                  ></textarea>
                 </div>
-                <div className="bp-lecturer-info">
-                  <span className="bp-lecturer-name">{lec.name}</span>
-                  <span className="bp-lecturer-dept">{lec.department || 'Lecturer'}</span>
+              </div>
+            )}
+          </div>
+
+          {/* Right Column: Slots display */}
+          <div className="slots-display-card">
+            <div className="slots-display-header">
+              <h3>Available Slots</h3>
+              <span className="slots-date-badge">{formattedDate}</span>
+            </div>
+
+            {slotsForDate.length > 0 ? (
+              <div className="slots-grid">
+                {slotsForDate.sort((a,b) => a.startTime.localeCompare(b.startTime)).map(slot => (
+                  <button 
+                    key={slot.id} 
+                    className={`slot-btn ${selectedSlot?.id === slot.id ? 'selected' : ''}`}
+                    onClick={() => setSelectedSlot(slot)}
+                  >
+                    <span className="slot-time">{slot.startTime}</span>
+                    <span className="slot-duration">30 min</span>
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <div className="empty-state">
+                <div className="empty-icon">?</div>
+                <h3>No empty slots on this date</h3>
+                <p>The lecturer has not added availability for {formattedDate}, or all slots are booked.</p>
+              </div>
+            )}
+
+            {selectedSlot && (
+              <div className="booking-action-bar">
+                <div className="selected-info">
+                  <span>Selected Time</span>
+                  <strong>{selectedSlot.startTime} - {selectedSlot.endTime}</strong>
                 </div>
-                {selectedLecturer?.id === lec.id && <CheckCircle size={16} style={{ color: '#2563eb', flexShrink: 0 }} />}
-              </button>
-            ))}
-            {lecturers.length === 0 && (
-              <p style={{ color: '#64748b', fontSize: '0.875rem' }}>No lecturers found.</p>
+                <button className="btn-book" onClick={handleBook} disabled={loading || !notes.trim()}>
+                  {loading ? 'Booking...' : (notes.trim() ? 'Confirm Booking' : 'Enter reason to book')}
+                </button>
+              </div>
             )}
           </div>
         </div>
-
-        {/* Main grid */}
-        <div className="bp-grid">
-          <div>
-            {slotsLoading
-              ? <div className="bp-sidebar bp-sidebar--loading"><Loader2 size={24} className="bp-spin" /> Loading slots...</div>
-              : <AvailabilityGrid slots={slots} selectedSlot={selectedSlot} onSelect={setSelectedSlot} />
-            }
-          </div>
-
-          <BookingForm
-            formData={formData}
-            onChange={handleChange}
-            onConfirm={handleConfirm}
-            isValid={isValid}
-            loading={loading}
-            loadingMsg={loadingMsg}
-            selectedSlot={selectedSlot}
-          />
-        </div>
       </div>
-
-      <StatusToast show={toast.show} success={toast.success} message={toast.message} />
+      <Footer />
     </div>
   );
 }
+
+export default BookingPage;

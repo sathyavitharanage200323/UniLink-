@@ -161,3 +161,27 @@ export function deleteManagedUser(id) {
     method: 'DELETE',
   });
 }
+
+// ++ Availability Management ++
+
+export function getLecturerAvailability(lecturerId) {
+  return apiFetch('/api/availability/lecturer/' + lecturerId);
+}
+
+export function getLecturerAvailableSlots(lecturerId) {
+  return apiFetch('/api/availability/lecturer/' + lecturerId + '/available');
+}
+
+export function updateLecturerAvailability(lecturerId, slots) {
+  return apiFetch('/api/availability/lecturer/' + lecturerId, {
+    method: 'POST',
+    body: JSON.stringify(slots),
+  });
+}
+
+export function toggleSlotAvailability(slotId) {
+  return apiFetch('/api/availability/slot/' + slotId + '/toggle', {
+    method: 'PATCH',
+  });
+}
+
