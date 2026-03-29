@@ -53,3 +53,22 @@
 .auth-field option {
   color: #0f172a;
 }
+
+.animated-logo {
+  animation: floatLogo 4s ease-in-out infinite;
+}
+
+@keyframes floatLogo {
+  0% {
+    transform: translateY(0px) scale(1);
+    filter: drop-shadow(0 8px 24px rgba(0,0,0,0.2));
+  }
+  50% {
+    transform: translateY(-12px) scale(1.03);
+    filter: drop-shadow(0 16px 32px rgba(0,0,0,0.3));
+  }
+  100% {
+    transform: translateY(0px) scale(1);
+    filter: drop-shadow(0 8px 24px rgba(0,0,0,0.2));
+  }
+}
