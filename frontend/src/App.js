@@ -9,6 +9,7 @@ import ManagementPage from './pages/ManagementPage';
 import { AppointmentsPage, ProfilePage, ComingSoonPage } from './pages/UtilityPages';
 import BookingPage from './pages/BookingPage.jsx';
 import LecturerSchedulePage from './pages/LecturerSchedulePage.jsx';
+import SlotCalendarPage from './pages/SlotCalendarPage.jsx';
 import LecturerSlotsPage from './pages/LecturerSlotsPage.jsx';
 import {
   loginUser,
@@ -449,7 +450,16 @@ function AppRoutes({ activeUser, appointments, onLogin, onLogout, onUserUpdate }
       />
       {/* Catch-all */}
       <Route path="*" element={<Navigate to={homeRedirect} replace />} />
-    </Routes>
+    
+        <Route
+          path="/lecturer/calendar"
+          element={
+            activeUser?.role === 'LECTURER'
+              ? <SlotCalendarPage currentUser={activeUser} onLogout={onLogout} />
+              : <Navigate to="/student/home" replace />
+          }
+        />
+      </Routes>
   );
 }
 
@@ -493,4 +503,5 @@ export default function App() {
     </BrowserRouter>
   );
 }
+
 

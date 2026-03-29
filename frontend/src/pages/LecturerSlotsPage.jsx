@@ -125,15 +125,18 @@ function LecturerSlotsPage({ user, onLogout }) {
                 Set your availability for student appointments by adding specific time slots.
               </p>
               <div className="lh-hero__actions">
-                <button className="lh-btn lh-btn--outline" onClick={() => navigate('/lecturer/home')} style={{ background: 'rgba(255,255,255,0.1)', color: 'white', borderColor: 'rgba(255,255,255,0.3)' }}>
-                  ? Back to Home
-                </button>
-              </div>
+                  <button className="lh-btn lh-btn--outline" onClick={() => navigate('/lecturer/home')} style={{ background: 'rgba(255,255,255,0.1)', color: 'white', borderColor: 'rgba(255,255,255,0.3)' }}>
+                    ← Back to Home
+                  </button>
+                    <button className="lh-btn lh-btn--primary" onClick={() => navigate('/lecturer/calendar')} style={{ background: 'white', color: '#0F2854' }}>
+                    <Calendar size={16} /> Calendar View
+                  </button>
+                </div>
             </div>
             <div className="lh-hero__visual">
               <div className="lh-hero__avatar-ring">{initials}</div>
               <div className="lh-hero__role-tag">
-                <BookOpen size={13} /> {user?.name} � {user?.department ?? 'IT'}
+                <BookOpen size={13} /> {user?.name} ï¿½ {user?.department ?? 'IT'}
               </div>
             </div>
           </div>
@@ -308,7 +311,7 @@ function LecturerSlotsPage({ user, onLogout }) {
                             onMouseOver={(e) => e.currentTarget.style.background = '#fecaca'}
                             onMouseOut={(e) => e.currentTarget.style.background = '#fee2e2'}
                           >
-                            �
+                            ï¿½
                           </button>
                         )}
                       </div>

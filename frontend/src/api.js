@@ -21,7 +21,7 @@ async function apiFetch(path, options = {}) {
   return res.json();
 }
 
-// ── Users ────────────────────────────────────────────────────────────────────
+// â”€â”€ Users â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 /** Fetch every user in the system (used to populate the login page). */
 export function getUsers() {
@@ -54,7 +54,7 @@ export function toggleDnd(userId, dnd, autoReplyMessage) {
   });
 }
 
-// ── Appointments ─────────────────────────────────────────────────────────────
+// â”€â”€ Appointments â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 /** Get all appointments for a student. */
 export function getStudentAppointments(studentId) {
@@ -99,7 +99,7 @@ export function deleteAppointment(id) {
   return apiFetch(`/api/appointments/${id}`, { method: 'DELETE' });
 }
 
-// ── Chat ─────────────────────────────────────────────────────────────────────
+// â”€â”€ Chat â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 /** Create a chat room for a confirmed appointment. */
 export function createChatRoom(appointmentId) {
@@ -116,7 +116,7 @@ export function getMessages(roomId) {
   return apiFetch(`/api/chat/rooms/${roomId}/messages`);
 }
 
-// ── Auth ─────────────────────────────────────────────────────────────────────
+// â”€â”€ Auth â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export function loginUser(payload) {
   return apiFetch('/api/auth/login', {
@@ -132,7 +132,7 @@ export function registerUser(payload) {
   });
 }
 
-// ── Student/Lecturer Management ─────────────────────────────────────────────
+// â”€â”€ Student/Lecturer Management â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export function getManagedStudents() {
   return apiFetch('/api/management/students');
@@ -185,3 +185,25 @@ export function toggleSlotAvailability(slotId) {
   });
 }
 
+
+// ++ SlotCalendarPage Mappings ++
+export function getSlots(lecturerId) {
+  return getLecturerAvailability(lecturerId);
+}
+export function createSlot(data) {
+  return apiFetch('/api/availability/slot', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+export function updateSlot(slotId, data) {
+  return apiFetch('/api/availability/slot/' + slotId, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  });
+}
+export function deleteSlot(slotId) {
+  return apiFetch('/api/availability/slot/' + slotId, {
+    method: 'DELETE',
+  });
+}
