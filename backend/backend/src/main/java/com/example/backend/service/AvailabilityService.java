@@ -60,8 +60,9 @@ public class AvailabilityService {
         // Validate overlap
         List<AvailabilitySlot> existingSlots = availabilitySlotRepository.findByLecturerOrderBySlotDateAscStartTimeAsc(lecturer);
         for (AvailabilitySlot existing : existingSlots) {
-            if (existing.getSlotDate().equals(date)) {
-                if (start.isBefore(existing.getEndTime()) && end.isAfter(existing.getStartTime())) {
+            if (existing.getSlotDate() != null && existing.getSlotDate().equals(date)) {
+                if (existing.getStartTime() != null && existing.getEndTime() != null &&
+                    start.isBefore(existing.getEndTime()) && end.isAfter(existing.getStartTime())) {
                     throw new IllegalArgumentException("Slot overlaps with an existing slot");
                 }
             }

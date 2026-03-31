@@ -70,7 +70,30 @@ export default function SlotCalendarPage({ currentUser, onLogout }) {
   const dd = String(selectedDate.getDate()).padStart(2, '0');
   const selDateKey = `${yyyy}-${mm}-${dd}`;
 
+  const todayDate = new Date();
+  const tYYYY = todayDate.getFullYear();
+  const tMM = String(todayDate.getMonth() + 1).padStart(2, '0');
+  const tDD = String(todayDate.getDate()).padStart(2, '0');
+  const todayKey = `${tYYYY}-${tMM}-${tDD}`;
+
   const slotsForSelectedDate = slots.filter(s => s.slotDate === selDateKey).sort((a, b) => a.startTime.localeCompare(b.startTime));
+
+  // --- Handlers ---
+  const handleStartTimeChange = (e) => {
+    const start = e.target.value;
+    if (!start) {
+      setFormData({ ...formData, startTime: '', endTime: '' });
+      return;
+    }
+    const [h, m] = start.split(':').map(Number);
+    const date = new Date();
+    date.setHours(h, m + 10); // Add 10 minutes automatically
+    const endH = String(date.getHours()).padStart(2, '0');
+    const endM = String(date.getMinutes()).padStart(2, '0');
+    const end = `${endH}:${endM}`;
+    
+    setFormData({ ...formData, startTime: start, endTime: end });
+  };
 
   // --- Helpers ---
   const getSlotStatus = (slot) => {
@@ -111,19 +134,13 @@ export default function SlotCalendarPage({ currentUser, onLogout }) {
     if (!formData.startTime || !formData.endTime) {
       return 'Please specify start and end times.';
     }
-    
-    const today = new Date();
-    const tYYYY = today.getFullYear();
-    const tMM = String(today.getMonth() + 1).padStart(2, '0');
-    const tDD = String(today.getDate()).padStart(2, '0');
-    const todayKey = `${tYYYY}-${tMM}-${tDD}`;
 
     if (selDateKey < todayKey) {
       return 'Cannot add availability to past dates.';
     }
 
     if (selDateKey === todayKey) {
-      const nowTime = today.toTimeString().substring(0, 5);
+      const nowTime = todayDate.toTimeString().substring(0, 5);
       if (formData.startTime < nowTime) {
         return 'Start time cannot be in the past for today.';
       }
@@ -132,14 +149,6 @@ export default function SlotCalendarPage({ currentUser, onLogout }) {
     
 
     
-
-    if (formData.startTime < '07:00' || formData.endTime > '21:00') {
-      return 'Slots must be scheduled between 07:00 AM and 09:00 PM.';
-    }
-
-    if (formData.startTime < '07:00' || formData.endTime > '21:00') {
-      return 'Slots must be scheduled between 07:00 AM and 09:00 PM.';
-    }
 
     if (formData.startTime < '07:00' || formData.endTime > '21:00') {
       return 'Slots must be scheduled between 07:00 AM and 09:00 PM.';
@@ -158,10 +167,6 @@ export default function SlotCalendarPage({ currentUser, onLogout }) {
       return (formData.startTime < s.endTime.substring(0,5) && formData.endTime > s.startTime.substring(0,5));
     });
     if (overlap) return 'This time slot overlaps with an existing one.';
-    
-    if (!editingSlot && slotsForSelectedDate.length >= 12) {
-      return 'Maximum 12 slots allowed per day.';
-    }
     
     if (!editingSlot && slotsForSelectedDate.length >= 12) {
       return 'Maximum 12 slots allowed per day.';
@@ -206,7 +211,7 @@ export default function SlotCalendarPage({ currentUser, onLogout }) {
       setEditingSlot(null);
       fetchSlots();
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Error occurred');
+      toast.error(error.message || error.response?.data?.message || 'Error occurred');
     }
   };
 
@@ -273,13 +278,19 @@ export default function SlotCalendarPage({ currentUser, onLogout }) {
             <h2>Manage Timetable</h2>
             <p>Define your availability strictly. Slots cannot overlap.</p>
           </div>
-          <button className="cal-btn-primary" onClick={() => {
-            setEditingSlot(null);
-            setFormData({ startTime: '', endTime: '', mode: 'Physical', location: '', meetingLink: '' });
-            setShowForm(true);
-          }}>
-            <Plus size={18} /> Add Slot for {formatDateDisplay(selDateKey)}
-          </button>
+          {selDateKey >= todayKey ? (
+            <button className="cal-btn-primary" onClick={() => {
+              setEditingSlot(null);
+              setFormData({ startTime: '', endTime: '', mode: 'Physical', location: '', meetingLink: '' });
+              setShowForm(true);
+            }}>
+              <Plus size={18} /> Add Slot for {formatDateDisplay(selDateKey)}
+            </button>
+          ) : (
+            <button className="cal-btn-primary" disabled style={{ opacity: 0.5, cursor: 'not-allowed' }} title="Cannot add availability to past dates">
+              <Plus size={18} /> Past Date Selected
+            </button>
+          )}
         </div>
 
         <div className="cal-layout">
@@ -304,6 +315,7 @@ export default function SlotCalendarPage({ currentUser, onLogout }) {
                 const iM = String(currentDate.getMonth() + 1).padStart(2, '0');
                 const iterKey = `${iY}-${iM}-${dText}`;
                 const isSelected = selDateKey === iterKey;
+                const isPast = iterKey < todayKey;
                 
                 // Dot indicators
                 const daySlots = slots.filter(s => s.slotDate === iterKey);
@@ -311,8 +323,12 @@ export default function SlotCalendarPage({ currentUser, onLogout }) {
                 return (
                   <div 
                     key={iterKey} 
-                    className={`cal-cell ${isSelected ? 'selected' : ''}`} 
-                    onClick={() => setSelectedDate(new Date(iY, currentDate.getMonth(), i + 1))}
+                    className={`cal-cell ${isSelected ? 'selected' : ''} ${isPast ? 'past-cell' : ''}`} 
+                    onClick={() => {
+                      setSelectedDate(new Date(iY, currentDate.getMonth(), i + 1));
+                      setShowForm(false); // Close form when date changes
+                    }}
+                    style={isPast ? { opacity: 0.6, backgroundColor: '#f8fafc' } : {}}
                   >
                     <span>{i + 1}</span>
                     <div className="cal-dots">
@@ -350,7 +366,7 @@ export default function SlotCalendarPage({ currentUser, onLogout }) {
                    <div className="form-row">
                      <div className="form-group">
                        <label>Start Time</label>
-                       <input type="time" value={formData.startTime} onChange={e => setFormData({...formData, startTime: e.target.value})} required />
+                       <input type="time" value={formData.startTime} onChange={handleStartTimeChange} required />
                      </div>
                      <div className="form-group">
                        <label>End Time</label>

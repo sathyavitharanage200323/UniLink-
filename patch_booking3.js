@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+const fs = require('fs');
+let code = `import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { getUsersByRole, getUser, getLecturerAvailableSlots, createAppointment } from '../api';
-import './BookingPage.css'; // Utilizing the booking CSS styles
+import './SlotCalendarPage.css'; // Utilizing the calendar CSS styles
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 
@@ -74,8 +75,8 @@ function BookingPage({ user, onLogout }) {
       await createAppointment({
         studentId: user.id,
         lecturerId: selectedLecturerId,
-        startTime: `${selectedSlot.slotDate}T${selectedSlot.startTime.substring(0,5)}:00`,
-        endTime: `${selectedSlot.slotDate}T${selectedSlot.endTime.substring(0,5)}:00`,
+        startTime: \`\${selectedSlot.slotDate}T\${selectedSlot.startTime.substring(0,5)}:00\`,
+        endTime: \`\${selectedSlot.slotDate}T\${selectedSlot.endTime.substring(0,5)}:00\`,
         notes: notes
       });
       alert('Appointment booked successfully! Wait for lecturer confirmation.');
@@ -88,24 +89,7 @@ function BookingPage({ user, onLogout }) {
     }
   };
 
-  // Filter slots for the selected date - must be available and not in the past
-  const slotsForDate = slots.filter(s => {
-    if (s.slotDate !== selectedDate) return false;
-    if (s.status !== 'AVAILABLE') return false;
-    
-    // Time filter for today
-    const today = new Date();
-    const tYYYY = today.getFullYear();
-    const tMM = String(today.getMonth() + 1).padStart(2, '0');
-    const tDD = String(today.getDate()).padStart(2, '0');
-    const todayKey = `${tYYYY}-${tMM}-${tDD}`;
-
-    if (s.slotDate === todayKey) {
-      const nowTime = today.toTimeString().substring(0, 5);
-      if (s.startTime.substring(0,5) <= nowTime) return false;
-    }
-    return true;
-  });
+  const slotsForDate = slots.filter(s => s.slotDate === selectedDate && s.status !== 'BLOCKED' && s.status !== 'BOOKED' && s.status !== 'EXPIRED');
 
   const formattedDate = new Date(selectedDate).toLocaleDateString('en-US', {
     weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
@@ -117,9 +101,9 @@ function BookingPage({ user, onLogout }) {
       <div className="calendar-container" style={{ flex: 1 }}>
         <div className="calendar-header">
           <div className="calendar-header-content">
-            <button className="btn-back" onClick={() => navigate('/student/home')}>← Back to Home</button>
+            <button className="btn-back" onClick={() => navigate('/student/home')}>? Back to Home</button>
             <br /><br />
-            <span className="header-badge">📅 Book an Appointment</span>
+            <span className="header-badge">?? Book an Appointment</span>
             <h1>Smart Availability Calendar</h1>
             <p>Select a lecturer and a date to view their available time slots.</p>
           </div>
@@ -194,7 +178,7 @@ function BookingPage({ user, onLogout }) {
           <div className="slots-display-card">
             {!selectedLecturerId ? (
                <div className="empty-state">
-                 <div className="empty-icon">👨‍🏫</div>
+                 <div className="empty-icon">?????</div>
                  <h3>No Lecturer Selected</h3>
                  <p>Please select a lecturer from the dropdown to view available slots.</p>
                </div>
@@ -215,14 +199,14 @@ function BookingPage({ user, onLogout }) {
                       >
                         <span className="slot-time">{slot.startTime.substring(0,5)}</span>
                         <span className="slot-duration">
-                           {slot.mode === 'Online' ? '🌐 Online' : '🏢 ' + (slot.location || 'Physical')}
+                           {slot.mode === 'Online' ? '?? Online' : '?? ' + (slot.location || 'Physical')}
                         </span>
                       </button>
                     ))}
                   </div>
                 ) : (
                   <div className="empty-state">
-                    <div className="empty-icon">⏳</div>
+                    <div className="empty-icon">?</div>
                     <h3>No available slots</h3>
                     <p>The lecturer has not added any open availability for this date.</p>
                   </div>
@@ -250,3 +234,6 @@ function BookingPage({ user, onLogout }) {
 }
 
 export default BookingPage;
+`
+fs.writeFileSync('frontend/src/pages/BookingPage.jsx', code);
+console.log('Done!');
