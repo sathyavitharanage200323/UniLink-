@@ -56,8 +56,8 @@ function BookingPage({ user, onLogout }) {
       await createAppointment({
         studentId: user.id,
         lecturerId: lecturerId,
-        startTime: `${selectedSlot.slotDate}T${selectedSlot.startTime}`,
-        endTime: `${selectedSlot.slotDate}T${selectedSlot.endTime}`,
+        startTime: `${selectedSlot.slotDate}T${selectedSlot.startTime.substring(0,5)}:00`,
+        endTime: `${selectedSlot.slotDate}T${selectedSlot.endTime.substring(0,5)}:00`,
         notes: notes
       });
       alert('Appointment booked successfully! Wait for lecturer confirmation.');

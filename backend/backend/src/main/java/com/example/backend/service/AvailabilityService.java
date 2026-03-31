@@ -1,13 +1,16 @@
 package com.example.backend.service;
 
 import com.example.backend.dto.AvailabilitySlotDTO;
+import com.example.backend.model.Appointment;
 import com.example.backend.model.AvailabilitySlot;
 import com.example.backend.model.User;
+import com.example.backend.repository.AppointmentRepository;
 import com.example.backend.repository.AvailabilitySlotRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -17,6 +20,7 @@ import java.util.stream.Collectors;
 public class AvailabilityService {
 
     private final AvailabilitySlotRepository availabilitySlotRepository;
+    private final AppointmentRepository appointmentRepository;
     private final UserService userService;
 
     public List<AvailabilitySlotDTO> getLecturerAvailability(Long lecturerId) {
@@ -29,41 +33,105 @@ public class AvailabilityService {
 
     public List<AvailabilitySlotDTO> getLecturerAvailableSlots(Long lecturerId) {
         User lecturer = userService.getUser(lecturerId);
-        return availabilitySlotRepository.findByLecturerAndAvailableTrueOrderBySlotDateAscStartTimeAsc(lecturer)
+        return availabilitySlotRepository.findByLecturerAndStatusOrderBySlotDateAscStartTimeAsc(lecturer, AvailabilitySlot.SlotStatus.AVAILABLE)
                 .stream()
                 .map(AvailabilitySlotDTO::from)
                 .collect(Collectors.toList());
     }
 
     @Transactional
-    public List<AvailabilitySlotDTO> updateLecturerAvailability(Long lecturerId, List<AvailabilitySlotDTO> slots) {
+    public AvailabilitySlotDTO createSlot(Long lecturerId, AvailabilitySlotDTO dto) {
         User lecturer = userService.getUser(lecturerId);
+        
+        LocalDate date = LocalDate.parse(dto.getSlotDate());
+        LocalTime start = LocalTime.parse(dto.getStartTime());
+        LocalTime end = LocalTime.parse(dto.getEndTime());
+        
+        if (date.isBefore(LocalDate.now())) {
+            throw new IllegalArgumentException("Cannot create slot in the past");
+        }
+        if (date.isEqual(LocalDate.now()) && start.isBefore(LocalTime.now())) {
+            throw new IllegalArgumentException("Cannot create slot in the past time today");
+        }
+        if (end.isBefore(start)) {
+            throw new IllegalArgumentException("End time must be after start time");
+        }
 
-        availabilitySlotRepository.deleteByLecturer(lecturer);
-        availabilitySlotRepository.flush();
+        // Validate overlap
+        List<AvailabilitySlot> existingSlots = availabilitySlotRepository.findByLecturerOrderBySlotDateAscStartTimeAsc(lecturer);
+        for (AvailabilitySlot existing : existingSlots) {
+            if (existing.getSlotDate().equals(date)) {
+                if (start.isBefore(existing.getEndTime()) && end.isAfter(existing.getStartTime())) {
+                    throw new IllegalArgumentException("Slot overlaps with an existing slot");
+                }
+            }
+        }
 
-        List<AvailabilitySlot> newSlots = slots.stream()
-                .map(dto -> AvailabilitySlot.builder()
-                        .lecturer(lecturer)
-                        .slotDate(java.time.LocalDate.parse(dto.getSlotDate()))
-                        .startTime(java.time.LocalTime.parse(dto.getStartTime()))
-                        .endTime(java.time.LocalTime.parse(dto.getEndTime()))
-                        .available(dto.isAvailable())
-                        .build())
-                .collect(Collectors.toList());
+        AvailabilitySlot slot = AvailabilitySlot.builder()
+                .lecturer(lecturer)
+                .slotDate(date)
+                .startTime(start)
+                .endTime(end)
+                .status(AvailabilitySlot.SlotStatus.AVAILABLE)
+                .mode(dto.getMode())
+                .location(dto.getLocation())
+                .meetingLink(dto.getMeetingLink())
+                .build();
 
-        List<AvailabilitySlot> saved = availabilitySlotRepository.saveAll(newSlots);
-
-        return saved.stream()
-                .map(AvailabilitySlotDTO::from)
-                .collect(Collectors.toList());
+        return AvailabilitySlotDTO.from(availabilitySlotRepository.save(slot));
     }
 
     @Transactional
-    public AvailabilitySlotDTO toggleSlotAvailability(Long slotId) {
+    public AvailabilitySlotDTO updateSlot(Long slotId, AvailabilitySlotDTO dto) {
         AvailabilitySlot slot = availabilitySlotRepository.findById(slotId)
                 .orElseThrow(() -> new RuntimeException("Slot not found"));
-        slot.setAvailable(!slot.isAvailable());
+        
+        if (slot.getStatus() == AvailabilitySlot.SlotStatus.BOOKED) {
+            // Restrictions on booked slot edits
+            slot.setLocation(dto.getLocation());
+            slot.setMeetingLink(dto.getMeetingLink());
+            slot.setMode(dto.getMode());
+            return AvailabilitySlotDTO.from(availabilitySlotRepository.save(slot));
+        }
+
+        LocalDate date = LocalDate.parse(dto.getSlotDate());
+        LocalTime start = LocalTime.parse(dto.getStartTime());
+        LocalTime end = LocalTime.parse(dto.getEndTime());
+        
+        if (end.isBefore(start)) throw new IllegalArgumentException("End time must be after start time");
+
+        slot.setSlotDate(date);
+        slot.setStartTime(start);
+        slot.setEndTime(end);
+        slot.setMode(dto.getMode());
+        slot.setLocation(dto.getLocation());
+        slot.setMeetingLink(dto.getMeetingLink());
+        
+        if (dto.getStatus() != null) {
+            slot.setStatus(AvailabilitySlot.SlotStatus.valueOf(dto.getStatus()));
+        }
+
+        return AvailabilitySlotDTO.from(availabilitySlotRepository.save(slot));
+    }
+
+    @Transactional
+    public void deleteSlot(Long slotId) {
+        AvailabilitySlot slot = availabilitySlotRepository.findById(slotId)
+                .orElseThrow(() -> new RuntimeException("Slot not found"));
+        if (slot.getStatus() == AvailabilitySlot.SlotStatus.BOOKED) {
+            throw new IllegalArgumentException("Cannot delete a booked slot.");
+        }
+        availabilitySlotRepository.delete(slot);
+    }
+
+    @Transactional
+    public AvailabilitySlotDTO blockSlot(Long slotId, String reason) {
+        AvailabilitySlot slot = availabilitySlotRepository.findById(slotId)
+                .orElseThrow(() -> new RuntimeException("Slot not found"));
+        
+        slot.setStatus(AvailabilitySlot.SlotStatus.BLOCKED);
+        slot.setBlockReason(reason);
+        // In the future, if it's BOOKED, we might want to also cancel the appointment.
         return AvailabilitySlotDTO.from(availabilitySlotRepository.save(slot));
     }
 }

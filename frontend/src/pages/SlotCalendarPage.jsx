@@ -1,1057 +1,484 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getSlots, createSlot, updateSlot, deleteSlot } from '../api';
+import { toast } from 'react-toastify';
+import {
+  Calendar, Clock, Plus, X, Video, MapPin, 
+  Trash2, Edit2, AlertCircle, Ban, Search, CheckCircle, Clock3
+} from 'lucide-react';
+import Header from '../components/Header';
+import Footer from '../components/Footer';
+import {
+  getLecturerAvailability,
+  createSlot,
+  updateSlot,
+  deleteSlot,
+  blockSlot
+} from '../api';
 import './SlotCalendarPage.css';
 
 const monthNames = [
   'January', 'February', 'March', 'April', 'May', 'June',
   'July', 'August', 'September', 'October', 'November', 'December',
 ];
-
 const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-
-const SLOT_DURATION_MINUTES = 30;
-const BREAK_MINUTES = 15;
-const DAY_START = '09:00';
-const DAY_END = '21:00';
-const MAX_SLOTS_PER_DAY = 12;
-
-function formatTimeDisplay(time) {
-  if (!time) return '--';
-  return time.slice(0, 5);
-}
-
-function timeToMinutes(time) {
-  if (!time) return 0;
-  const [h, m] = time.slice(0, 5).split(':').map(Number);
-  return h * 60 + m;
-}
-
-function minutesToTime(totalMinutes) {
-  const hours = Math.floor(totalMinutes / 60);
-  const minutes = totalMinutes % 60;
-  return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
-}
-
-function normalizeTime(value) {
-  if (!value) return '';
-  if (value.length === 5) return `${value}:00`;
-  return value;
-}
-
-function addMinutesToTime(timeValue, minutesToAdd = SLOT_DURATION_MINUTES) {
-  if (!timeValue) return '';
-  const total = timeToMinutes(timeValue) + minutesToAdd;
-  return minutesToTime(total);
-}
-
-function getDurationMinutes(startTime, endTime) {
-  return timeToMinutes(endTime) - timeToMinutes(startTime);
-}
-
-function isSameDate(dateA, dateB) {
-  return (
-    dateA.getFullYear() === dateB.getFullYear() &&
-    dateA.getMonth() === dateB.getMonth() &&
-    dateA.getDate() === dateB.getDate()
-  );
-}
-
-function dateToKey(date) {
-  const year = date.getFullYear();
-  const month = `${date.getMonth() + 1}`.padStart(2, '0');
-  const day = `${date.getDate()}`.padStart(2, '0');
-  return `${year}-${month}-${day}`;
-}
-
-function formatLongDate(date) {
-  return new Date(date).toLocaleDateString('en-US', {
-    weekday: 'short',
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-  });
-}
-
-function formatMediumDate(date) {
-  return new Date(date).toLocaleDateString('en-GB', {
-    weekday: 'short',
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-  });
-}
-
-function isPastDate(slotDate) {
-  const today = new Date();
-  const todayOnly = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-  const slotOnly = new Date(slotDate);
-  return slotOnly < todayOnly;
-}
-
-function getStatus(slotDate) {
-  const today = new Date();
-  const todayOnly = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-  const slotOnly = new Date(slotDate);
-
-  if (slotOnly.getTime() === todayOnly.getTime()) return 'Today';
-  if (slotOnly > todayOnly) return 'Upcoming';
-  return 'Past';
-}
-
-function hasSlotConflict(existingSlots, newStart, newEnd, ignoreId = null) {
-  const newStartMinutes = timeToMinutes(newStart);
-  const newEndMinutes = timeToMinutes(newEnd);
-
-  return existingSlots.some((slot) => {
-    if (ignoreId && slot.id === ignoreId) return false;
-
-    const existingStart = timeToMinutes(slot.startTime);
-    const existingEnd = timeToMinutes(slot.endTime);
-
-    return newStartMinutes < existingEnd && newEndMinutes > existingStart;
-  });
-}
-
-function generateAllStartTimes() {
-  const times = [];
-  const start = timeToMinutes(DAY_START);
-  const lastAllowedStart = timeToMinutes(DAY_END) - SLOT_DURATION_MINUTES;
-
-  for (let mins = start; mins <= lastAllowedStart; mins += BREAK_MINUTES) {
-    times.push(minutesToTime(mins));
-  }
-
-  return times;
-}
-
-function getNowRoundedMinutes() {
-  const now = new Date();
-  const raw = now.getHours() * 60 + now.getMinutes();
-  return Math.ceil(raw / BREAK_MINUTES) * BREAK_MINUTES;
-}
-
-function isTodayKey(dateKey) {
-  return dateKey === dateToKey(new Date());
-}
-
-function getValidStartTimesForDate(dateKey, allSlotsByDate, editingSlot = null) {
-  if (!dateKey) return [];
-
-  const allTimes = generateAllStartTimes();
-  const sameDaySlots = (allSlotsByDate[dateKey] || []).filter((slot) =>
-    editingSlot ? slot.id !== editingSlot.id : true
-  );
-
-  return allTimes.filter((time) => {
-    const start = timeToMinutes(time);
-    const end = start + SLOT_DURATION_MINUTES;
-
-    if (start < timeToMinutes(DAY_START)) return false;
-    if (end > timeToMinutes(DAY_END)) return false;
-
-    if (isTodayKey(dateKey)) {
-      const roundedNow = getNowRoundedMinutes();
-      if (start < roundedNow) return false;
-    }
-
-    for (const slot of sameDaySlots) {
-      const existingStart = timeToMinutes(slot.startTime);
-      const existingEnd = timeToMinutes(slot.endTime);
-
-      const gapAfterExisting = start - existingEnd;
-      const gapBeforeExisting = existingStart - end;
-
-      const enoughGapAfter = gapAfterExisting >= BREAK_MINUTES;
-      const enoughGapBefore = gapBeforeExisting >= BREAK_MINUTES;
-
-      if (!(enoughGapAfter || enoughGapBefore)) {
-        return false;
-      }
-    }
-
-    return true;
-  });
-}
-
-function getSlotAccentClass(slotDate) {
-  const status = getStatus(slotDate);
-  if (status === 'Today') return 'today';
-  if (status === 'Upcoming') return 'upcoming';
-  return 'past';
-}
 
 export default function SlotCalendarPage({ currentUser, onLogout }) {
   const navigate = useNavigate();
-
   const [slots, setSlots] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [banner, setBanner] = useState({ type: '', text: '' });
+  const [loading, setLoading] = useState(false);
 
-  const [filter, setFilter] = useState('All');
-  const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState(new Date());
 
-  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [showForm, setShowForm] = useState(false);
   const [editingSlot, setEditingSlot] = useState(null);
-  const [editStartTime, setEditStartTime] = useState('');
-  const [editEndTime, setEditEndTime] = useState('');
-  const [savingEdit, setSavingEdit] = useState(false);
 
-  const [viewModalOpen, setViewModalOpen] = useState(false);
-  const [viewingSlot, setViewingSlot] = useState(null);
+  const [formData, setFormData] = useState({
+    startTime: '',
+    endTime: '',
+    mode: 'Physical',
+    location: '',
+    meetingLink: '',
+  });
 
-  const [quickAddStartTime, setQuickAddStartTime] = useState('');
-  const [quickAddEndTime, setQuickAddEndTime] = useState('');
-  const [addingSlot, setAddingSlot] = useState(false);
+  const [blockReason, setBlockReason] = useState('');
+  const [showBlockModal, setShowBlockModal] = useState(null);
 
   useEffect(() => {
-    if (currentUser?.id) {
-      loadSlots();
+    if (!currentUser || currentUser.role !== 'LECTURER') {
+      navigate('/');
+      return;
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentUser?.id]);
+    fetchSlots();
+  }, [currentUser]);
 
-  async function loadSlots() {
+  const fetchSlots = async () => {
     try {
       setLoading(true);
-      setError('');
-      setBanner({ type: '', text: '' });
-      const data = await getSlots(currentUser.id);
-      setSlots(Array.isArray(data) ? data : []);
+      const data = await getLecturerAvailability(currentUser.id);
+      setSlots(data || []);
     } catch (err) {
-      setError(err.message || 'Failed to load calendar slots.');
-      setSlots([]);
+      toast.error('Failed to load slots');
     } finally {
       setLoading(false);
     }
-  }
+  };
 
-  const today = new Date();
-  const todayKey = dateToKey(today);
-  const lecturerInitial = currentUser?.name ? currentUser.name.charAt(0).toUpperCase() : 'L';
+  const selectedDateString = selectedDate.toLocaleDateString('en-CA'); // YYYY-MM-DD local logic sometimes fails, better to use custom formatting
+  const yyyy = selectedDate.getFullYear();
+  const mm = String(selectedDate.getMonth() + 1).padStart(2, '0');
+  const dd = String(selectedDate.getDate()).padStart(2, '0');
+  const selDateKey = `${yyyy}-${mm}-${dd}`;
 
-  const filteredSlots = useMemo(() => {
-    return slots.filter((slot) => {
-      const status = getStatus(slot.slotDate);
-      if (filter === 'All') return true;
-      return status === filter;
+  const slotsForSelectedDate = slots.filter(s => s.slotDate === selDateKey).sort((a, b) => a.startTime.localeCompare(b.startTime));
+
+  // --- Helpers ---
+  const getSlotStatus = (slot) => {
+    const today = new Date();
+    const slotD = new Date(slot.slotDate + 'T00:00:00');
+    const dateOnlyToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const dateOnlySlot = new Date(slotD.getFullYear(), slotD.getMonth(), slotD.getDate());
+
+    if (slot.status === 'BLOCKED') return 'BLOCKED';
+    
+    if (dateOnlySlot < dateOnlyToday) return 'EXPIRED';
+
+    if (dateOnlySlot.getTime() === dateOnlyToday.getTime()) {
+      const nowStr = today.toTimeString().substring(0, 5); // HH:MM
+      const slotStart = slot.startTime.substring(0, 5);
+      const slotEnd = slot.endTime.substring(0, 5);
+      
+      if (nowStr >= slotStart && nowStr < slotEnd) return 'ONGOING';
+      if (nowStr >= slotEnd) return 'EXPIRED';
+    }
+
+    return slot.status; // AVAILABLE or BOOKED
+  };
+
+  const getStatusColorClass = (status) => {
+    switch(status) {
+      case 'AVAILABLE': return 'slot-available';
+      case 'BOOKED': return 'slot-booked';
+      case 'BLOCKED': return 'slot-blocked';
+      case 'EXPIRED': return 'slot-expired';
+      case 'ONGOING': return 'slot-ongoing';
+      default: return 'slot-default';
+    }
+  };
+
+  // --- Validate Form ---
+  const validateForm = () => {
+    if (!formData.startTime || !formData.endTime) {
+      return 'Please specify start and end times.';
+    }
+    
+    const today = new Date();
+    const tYYYY = today.getFullYear();
+    const tMM = String(today.getMonth() + 1).padStart(2, '0');
+    const tDD = String(today.getDate()).padStart(2, '0');
+    const todayKey = `${tYYYY}-${tMM}-${tDD}`;
+
+    if (selDateKey < todayKey) {
+      return 'Cannot add availability to past dates.';
+    }
+
+    if (selDateKey === todayKey) {
+      const nowTime = today.toTimeString().substring(0, 5);
+      if (formData.startTime < nowTime) {
+        return 'Start time cannot be in the past for today.';
+      }
+    }
+
+    
+
+    
+
+    if (formData.startTime < '07:00' || formData.endTime > '21:00') {
+      return 'Slots must be scheduled between 07:00 AM and 09:00 PM.';
+    }
+
+    if (formData.startTime < '07:00' || formData.endTime > '21:00') {
+      return 'Slots must be scheduled between 07:00 AM and 09:00 PM.';
+    }
+
+    if (formData.startTime < '07:00' || formData.endTime > '21:00') {
+      return 'Slots must be scheduled between 07:00 AM and 09:00 PM.';
+    }
+
+    if (formData.endTime <= formData.startTime) {
+      return 'End time must be after start time.';
+    }
+
+    if (formData.mode === 'Online' && !formData.meetingLink) return 'Meeting link is required for Online slots.';
+    if (formData.mode === 'Physical' && !formData.location) return 'Location is required for Physical slots.';
+
+    // Client-side overlap validation
+    const overlap = slotsForSelectedDate.find(s => {
+      if (editingSlot && s.id === editingSlot.id) return false;
+      return (formData.startTime < s.endTime.substring(0,5) && formData.endTime > s.startTime.substring(0,5));
     });
-  }, [slots, filter]);
+    if (overlap) return 'This time slot overlaps with an existing one.';
+    
+    if (!editingSlot && slotsForSelectedDate.length >= 12) {
+      return 'Maximum 12 slots allowed per day.';
+    }
+    
+    if (!editingSlot && slotsForSelectedDate.length >= 12) {
+      return 'Maximum 12 slots allowed per day.';
+    }
 
-  const slotsByDate = useMemo(() => {
-    const grouped = {};
-    filteredSlots.forEach((slot) => {
-      if (!grouped[slot.slotDate]) grouped[slot.slotDate] = [];
-      grouped[slot.slotDate].push(slot);
-    });
+    return null;
+  };
 
-    Object.keys(grouped).forEach((dateKey) => {
-      grouped[dateKey].sort((a, b) => a.startTime.localeCompare(b.startTime));
-    });
-
-    return grouped;
-  }, [filteredSlots]);
-
-  const allSlotsByDate = useMemo(() => {
-    const grouped = {};
-    slots.forEach((slot) => {
-      if (!grouped[slot.slotDate]) grouped[slot.slotDate] = [];
-      grouped[slot.slotDate].push(slot);
-    });
-
-    Object.keys(grouped).forEach((dateKey) => {
-      grouped[dateKey].sort((a, b) => a.startTime.localeCompare(b.startTime));
-    });
-
-    return grouped;
-  }, [slots]);
-
-  const selectedDateKey = dateToKey(selectedDate);
-  const selectedDateSlots = allSlotsByDate[selectedDateKey] || [];
-
-  const validQuickAddStartTimes = getValidStartTimesForDate(selectedDateKey, allSlotsByDate);
-  const validEditStartTimes = editingSlot
-    ? getValidStartTimesForDate(editingSlot.slotDate, allSlotsByDate, editingSlot)
-    : [];
-
-  const totalSlots = slots.length;
-  const todaySlots = slots.filter((slot) => slot.slotDate === todayKey).length;
-  const upcomingSlots = slots.filter((slot) => getStatus(slot.slotDate) === 'Upcoming').length;
-  const pastSlots = slots.filter((slot) => getStatus(slot.slotDate) === 'Past').length;
-
-  const monthLabel = `${monthNames[currentMonth.getMonth()]} ${currentMonth.getFullYear()}`;
-
-  const calendarDays = useMemo(() => {
-    const year = currentMonth.getFullYear();
-    const month = currentMonth.getMonth();
-
-    const firstDayOfMonth = new Date(year, month, 1);
-    const startDay = firstDayOfMonth.getDay();
-    const daysInMonth = new Date(year, month + 1, 0).getDate();
-
-    const cells = [];
-
-    for (let i = 0; i < startDay; i += 1) cells.push(null);
-    for (let day = 1; day <= daysInMonth; day += 1) cells.push(new Date(year, month, day));
-    while (cells.length % 7 !== 0) cells.push(null);
-
-    return cells;
-  }, [currentMonth]);
-
-  function goToPreviousMonth() {
-    setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1));
-  }
-
-  function goToNextMonth() {
-    setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1));
-  }
-
-  function goToToday() {
-    const now = new Date();
-    setCurrentMonth(new Date(now.getFullYear(), now.getMonth(), 1));
-    setSelectedDate(now);
-  }
-
-  function openEditModal(slot) {
-    const status = getStatus(slot.slotDate);
-    if (status === 'Past') {
-      setBanner({ type: 'error', text: 'Past slots cannot be edited.' });
+  // --- Handlers ---
+  const handleSaveSlot = async (e) => {
+    e.preventDefault();
+    const err = validateForm();
+    if (err) {
+      toast.error(err);
       return;
     }
 
-    setEditingSlot(slot);
-    const start = slot.startTime.slice(0, 5);
-    setEditStartTime(start);
-    setEditEndTime(addMinutesToTime(start, SLOT_DURATION_MINUTES).slice(0, 5));
-    setEditModalOpen(true);
-  }
-
-  function closeEditModal() {
-    setEditModalOpen(false);
-    setEditingSlot(null);
-    setEditStartTime('');
-    setEditEndTime('');
-  }
-
-  function openViewModal(slot) {
-    setViewingSlot(slot);
-    setViewModalOpen(true);
-  }
-
-  function closeViewModal() {
-    setViewingSlot(null);
-    setViewModalOpen(false);
-  }
-
-  function handleQuickAddStartTimeChange(value) {
-    setQuickAddStartTime(value);
-    if (value) {
-      setQuickAddEndTime(addMinutesToTime(value, SLOT_DURATION_MINUTES));
-    } else {
-      setQuickAddEndTime('');
-    }
-  }
-
-  function handleEditStartTimeChange(value) {
-    setEditStartTime(value);
-    if (value) {
-      setEditEndTime(addMinutesToTime(value, SLOT_DURATION_MINUTES));
-    } else {
-      setEditEndTime('');
-    }
-  }
-
-  function validateTodayTime(dateKey, start) {
-    if (!isTodayKey(dateKey)) return '';
-    const roundedNow = getNowRoundedMinutes();
-    const startMinutes = timeToMinutes(start);
-    if (startMinutes < roundedNow) {
-      return 'You cannot add or update a slot for a time that has already passed today.';
-    }
-    return '';
-  }
-
-  async function handleSaveEdit() {
-    if (!editingSlot) return;
-
-    if (!editStartTime || !editEndTime) {
-      setBanner({ type: 'error', text: 'Please select a valid start time.' });
-      return;
-    }
-
-    const start = normalizeTime(editStartTime);
-    const end = normalizeTime(editEndTime);
-
-    if (getDurationMinutes(start, end) !== SLOT_DURATION_MINUTES) {
-      setBanner({ type: 'error', text: `Each slot must be exactly ${SLOT_DURATION_MINUTES} minutes.` });
-      return;
-    }
-
-    if (timeToMinutes(start) < timeToMinutes(DAY_START)) {
-      setBanner({ type: 'error', text: `Slots can start only from ${DAY_START}.` });
-      return;
-    }
-
-    if (timeToMinutes(end) > timeToMinutes(DAY_END)) {
-      setBanner({ type: 'error', text: `Slots cannot go beyond ${DAY_END}.` });
-      return;
-    }
-
-    const todayTimeMessage = validateTodayTime(editingSlot.slotDate, start);
-    if (todayTimeMessage) {
-      setBanner({ type: 'error', text: todayTimeMessage });
-      return;
-    }
-
-    const sameDateSlots = allSlotsByDate[editingSlot.slotDate] || [];
-    if (hasSlotConflict(sameDateSlots, start, end, editingSlot.id)) {
-      setBanner({ type: 'error', text: 'This time overlaps with another slot on the same date.' });
-      return;
-    }
-
-    const validTimes = getValidStartTimesForDate(editingSlot.slotDate, allSlotsByDate, editingSlot);
-    if (!validTimes.includes(start.slice(0, 5))) {
-      setBanner({ type: 'error', text: `Invalid time. Keep a ${BREAK_MINUTES}-minute break between slots.` });
-      return;
-    }
+    const payload = {
+      slotDate: selDateKey,
+      startTime: formData.startTime + ':00',
+      endTime: formData.endTime + ':00',
+      mode: formData.mode,
+      location: formData.location,
+      meetingLink: formData.meetingLink,
+      status: formData.status || 'AVAILABLE'
+    };
 
     try {
-      setSavingEdit(true);
-      await updateSlot(editingSlot.id, {
-        ...editingSlot,
-        startTime: start,
-        endTime: end,
-      });
-      await loadSlots();
-      closeEditModal();
-      setBanner({ type: 'success', text: 'Slot updated successfully.' });
-    } catch (err) {
-      setBanner({ type: 'error', text: err.message || 'Failed to update slot.' });
-    } finally {
-      setSavingEdit(false);
+      if (editingSlot) {
+        if (editingSlot.status === 'BOOKED') {
+          if (!window.confirm("This slot is already booked. Restrictions apply! Do you really want to edit?")) {
+            return;
+          }
+        }
+        await updateSlot(editingSlot.id, payload);
+        toast.success('Slot updated!');
+      } else {
+        await createSlot(currentUser.id, payload);
+        toast.success('Slot created!');
+      }
+      setShowForm(false);
+      setEditingSlot(null);
+      fetchSlots();
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Error occurred');
     }
-  }
+  };
 
-  async function handleDelete(slotId, slotDate) {
-    const status = getStatus(slotDate);
-    if (status === 'Past') {
-      setBanner({ type: 'error', text: 'Past slots cannot be deleted from this calendar view.' });
+  const handleEdit = (slot) => {
+    if (slot.status === 'EXPIRED') {
+      toast.error('Cannot edit expired slots.');
       return;
     }
+    setEditingSlot(slot);
+    setFormData({
+      startTime: slot.startTime.substring(0,5),
+      endTime: slot.endTime.substring(0,5),
+      mode: slot.mode,
+      location: slot.location || '',
+      meetingLink: slot.meetingLink || '',
+      status: slot.status
+    });
+    setShowForm(true);
+  };
 
-    const confirmed = window.confirm('Are you sure you want to delete this slot?');
-    if (!confirmed) return;
-
+  const handleDelete = async (slotId) => {
     try {
       await deleteSlot(slotId);
-      if (viewingSlot?.id === slotId) {
-        closeViewModal();
-      }
-      await loadSlots();
-      setBanner({ type: 'success', text: 'Slot deleted successfully.' });
-    } catch (err) {
-      setBanner({ type: 'error', text: err.message || 'Failed to delete slot.' });
+      toast.success('Slot deleted.');
+      fetchSlots();
+    } catch (e) {
+      toast.error(e.response?.data?.message || "Error deleting slot (Maybe it's booked)");
     }
-  }
+  };
 
-  async function handleQuickAddSlot() {
-    if (isPastDate(selectedDateKey)) {
-      setBanner({ type: 'error', text: 'You cannot add slots to a past date.' });
+  const handleBlockSubmit = async (e) => {
+    e.preventDefault();
+    if (!blockReason.trim()) {
+      toast.error('Reason is required.');
       return;
     }
-
-    if (selectedDateSlots.length >= MAX_SLOTS_PER_DAY) {
-      setBanner({ type: 'error', text: `Maximum ${MAX_SLOTS_PER_DAY} slots allowed per day.` });
-      return;
-    }
-
-    if (!quickAddStartTime || !quickAddEndTime) {
-      setBanner({ type: 'error', text: 'Please select a valid start time.' });
-      return;
-    }
-
-    const start = normalizeTime(quickAddStartTime);
-    const end = normalizeTime(quickAddEndTime);
-
-    if (getDurationMinutes(start, end) !== SLOT_DURATION_MINUTES) {
-      setBanner({ type: 'error', text: `Each slot must be exactly ${SLOT_DURATION_MINUTES} minutes.` });
-      return;
-    }
-
-    if (timeToMinutes(start) < timeToMinutes(DAY_START)) {
-      setBanner({ type: 'error', text: `Slots can start only from ${DAY_START}.` });
-      return;
-    }
-
-    if (timeToMinutes(end) > timeToMinutes(DAY_END)) {
-      setBanner({ type: 'error', text: `Slots cannot go beyond ${DAY_END}.` });
-      return;
-    }
-
-    const todayTimeMessage = validateTodayTime(selectedDateKey, start);
-    if (todayTimeMessage) {
-      setBanner({ type: 'error', text: todayTimeMessage });
-      return;
-    }
-
-    const exactDuplicate = selectedDateSlots.some(
-      (slot) => slot.startTime === start && slot.endTime === end
-    );
-
-    if (exactDuplicate) {
-      setBanner({ type: 'error', text: 'This exact slot already exists for the selected date.' });
-      return;
-    }
-
-    if (hasSlotConflict(selectedDateSlots, start, end)) {
-      setBanner({ type: 'error', text: 'This time overlaps with another slot on the selected date.' });
-      return;
-    }
-
-    if (!validQuickAddStartTimes.includes(start.slice(0, 5))) {
-      setBanner({ type: 'error', text: `Invalid time. There must be a ${BREAK_MINUTES}-minute break between slots.` });
-      return;
-    }
-
     try {
-      setAddingSlot(true);
-      await createSlot({
-        lecturerId: currentUser.id,
-        slotDate: selectedDateKey,
-        startTime: start,
-        endTime: end,
-      });
-      setQuickAddStartTime('');
-      setQuickAddEndTime('');
-      await loadSlots();
-      setBanner({ type: 'success', text: 'Slot added successfully.' });
-    } catch (err) {
-      setBanner({ type: 'error', text: err.message || 'Failed to add slot.' });
-    } finally {
-      setAddingSlot(false);
+      await blockSlot(showBlockModal.id, blockReason);
+      toast.success('Slot blocked securely.');
+      setShowBlockModal(null);
+      setBlockReason('');
+      fetchSlots();
+    } catch (e) {
+      toast.error('Failed to block.');
     }
-  }
+  };
 
-  const selectedDateStatus = getStatus(selectedDateKey);
-  const usedSlotsForDay = selectedDateSlots.length;
-  const remainingSlotsForDay = Math.max(MAX_SLOTS_PER_DAY - usedSlotsForDay, 0);
+  // --- Calendar Generator ---
+  const firstDay = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+  const lastDay = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
+  const startingDayOfWeek = firstDay.getDay();
+  const totalDays = lastDay.getDate();
+
+  const handlePrevMonth = () => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1));
+  const handleNextMonth = () => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1));
 
   return (
-    <div className="sc-layout">
-      <div className="sc-main">
-        <section className="sc-hero">
-          <div className="sc-hero__content">
-            <div>
-              <div className="sc-badge">📅 Smart Availability Calendar</div>
-              <h1>Slot Calendar View</h1>
-              <p>
-                View lecturer availability by date, manage daily slots, and update the schedule
-                from one professional calendar dashboard.
-              </p>
-
-              <div className="sc-hero__actions">
-                <button
-                  type="button"
-                  className="sc-btn sc-btn--outline"
-                  onClick={() => navigate('/lecturer/slots')}
-                >
-                  ← Back to Slots
-                </button>
-
-                <button
-                  type="button"
-                  className="sc-btn sc-btn--soft"
-                  onClick={onLogout}
-                >
-                  Logout
-                </button>
-              </div>
-            </div>
-
-            <div className="sc-hero__avatar">{lecturerInitial}</div>
+    <div className="cal-container">
+      <Header currentUser={currentUser} onLogout={onLogout} />
+      
+      <main className="cal-main">
+        <div className="cal-header">
+          <div>
+            <h2>Manage Timetable</h2>
+            <p>Define your availability strictly. Slots cannot overlap.</p>
           </div>
-        </section>
+          <button className="cal-btn-primary" onClick={() => {
+            setEditingSlot(null);
+            setFormData({ startTime: '', endTime: '', mode: 'Physical', location: '', meetingLink: '' });
+            setShowForm(true);
+          }}>
+            <Plus size={18} /> Add Slot for {formatDateDisplay(selDateKey)}
+          </button>
+        </div>
 
-        <section className="sc-stats">
-          <div className="sc-stat-card">
-            <div className="sc-stat-icon purple">📊</div>
-            <div>
-              <h3>{totalSlots}</h3>
-              <p>Total Slots</p>
+        <div className="cal-layout">
+          
+          {/* Calendar Sidebar */}
+          <div className="cal-sidebar">
+            <div className="cal-nav">
+              <button onClick={handlePrevMonth}>&lt;</button>
+              <h4>{monthNames[currentDate.getMonth()]} {currentDate.getFullYear()}</h4>
+              <button onClick={handleNextMonth}>&gt;</button>
             </div>
-          </div>
-
-          <div className="sc-stat-card">
-            <div className="sc-stat-icon blue">🕒</div>
-            <div>
-              <h3>{todaySlots}</h3>
-              <p>Today&apos;s Slots</p>
+            
+            <div className="cal-grid-header">
+              {dayNames.map(d => <div key={d}>{d}</div>)}
             </div>
-          </div>
-
-          <div className="sc-stat-card">
-            <div className="sc-stat-icon green">✨</div>
-            <div>
-              <h3>{upcomingSlots}</h3>
-              <p>Upcoming Slots</p>
-            </div>
-          </div>
-
-          <div className="sc-stat-card">
-            <div className="sc-stat-icon gray">⌛</div>
-            <div>
-              <h3>{pastSlots}</h3>
-              <p>Past Slots</p>
-            </div>
-          </div>
-        </section>
-
-        <section className="sc-grid">
-          <div className="sc-card">
-            <div className="sc-card__header">
-              <div className="sc-header-row">
-                <div>
-                  <h2>{monthLabel}</h2>
-                  <p className="sc-subtitle">Click a date to review or manage its availability.</p>
-                </div>
-
-                <div className="sc-month-actions">
-                  <button type="button" className="sc-btn sc-btn--ghost" onClick={goToPreviousMonth}>
-                    ← Prev
-                  </button>
-                  <button type="button" className="sc-btn sc-btn--ghost" onClick={goToToday}>
-                    Today
-                  </button>
-                  <button type="button" className="sc-btn sc-btn--ghost" onClick={goToNextMonth}>
-                    Next →
-                  </button>
-                </div>
-              </div>
-
-              <div className="sc-filter-row">
-                {['All', 'Today', 'Upcoming', 'Past'].map((item) => (
-                  <button
-                    key={item}
-                    type="button"
-                    onClick={() => setFilter(item)}
-                    className={`sc-filter-btn ${filter === item ? 'active' : ''}`}
+            
+            <div className="cal-grid">
+              {Array.from({ length: startingDayOfWeek }).map((_, i) => <div key={'empty-'+i} className="cal-cell empty"></div>)}
+              {Array.from({ length: totalDays }).map((_, i) => {
+                const dText = String(i + 1).padStart(2, '0');
+                const iY = currentDate.getFullYear();
+                const iM = String(currentDate.getMonth() + 1).padStart(2, '0');
+                const iterKey = `${iY}-${iM}-${dText}`;
+                const isSelected = selDateKey === iterKey;
+                
+                // Dot indicators
+                const daySlots = slots.filter(s => s.slotDate === iterKey);
+                
+                return (
+                  <div 
+                    key={iterKey} 
+                    className={`cal-cell ${isSelected ? 'selected' : ''}`} 
+                    onClick={() => setSelectedDate(new Date(iY, currentDate.getMonth(), i + 1))}
                   >
-                    {item}
-                  </button>
-                ))}
-              </div>
-
-              <div className="sc-legend-row">
-                <div className="sc-legend-pill today"><span />Today</div>
-                <div className="sc-legend-pill upcoming"><span />Upcoming</div>
-                <div className="sc-legend-pill past"><span />Past</div>
-                <div className="sc-legend-pill selected"><span />Selected</div>
-              </div>
+                    <span>{i + 1}</span>
+                    <div className="cal-dots">
+                      {daySlots.slice(0,3).map((ds, idx) => (
+                        <div key={idx} className={`cal-dot ${getStatusColorClass(getSlotStatus(ds))}`} title={getSlotStatus(ds)}></div>
+                      ))}
+                      {daySlots.length > 3 && <div className="cal-dot-more">+</div>}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
-
-            <div className="sc-card__body">
-              {loading ? (
-                <div className="sc-empty">Loading calendar...</div>
-              ) : error ? (
-                <div className="sc-error">{error}</div>
-              ) : (
-                <>
-                  <div className="sc-days-header">
-                    {dayNames.map((day) => (
-                      <div key={day} className="sc-day-name">
-                        {day}
-                      </div>
-                    ))}
-                  </div>
-
-                  <div className="sc-calendar-grid">
-                    {calendarDays.map((dateObj, index) => {
-                      if (!dateObj) {
-                        return <div key={`empty-${index}`} className="sc-calendar-empty" />;
-                      }
-
-                      const key = dateToKey(dateObj);
-                      const daySlots = slotsByDate[key] || [];
-                      const isToday = key === todayKey;
-                      const isSelected = isSameDate(dateObj, selectedDate);
-
-                      return (
-                        <button
-                          type="button"
-                          key={key}
-                          onClick={() => setSelectedDate(dateObj)}
-                          className={`sc-day-card ${isToday ? 'today' : ''} ${isSelected ? 'selected' : ''} ${daySlots.length > 0 ? 'has-slots' : 'empty-day'}`}
-                        >
-                          <div className="sc-day-card__top">
-                            <span className="sc-day-number">{dateObj.getDate()}</span>
-
-                            {isSelected ? (
-                              <span className="sc-mini-badge selected">Selected</span>
-                            ) : isToday ? (
-                              <span className="sc-mini-badge today">Today</span>
-                            ) : null}
-                          </div>
-
-                          <div className="sc-day-slot-count">
-                            {daySlots.length} slot{daySlots.length !== 1 ? 's' : ''}
-                          </div>
-
-                          <div className="sc-day-slot-preview">
-                            {daySlots.slice(0, 2).map((slot) => (
-                              <div key={slot.id} className={`sc-slot-chip ${getSlotAccentClass(slot.slotDate)}`}>
-                                <div className="sc-slot-chip__top-line" />
-                                <div className="sc-slot-chip__time">
-                                  {formatTimeDisplay(slot.startTime)} - {formatTimeDisplay(slot.endTime)}
-                                </div>
-                                <div className={`sc-slot-chip__status ${getStatus(slot.slotDate).toLowerCase()}`}>
-                                  {getStatus(slot.slotDate)}
-                                </div>
-                              </div>
-                            ))}
-
-                            {daySlots.length > 2 && (
-                              <div className="sc-more-text">+{daySlots.length - 2} more</div>
-                            )}
-                          </div>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </>
-              )}
+            
+            <div className="cal-legends">
+              <h5>Legend</h5>
+              <div className="legend-item"><span className="dot slot-available"></span> Available</div>
+              <div className="legend-item"><span className="dot slot-booked"></span> Booked</div>
+              <div className="legend-item"><span className="dot slot-blocked"></span> Blocked</div>
+              <div className="legend-item"><span className="dot slot-expired"></span> Past/Expired</div>
+              <div className="legend-item"><span className="dot slot-ongoing"></span> Ongoing</div>
             </div>
           </div>
 
-          <div className="sc-card sc-side-card">
-            <div className="sc-card__header">
-              <div>
-                <h2>Selected Date Details</h2>
-                <p className="sc-subtitle">Quick review and slot management for the chosen date.</p>
-              </div>
-            </div>
+          {/* Slot Viewer */}
+          <div className="cal-content">
+             <div className="content-heading">
+                <h3>{formatDateDisplay(selDateKey)}</h3>
+                <span className="slot-count">{slotsForSelectedDate.length} slots</span>
+             </div>
 
-            <div className="sc-card__body">
-              {banner.text ? (
-                <div className={`sc-banner ${banner.type === 'error' ? 'error' : 'success'}`}>
-                  {banner.text}
-                </div>
-              ) : null}
+             {showForm && (
+               <div className="slot-form-card overlay-card">
+                 <h4>{editingSlot ? 'Edit Slot' : 'Create New Slot'}</h4>
+                 <form onSubmit={handleSaveSlot}>
+                   <div className="form-row">
+                     <div className="form-group">
+                       <label>Start Time</label>
+                       <input type="time" value={formData.startTime} onChange={e => setFormData({...formData, startTime: e.target.value})} required />
+                     </div>
+                     <div className="form-group">
+                       <label>End Time</label>
+                       <input type="time" value={formData.endTime} onChange={e => setFormData({...formData, endTime: e.target.value})} required />
+                     </div>
+                     <div className="form-group">
+                       <label>Mode</label>
+                       <select value={formData.mode} onChange={e => setFormData({...formData, mode: e.target.value})}>
+                         <option>Physical</option>
+                         <option>Online</option>
+                       </select>
+                     </div>
+                   </div>
+                   
+                   {formData.mode === 'Physical' ? (
+                     <div className="form-group full-w">
+                       <label>Location(Room/Hall)</label>
+                       <div className="input-with-icon">
+                         <MapPin size={16} />
+                         <input type="text" value={formData.location} onChange={e => setFormData({...formData, location: e.target.value})} placeholder="e.g. A405" required={formData.mode === 'Physical'}/>
+                       </div>
+                     </div>
+                   ) : (
+                     <div className="form-group full-w">
+                       <label>Meeting Link</label>
+                       <div className="input-with-icon">
+                         <Video size={16} />
+                         <input type="url" value={formData.meetingLink} onChange={e => setFormData({...formData, meetingLink: e.target.value})} placeholder="https://zoom.us/..." required={formData.mode === 'Online'}/>
+                       </div>
+                     </div>
+                   )}
+                   
+                   <div className="form-tips">
+                     <AlertCircle size={14}/> <strong>Tip:</strong> Keep a 15-min gap between consecutive slots.
+                   </div>
 
-              <div className="sc-info-panel">
-                <div className="sc-label">Date</div>
-                <div className="sc-big-date">{formatLongDate(selectedDate)}</div>
+                   <div className="form-actions">
+                     <button type="button" className="btn-cancel" onClick={() => setShowForm(false)}>Cancel</button>
+                     <button type="submit" className="btn-save">Save Slot</button>
+                     {editingSlot && editingSlot.status !== 'BOOKED' && (
+                       <button type="button" className="btn-delete" onClick={() => handleDelete(editingSlot.id)}>Delete</button>
+                     )}
+                   </div>
+                 </form>
+               </div>
+             )}
 
-                <div className={`sc-status-badge ${selectedDateStatus.toLowerCase()}`}>
-                  {selectedDateStatus}
-                </div>
-
-                <div className="sc-capacity-grid">
-                  <div className="sc-capacity-card purple">
-                    <div className="sc-capacity-label">Daily Limit</div>
-                    <div className="sc-capacity-number">{MAX_SLOTS_PER_DAY}</div>
-                  </div>
-
-                  <div className="sc-capacity-card blue">
-                    <div className="sc-capacity-label">Used Slots</div>
-                    <div className="sc-capacity-number">{usedSlotsForDay}</div>
-                  </div>
-
-                  <div className="sc-capacity-card green">
-                    <div className="sc-capacity-label">Remaining</div>
-                    <div className="sc-capacity-number">{remainingSlotsForDay}</div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="sc-quick-add">
-                <div className="sc-panel-title">Quick Add Slot</div>
-
-                <div className="sc-quick-add__rules">
-                  <div><strong>Allowed hours:</strong> {DAY_START} - {DAY_END}</div>
-                  <div><strong>Slot duration:</strong> {SLOT_DURATION_MINUTES} mins</div>
-                  <div><strong>Minimum break:</strong> {BREAK_MINUTES} mins</div>
-                  <div><strong>Selected date:</strong> {selectedDateKey}</div>
-                </div>
-
-                {isPastDate(selectedDateKey) && (
-                  <div className="sc-alert warning">
-                    You cannot add new slots to a past date.
-                  </div>
-                )}
-
-                {selectedDateSlots.length >= MAX_SLOTS_PER_DAY && !isPastDate(selectedDateKey) && (
-                  <div className="sc-alert danger">
-                    Maximum slots reached for this date.
-                  </div>
-                )}
-
-                {isTodayKey(selectedDateKey) && !isPastDate(selectedDateKey) && (
-                  <div className="sc-alert info">
-                    Only future time slots are available for today.
-                  </div>
-                )}
-
-                <div className="sc-field">
-                  <label>Start Time</label>
-                  <select
-                    className="sc-input"
-                    value={quickAddStartTime}
-                    onChange={(e) => handleQuickAddStartTimeChange(e.target.value)}
-                    disabled={isPastDate(selectedDateKey) || selectedDateSlots.length >= MAX_SLOTS_PER_DAY}
-                  >
-                    <option value="">Select valid time</option>
-                    {validQuickAddStartTimes.map((time) => (
-                      <option key={time} value={time}>
-                        {time}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="sc-field">
-                  <label>End Time</label>
-                  <input
-                    className="sc-input readonly"
-                    type="time"
-                    value={quickAddEndTime}
-                    readOnly
-                  />
-                </div>
-
-                {quickAddStartTime && quickAddEndTime && (
-                  <div className="sc-duration-box">
-                    Duration:{' '}
-                    <strong>
-                      {getDurationMinutes(
-                        normalizeTime(quickAddStartTime),
-                        normalizeTime(quickAddEndTime)
-                      )}{' '}
-                      mins
-                    </strong>
-                  </div>
-                )}
-
-                <button
-                  type="button"
-                  onClick={handleQuickAddSlot}
-                  disabled={
-                    addingSlot ||
-                    isPastDate(selectedDateKey) ||
-                    selectedDateSlots.length >= MAX_SLOTS_PER_DAY
-                  }
-                  className="sc-btn sc-btn--primary sc-btn--full"
-                >
-                  {addingSlot ? 'Adding...' : 'Add Slot'}
-                </button>
-              </div>
-
-              <div className="sc-slots-section">
-                <div className="sc-panel-title">Slots for Selected Date</div>
-
-                {selectedDateSlots.length === 0 ? (
-                  <div className="sc-empty-card">No slots available for this date.</div>
-                ) : (
-                  <div className="sc-selected-slots">
-                    {selectedDateSlots.map((slot) => {
-                      const status = getStatus(slot.slotDate);
-                      const duration = getDurationMinutes(slot.startTime, slot.endTime);
-                      const isPast = status === 'Past';
-
-                      return (
-                        <div key={slot.id} className={`sc-selected-slot-card ${status.toLowerCase()}`}>
-                          <div className={`sc-selected-slot-accent ${status.toLowerCase()}`} />
-
-                          <div className="sc-selected-slot-main">
-                            <div className="sc-selected-slot-time">
-                              {formatTimeDisplay(slot.startTime)} - {formatTimeDisplay(slot.endTime)}
-                            </div>
-                            <div className="sc-selected-slot-duration">
-                              Duration: {duration} mins
-                            </div>
-                            <span className={`sc-status-badge ${status.toLowerCase()}`}>
-                              {status}
-                            </span>
-                          </div>
-
-                          <div className="sc-selected-slot-actions">
-                            <button
-                              type="button"
-                              className="sc-action-btn view"
-                              onClick={() => openViewModal(slot)}
-                            >
-                              View
+             <div className="slots-list">
+               {slotsForSelectedDate.length === 0 ? (
+                 <div className="empty-state">
+                   <Clock3 size={40} className="empty-icon" />
+                   <p>No availability added perfectly for this day.</p>
+                 </div>
+               ) : (
+                 slotsForSelectedDate.map(slot => {
+                   const sStat = getSlotStatus(slot);
+                   return (
+                     <div key={slot.id} className={`slot-card border-${sStat.toLowerCase()}`}> 
+                       <div className={`slot-ribbon b-${sStat.toLowerCase()}`}></div>
+                       <div className="slot-info">
+                         <div className="slot-times">
+                           {slot.startTime.substring(0,5)} - {slot.endTime.substring(0,5)}
+                           <span className={`badge badge-${sStat.toLowerCase()}`}>{sStat}</span>
+                         </div>
+                         <div className="slot-meta">
+                           {slot.mode === 'Online' ? <><Video size={14}/> {slot.meetingLink}</> : <><MapPin size={14}/> {slot.location}</>}
+                         </div>
+                         {sStat === 'BLOCKED' && slot.blockReason && (
+                           <div className="slot-meta alert-text"><Ban size={14} /> Reason: {slot.blockReason}</div>
+                         )}
+                       </div>
+                       
+                       <div className="slot-actions">
+                         {sStat !== 'EXPIRED' && sStat !== 'BLOCKED' && (
+                            <button onClick={() => handleEdit(slot)} title="Edit Slot" className="icon-btn">
+                              <Edit2 size={16} />
                             </button>
-
-                            <button
-                              type="button"
-                              className="sc-action-btn edit"
-                              onClick={() => openEditModal(slot)}
-                              disabled={isPast}
-                            >
-                              Edit
+                         )}
+                         {(sStat === 'AVAILABLE' || sStat === 'BOOKED') && (
+                            <button onClick={() => setShowBlockModal(slot)} title="Emergency Block" className="icon-btn btn-danger">
+                              <Ban size={16} />
                             </button>
-
-                            <button
-                              type="button"
-                              className="sc-action-btn delete"
-                              onClick={() => handleDelete(slot.id, slot.slotDate)}
-                              disabled={isPast}
-                            >
-                              Delete
+                         )}
+                         {sStat === 'AVAILABLE' && (
+                            <button onClick={() => handleDelete(slot.id)} title="Delete Slot" className="icon-btn btn-trash">
+                              <Trash2 size={16} />
                             </button>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            </div>
+                         )}
+                       </div>
+                     </div>
+                   )
+                 })
+               )}
+             </div>
           </div>
-        </section>
-      </div>
+        </div>
+      </main>
 
-      {editModalOpen && (
-        <div className="sc-modal-overlay" onClick={closeEditModal}>
-          <div className="sc-modal sc-modal--small" onClick={(e) => e.stopPropagation()}>
-            <div className="sc-modal__header">
-              <div>
-                <h3>Edit Slot</h3>
-                <p>{editingSlot?.slotDate}</p>
-              </div>
-              <button type="button" className="sc-modal__close" onClick={closeEditModal}>
-                ✕
-              </button>
-            </div>
-
-            <div className="sc-modal__body">
-              <div className="sc-field">
-                <label>Start Time</label>
-                <select
-                  className="sc-input"
-                  value={editStartTime}
-                  onChange={(e) => handleEditStartTimeChange(e.target.value)}
-                >
-                  <option value="">Select valid time</option>
-                  {validEditStartTimes.map((time) => (
-                    <option key={time} value={time}>
-                      {time}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="sc-field">
-                <label>End Time</label>
-                <input
-                  className="sc-input readonly"
-                  type="time"
-                  value={editEndTime}
-                  readOnly
-                />
-              </div>
-
-              {editStartTime && editEndTime && (
-                <div className="sc-duration-box">
-                  Duration:{' '}
-                  <strong>
-                    {getDurationMinutes(
-                      normalizeTime(editStartTime),
-                      normalizeTime(editEndTime)
-                    )}{' '}
-                    mins
-                  </strong>
-                </div>
-              )}
-
-              <div className="sc-quick-add__rules">
-                <div><strong>Allowed hours:</strong> {DAY_START} - {DAY_END}</div>
-                <div><strong>Fixed duration:</strong> {SLOT_DURATION_MINUTES} mins</div>
-                <div><strong>Required break:</strong> {BREAK_MINUTES} mins</div>
-              </div>
-
-              <div className="sc-modal-actions">
-                <button type="button" className="sc-btn sc-btn--ghost" onClick={closeEditModal}>
-                  Cancel
-                </button>
-
-                <button
-                  type="button"
-                  className="sc-btn sc-btn--primary"
-                  onClick={handleSaveEdit}
-                  disabled={savingEdit}
-                >
-                  {savingEdit ? 'Saving...' : 'Save Changes'}
-                </button>
-              </div>
-            </div>
+      {/* Block Reason Modal */}
+      {showBlockModal && (
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <h4>Block this Slot?</h4>
+            <p>Blocking should only occur for emergency. Are you sure?</p>
+            <form onSubmit={handleBlockSubmit}>
+               <textarea 
+                 value={blockReason} 
+                 onChange={e=>setBlockReason(e.target.value)} 
+                 placeholder="Enter block reason (e.g. Emergency Meeting)"
+                 rows="3"
+                 required
+               ></textarea>
+               <div className="modal-actions">
+                 <button type="button" className="btn-cancel" onClick={() => setShowBlockModal(null)}>Cancel</button>
+                 <button type="submit" className="btn-danger-solid">Block Now</button>
+               </div>
+            </form>
           </div>
         </div>
       )}
 
-      {viewModalOpen && viewingSlot && (
-        <div className="sc-modal-overlay" onClick={closeViewModal}>
-          <div className="sc-modal sc-modal--medium" onClick={(e) => e.stopPropagation()}>
-            <div className="sc-modal__header">
-              <div>
-                <h3>Slot Details</h3>
-                <p>{formatMediumDate(viewingSlot.slotDate)}</p>
-              </div>
-              <button type="button" className="sc-modal__close" onClick={closeViewModal}>
-                ✕
-              </button>
-            </div>
-
-            <div className="sc-modal__body">
-              <div className="sc-details-grid">
-                <div className="sc-detail-card">
-                  <span className="sc-detail-label">Slot ID</span>
-                  <span className="sc-detail-value">{viewingSlot.id}</span>
-                </div>
-
-                <div className="sc-detail-card">
-                  <span className="sc-detail-label">Lecturer</span>
-                  <span className="sc-detail-value">{currentUser?.name || 'Lecturer'}</span>
-                </div>
-
-                <div className="sc-detail-card">
-                  <span className="sc-detail-label">Start Time</span>
-                  <span className="sc-detail-value">{formatTimeDisplay(viewingSlot.startTime)}</span>
-                </div>
-
-                <div className="sc-detail-card">
-                  <span className="sc-detail-label">End Time</span>
-                  <span className="sc-detail-value">{formatTimeDisplay(viewingSlot.endTime)}</span>
-                </div>
-
-                <div className="sc-detail-card">
-                  <span className="sc-detail-label">Duration</span>
-                  <span className="sc-detail-value">
-                    {getDurationMinutes(viewingSlot.startTime, viewingSlot.endTime)} minutes
-                  </span>
-                </div>
-
-                <div className="sc-detail-card">
-                  <span className="sc-detail-label">Status</span>
-                  <span className="sc-detail-value">
-                    <span className={`sc-status-badge ${getStatus(viewingSlot.slotDate).toLowerCase()}`}>
-                      {getStatus(viewingSlot.slotDate)}
-                    </span>
-                  </span>
-                </div>
-              </div>
-
-              <div className="sc-modal-actions">
-                <button type="button" className="sc-btn sc-btn--ghost" onClick={closeViewModal}>
-                  Close
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      <Footer />
     </div>
   );
 }
+
+function formatDateDisplay(dateString) {
+  const options = { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' };
+  return new Date(dateString).toLocaleDateString('en-US', options);
+}
+

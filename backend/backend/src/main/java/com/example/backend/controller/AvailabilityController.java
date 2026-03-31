@@ -7,6 +7,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * REST API for lecturer availability management
@@ -19,47 +20,50 @@ public class AvailabilityController {
 
     private final AvailabilityService availabilityService;
 
-    /**
-     * Get all availability slots for a lecturer (lecturer view - includes unavailable slots)
-     */
     @GetMapping("/lecturer/{lecturerId}")
     public ResponseEntity<List<AvailabilitySlotDTO>> getLecturerAvailability(@PathVariable Long lecturerId) {
         return ResponseEntity.ok(availabilityService.getLecturerAvailability(lecturerId));
     }
 
-    /**
-     * Get only available slots for a lecturer (student view)
-     */
     @GetMapping("/lecturer/{lecturerId}/available")
     public ResponseEntity<List<AvailabilitySlotDTO>> getLecturerAvailableSlots(@PathVariable Long lecturerId) {
+        return ResponseEntity.ok(availabilityService.getLecturerAvailableSlots(lecturerId));
+    }
+
+    @PostMapping("/lecturer/{lecturerId}/slot")
+    public ResponseEntity<?> createSlot(@PathVariable Long lecturerId, @RequestBody AvailabilitySlotDTO dto) {
         try {
-            return ResponseEntity.ok(availabilityService.getLecturerAvailableSlots(lecturerId));
-        } catch (Exception e) {
-            e.printStackTrace();
-            throw e;
+            return ResponseEntity.ok(availabilityService.createSlot(lecturerId, dto));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
         }
     }
 
-    /**
-     * Bulk update lecturer availability (replaces all existing slots)
-     */
-    @PostMapping("/lecturer/{lecturerId}")
-    public ResponseEntity<List<AvailabilitySlotDTO>> updateLecturerAvailability(
-            @PathVariable Long lecturerId,
-            @RequestBody List<AvailabilitySlotDTO> slots) {
+    @PutMapping("/slot/{slotId}")
+    public ResponseEntity<?> updateSlot(@PathVariable Long slotId, @RequestBody AvailabilitySlotDTO dto) {
         try {
-            return ResponseEntity.ok(availabilityService.updateLecturerAvailability(lecturerId, slots));
-        } catch (Exception e) {
-            e.printStackTrace();
-            throw e;
+            return ResponseEntity.ok(availabilityService.updateSlot(slotId, dto));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
         }
     }
 
-    /**
-     * Toggle a single slot's availability
-     */
-    @PatchMapping("/slot/{slotId}/toggle")
-    public ResponseEntity<AvailabilitySlotDTO> toggleSlotAvailability(@PathVariable Long slotId) {
-        return ResponseEntity.ok(availabilityService.toggleSlotAvailability(slotId));
+    @DeleteMapping("/slot/{slotId}")
+    public ResponseEntity<?> deleteSlot(@PathVariable Long slotId) {
+        try {
+            availabilityService.deleteSlot(slotId);
+            return ResponseEntity.ok(Map.of("message", "Slot deleted successfully"));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+        }
+    }
+
+    @PatchMapping("/slot/{slotId}/block")
+    public ResponseEntity<?> blockSlot(@PathVariable Long slotId, @RequestBody Map<String, String> body) {
+        try {
+            return ResponseEntity.ok(availabilityService.blockSlot(slotId, body.get("reason")));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+        }
     }
 }

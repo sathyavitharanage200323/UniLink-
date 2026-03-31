@@ -12,7 +12,11 @@ public class AvailabilitySlotDTO {
     private String slotDate;
     private String startTime;
     private String endTime;
-    private boolean available;
+    private String status;
+    private String mode;
+    private String location;
+    private String meetingLink;
+    private String blockReason;
 
     public static AvailabilitySlotDTO from(AvailabilitySlot slot) {
         return AvailabilitySlotDTO.builder()
@@ -20,7 +24,11 @@ public class AvailabilitySlotDTO {
                 .slotDate(slot.getSlotDate().toString())
                 .startTime(slot.getStartTime().toString())
                 .endTime(slot.getEndTime().toString())
-                .available(slot.isAvailable())
+                .status(slot.getStatus().name())
+                .mode(slot.getMode())
+                .location(slot.getLocation())
+                .meetingLink(slot.getMeetingLink())
+                .blockReason(slot.getBlockReason())
                 .build();
     }
 }

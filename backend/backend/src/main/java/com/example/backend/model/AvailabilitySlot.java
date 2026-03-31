@@ -32,7 +32,24 @@ public class AvailabilitySlot {
     @Column(name = "end_time", nullable = false)
     private LocalTime endTime;
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
     @Builder.Default
-    @Column(name = "is_available", nullable = false)
-    private boolean available = true;
+    private SlotStatus status = SlotStatus.AVAILABLE;
+
+    @Column
+    private String mode; // e.g. "Online" or "Physical"
+
+    @Column
+    private String location;
+
+    @Column(name = "meeting_link")
+    private String meetingLink;
+
+    @Column(name = "block_reason")
+    private String blockReason;
+
+    public enum SlotStatus {
+        AVAILABLE, BOOKED, BLOCKED, EXPIRED
+    }
 }

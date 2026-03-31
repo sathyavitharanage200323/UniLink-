@@ -172,26 +172,8 @@ export function getLecturerAvailableSlots(lecturerId) {
   return apiFetch('/api/availability/lecturer/' + lecturerId + '/available');
 }
 
-export function updateLecturerAvailability(lecturerId, slots) {
-  return apiFetch('/api/availability/lecturer/' + lecturerId, {
-    method: 'POST',
-    body: JSON.stringify(slots),
-  });
-}
-
-export function toggleSlotAvailability(slotId) {
-  return apiFetch('/api/availability/slot/' + slotId + '/toggle', {
-    method: 'PATCH',
-  });
-}
-
-
-// ++ SlotCalendarPage Mappings ++
-export function getSlots(lecturerId) {
-  return getLecturerAvailability(lecturerId);
-}
-export function createSlot(data) {
-  return apiFetch('/api/availability/slot', {
+export function createSlot(lecturerId, data) {
+  return apiFetch('/api/availability/lecturer/' + lecturerId + '/slot', {
     method: 'POST',
     body: JSON.stringify(data),
   });
@@ -205,5 +187,12 @@ export function updateSlot(slotId, data) {
 export function deleteSlot(slotId) {
   return apiFetch('/api/availability/slot/' + slotId, {
     method: 'DELETE',
+  });
+}
+
+export function blockSlot(slotId, reason) {
+  return apiFetch('/api/availability/slot/' + slotId + '/block', {
+    method: 'PATCH',
+    body: JSON.stringify({ reason }),
   });
 }
