@@ -5,7 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import {
   Search, Download, CheckCircle, Shield, Pin,
-  Zap, Bell, BellOff, MessageSquare, ChevronDown, ArrowLeft, X
+  Zap, Bell, BellOff, MessageSquare, ChevronDown, ArrowLeft, X, Sparkles, FileText
 } from 'lucide-react';
 
 import '../Chat.css';
@@ -55,6 +55,9 @@ export default function ChatPage({ currentUser, appointments = [], onLogout, onU
   const [searchingLecturers, setSearchingLecturers] = useState(false);
   const [lecturerFilters, setLecturerFilters] = useState({ query: '', department: '', designation: '' });
   const [lecturerResults, setLecturerResults] = useState([]);
+  const [summaryLoading, setSummaryLoading] = useState(false);
+  const [summaryData, setSummaryData] = useState(null);
+  const [includeSystemSummary, setIncludeSystemSummary] = useState(false);
   const totalUnread = Object.values(unreadByRoom).reduce((sum, n) => sum + (n || 0), 0);
 
   const messagesEndRef = useRef(null);
@@ -130,6 +133,7 @@ export default function ChatPage({ currentUser, appointments = [], onLogout, onU
     setFilteredMessages(null);
     setSearchQuery('');
     setFilterType('ALL');
+    setSummaryData(null);
 
     Promise.all([
       chatApi.getMessages(selectedRoomId),
@@ -380,6 +384,41 @@ export default function ChatPage({ currentUser, appointments = [], onLogout, onU
       const res = await chatApi.exportTxt(selectedRoomId);
       downloadBlob(res.data, `chat-${selectedRoomId}.txt`);
     } catch { toast.error('TXT export failed.'); }
+  }
+
+  async function handleGenerateSummary() {
+    if (!selectedRoomId) return;
+    setSummaryLoading(true);
+    try {
+      const res = await chatApi.generateSummary(selectedRoomId, includeSystemSummary);
+      setSummaryData(res.data);
+      toast.success('Summary generated for this chat.');
+    } catch (err) {
+      const msg = err?.response?.data?.message || 'Could not generate summary. Check Gemini API key.';
+      toast.error(msg);
+    } finally {
+      setSummaryLoading(false);
+    }
+  }
+
+  async function exportSummaryPdf() {
+    if (!selectedRoomId) return;
+    try {
+      const res = await chatApi.exportSummaryPdf(selectedRoomId, includeSystemSummary);
+      downloadBlob(res.data, `chat-summary-${selectedRoomId}.pdf`);
+    } catch {
+      toast.error('Summary PDF export failed.');
+    }
+  }
+
+  async function exportSummaryTxt() {
+    if (!selectedRoomId) return;
+    try {
+      const res = await chatApi.exportSummaryTxt(selectedRoomId, includeSystemSummary);
+      downloadBlob(res.data, `chat-summary-${selectedRoomId}.txt`);
+    } catch {
+      toast.error('Summary TXT export failed.');
+    }
   }
 
   async function handleDndToggle(val) {
@@ -763,6 +802,69 @@ export default function ChatPage({ currentUser, appointments = [], onLogout, onU
               <span style={{ color: 'var(--text-muted)' }}>Export transcript:</span>
               <button className="btn btn-ghost" style={{ padding: '4px 10px' }} onClick={exportPdf}>PDF</button>
               <button className="btn btn-ghost" style={{ padding: '4px 10px' }} onClick={exportTxt}>TXT</button>
+            </div>
+
+            <div className="summary-panel">
+              <div className="summary-panel-header">
+                <div className="summary-title-wrap">
+                  <Sparkles size={16} />
+                  <strong>AI Chat Summary</strong>
+                </div>
+                <div className="summary-controls">
+                  <label className="summary-checkbox">
+                    <input
+                      type="checkbox"
+                      checked={includeSystemSummary}
+                      onChange={(e) => setIncludeSystemSummary(e.target.checked)}
+                    />
+                    Include system messages
+                  </label>
+                  <button className="btn btn-primary" onClick={handleGenerateSummary} disabled={summaryLoading}>
+                    {summaryLoading ? 'Generating...' : 'Generate'}
+                  </button>
+                </div>
+              </div>
+
+              {!summaryData ? (
+                <p className="summary-empty">Generate a room-specific summary. Each chat thread gets its own summary content.</p>
+              ) : (
+                <div className="summary-body">
+                  <div className="summary-meta">
+                    <span>Model: {summaryData.model || 'Gemini'}</span>
+                    {summaryData.generatedAt && <span>Generated: {new Date(summaryData.generatedAt).toLocaleString()}</span>}
+                  </div>
+
+                  <div className="summary-block">
+                    <h4>Summary</h4>
+                    <p>{summaryData.summary}</p>
+                  </div>
+
+                  <div className="summary-columns">
+                    <div className="summary-block">
+                      <h4>Key Points</h4>
+                      <ul>
+                        {(summaryData.keyPoints || []).length === 0
+                          ? <li>No key points.</li>
+                          : summaryData.keyPoints.map((item, idx) => <li key={`kp-${idx}`}>{item}</li>)}
+                      </ul>
+                    </div>
+                    <div className="summary-block">
+                      <h4>Action Items</h4>
+                      <ul>
+                        {(summaryData.actionItems || []).length === 0
+                          ? <li>No action items.</li>
+                          : summaryData.actionItems.map((item, idx) => <li key={`ai-${idx}`}>{item}</li>)}
+                      </ul>
+                    </div>
+                  </div>
+
+                  <div className="summary-export-row">
+                    <span><FileText size={14} /> Export summary only:</span>
+                    <button className="btn btn-ghost" style={{ padding: '4px 10px' }} onClick={exportSummaryPdf}>PDF</button>
+                    <button className="btn btn-ghost" style={{ padding: '4px 10px' }} onClick={exportSummaryTxt}>TXT</button>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Compose */}

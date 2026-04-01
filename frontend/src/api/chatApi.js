@@ -45,6 +45,14 @@ export const chatApi = {
   exportTxt: (roomId) =>
     api.get(`/chat/rooms/${roomId}/export/txt`, { responseType: 'blob' }),
 
+  // Gemini summary
+  generateSummary: (roomId, includeSystemMessages = false) =>
+    api.post(`/chat/rooms/${roomId}/summary/generate?includeSystemMessages=${includeSystemMessages}`),
+  exportSummaryPdf: (roomId, includeSystemMessages = false) =>
+    api.get(`/chat/rooms/${roomId}/summary/export/pdf?includeSystemMessages=${includeSystemMessages}`, { responseType: 'blob' }),
+  exportSummaryTxt: (roomId, includeSystemMessages = false) =>
+    api.get(`/chat/rooms/${roomId}/summary/export/txt?includeSystemMessages=${includeSystemMessages}`, { responseType: 'blob' }),
+
   // File upload
   uploadFile: (file) => {
     const form = new FormData();
