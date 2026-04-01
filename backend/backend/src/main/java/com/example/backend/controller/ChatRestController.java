@@ -2,10 +2,12 @@ package com.example.backend.controller;
 
 import com.example.backend.dto.ChatRoomSummaryDTO;
 import com.example.backend.dto.ChatMessageDTO;
+import com.example.backend.dto.ChatSummaryDTO;
 import com.example.backend.dto.SendMessageRequest;
 import com.example.backend.model.ChatMessage;
 import com.example.backend.model.ChatRoom;
 import com.example.backend.service.ChatExportService;
+import com.example.backend.service.ChatSummaryService;
 import com.example.backend.service.ChatService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.*;
@@ -30,6 +32,7 @@ public class ChatRestController {
 
     private final ChatService chatService;
     private final ChatExportService exportService;
+    private final ChatSummaryService summaryService;
     private final SimpMessagingTemplate messagingTemplate;
 
     // ─── Rooms ───────────────────────────────────────────────────
@@ -222,5 +225,40 @@ public class ChatRestController {
         headers.setContentDisposition(
                 ContentDisposition.attachment().filename("chat-" + roomId + ".txt").build());
         return ResponseEntity.ok().headers(headers).body(txt);
+    }
+
+    /** Generate Gemini summary for a room */
+    @PostMapping("/rooms/{roomId}/summary/generate")
+    public ResponseEntity<ChatSummaryDTO> generateSummary(@PathVariable Long roomId,
+                                                          @RequestParam(defaultValue = "false") boolean includeSystemMessages) {
+        return ResponseEntity.ok(summaryService.generateSummary(roomId, includeSystemMessages));
+    }
+
+    /** Export Gemini summary as TXT */
+    @GetMapping("/rooms/{roomId}/summary/export/txt")
+    public ResponseEntity<byte[]> exportSummaryTxt(@PathVariable Long roomId,
+                                                   @RequestParam(defaultValue = "false") boolean includeSystemMessages) {
+        ChatSummaryDTO summary = summaryService.generateSummary(roomId, includeSystemMessages);
+        byte[] txt = summaryService.exportSummaryToText(summary).getBytes();
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.TEXT_PLAIN);
+        headers.setContentDisposition(
+                ContentDisposition.attachment().filename("chat-summary-" + roomId + ".txt").build());
+        return ResponseEntity.ok().headers(headers).body(txt);
+    }
+
+    /** Export Gemini summary as PDF */
+    @GetMapping("/rooms/{roomId}/summary/export/pdf")
+    public ResponseEntity<byte[]> exportSummaryPdf(@PathVariable Long roomId,
+                                                   @RequestParam(defaultValue = "false") boolean includeSystemMessages) {
+        ChatSummaryDTO summary = summaryService.generateSummary(roomId, includeSystemMessages);
+        byte[] pdf = summaryService.exportSummaryToPdf(summary);
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_PDF);
+        headers.setContentDisposition(
+                ContentDisposition.attachment().filename("chat-summary-" + roomId + ".pdf").build());
+        return ResponseEntity.ok().headers(headers).body(pdf);
     }
 }
