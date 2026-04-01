@@ -103,7 +103,7 @@ export default function Header({ currentUser, onLogout, unreadCount = 0 }) {
         {/* ── Brand ── */}
         <Link to={homeRoute} className="header__brand" onClick={close}>
           <div className="header__logo-box">
-            <GraduationCap size={20} />
+            <img src="/Logo2.png" alt="UniLink" style={{ width: 26, height: 26, objectFit: 'contain' }} />
           </div>
           <span className="header__brand-text">
             Uni<strong>Link</strong>

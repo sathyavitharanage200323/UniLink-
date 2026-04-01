@@ -11,7 +11,6 @@ import ProfilePage from './pages/ProfilePage.jsx';
 import BookingPage from './pages/BookingPage.jsx';
 import LecturerSchedulePage from './pages/LecturerSchedulePage.jsx';
 import SlotCalendarPage from './pages/SlotCalendarPage.jsx';
-
 import {
   loginUser,
   registerUser,
@@ -21,6 +20,7 @@ import {
 import './App.css';
 
 import LoginPage from './pages/LoginPage.jsx';
+
 
 function AppRoutes({ activeUser, appointments, onLogin, onLogout, onUserUpdate }) {
   if (!activeUser) {
