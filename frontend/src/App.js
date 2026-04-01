@@ -7,8 +7,8 @@ import StudentHome from './pages/StudentHome';
 import LecturerHome from './pages/LecturerHome';
 import ManagementPage from './pages/ManagementPage';
 import { AppointmentsPage, ProfilePage, ComingSoonPage } from './pages/UtilityPages';
-import BookingPage from './pages/BookingPage';
-import LecturerSchedulePage from './pages/LecturerSchedulePage';
+import BookingPage from './pages/BookingPage.jsx';
+import LecturerSchedulePage from './pages/LecturerSchedulePage.jsx';
 import LecturerAvailabilityPage from './pages/LecturerAvailabilityPage';
 import {
   loginUser,
@@ -173,29 +173,14 @@ function LoginPage({ onLogin }) {
       flexDirection: 'column',
       alignItems: 'center',
       justifyContent: 'center',
-      background: 'linear-gradient(135deg, #1d4ed8 0%, #6d28d9 50%, #be185d 100%)',
+      background: 'linear-gradient(135deg, rgba(15, 40, 84, 0.85) 0%, rgba(28, 77, 141, 0.85) 50%, rgba(73, 136, 196, 0.85) 100%), url("/background.jpg") center/cover no-repeat',
       fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
       gap: 40,
       padding: '0 20px',
     }}>
       {/* Logo */}
-      <div style={{ textAlign: 'center', color: 'white' }}>
-        <div style={{
-          width: 70, height: 70, borderRadius: 20,
-          background: 'rgba(255,255,255,0.18)',
-          border: '2px solid rgba(255,255,255,0.40)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          margin: '0 auto 16px', fontSize: '2rem',
-        }}>🎓</div>
-        <h1 style={{ fontSize: '2.6rem', fontWeight: 900, margin: '0 0 6px', letterSpacing: '-0.5px' }}>
-          UniLink
-        </h1>
-        <p style={{ opacity: 0.80, fontSize: '1rem', margin: 0 }}>
-          University Lecturer Appointment Booking System
-        </p>
-        <p style={{ opacity: 0.55, fontSize: '0.85rem', marginTop: 6 }}>
-          Real-Time Chat · Appointments · Messages
-        </p>
+      <div style={{ textAlign: 'center', marginBottom: '8px' }}>
+        <img className="animated-logo" src="/Logo2.png" alt="Unilink Logo" style={{ height: '300px', maxWidth: '90vw', objectFit: 'contain' }} />
       </div>
 
       <div style={{
@@ -214,7 +199,7 @@ function LoginPage({ onLogin }) {
             style={{
               border: 'none', borderRadius: 10, padding: '10px 14px', cursor: 'pointer',
               background: tab === 'LOGIN' ? 'white' : 'rgba(255,255,255,0.2)',
-              color: tab === 'LOGIN' ? '#0f172a' : 'white', fontWeight: 700,
+              color: tab === 'LOGIN' ? '#0F2854' : 'white', fontWeight: 700,
             }}
           >
             Login
@@ -225,7 +210,7 @@ function LoginPage({ onLogin }) {
             style={{
               border: 'none', borderRadius: 10, padding: '10px 14px', cursor: 'pointer',
               background: tab === 'REGISTER' ? 'white' : 'rgba(255,255,255,0.2)',
-              color: tab === 'REGISTER' ? '#0f172a' : 'white', fontWeight: 700,
+              color: tab === 'REGISTER' ? '#0F2854' : 'white', fontWeight: 700,
             }}
           >
             Register
@@ -365,7 +350,7 @@ const authButtonStyle = {
   borderRadius: 10,
   height: 42,
   background: 'white',
-  color: '#0f172a',
+  color: '#0F2854',
   fontWeight: 800,
   cursor: 'pointer',
 };
