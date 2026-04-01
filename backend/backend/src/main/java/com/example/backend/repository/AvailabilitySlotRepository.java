@@ -12,9 +12,9 @@ import java.util.List;
 @Repository
 public interface AvailabilitySlotRepository extends JpaRepository<AvailabilitySlot, Long> {
     
-    List<AvailabilitySlot> findByLecturerOrderByDayOfWeekAscStartTimeAsc(User lecturer);
-    
-    List<AvailabilitySlot> findByLecturerAndAvailableTrueOrderByDayOfWeekAscStartTimeAsc(User lecturer);
+    List<AvailabilitySlot> findByLecturerOrderBySlotDateAscStartTimeAsc(User lecturer);
+
+    List<AvailabilitySlot> findByLecturerAndStatusOrderBySlotDateAscStartTimeAsc(User lecturer, AvailabilitySlot.SlotStatus status);
     
     @Modifying
     @Query("DELETE FROM AvailabilitySlot a WHERE a.lecturer = ?1")

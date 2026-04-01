@@ -32,9 +32,27 @@ public class UserController {
         return ResponseEntity.ok(userService.getUsersByRole(role));
     }
 
+    @GetMapping("/lecturers/search")
+    public ResponseEntity<List<AuthUserResponse>> searchLecturers(
+            @RequestParam(required = false) String query,
+            @RequestParam(required = false) String department,
+            @RequestParam(required = false) String designation) {
+        return ResponseEntity.ok(userService.searchLecturers(query, department, designation));
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<User> getUser(@PathVariable Long id) {
         return ResponseEntity.ok(userService.getUser(id));
+    }
+
+    @GetMapping("/{id}/full")
+    public ResponseEntity<AuthUserResponse> getFullUser(@PathVariable Long id) {
+        try {
+            return ResponseEntity.ok(userService.getFullUser(id));
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw e;
+        }
     }
 
     @PostMapping

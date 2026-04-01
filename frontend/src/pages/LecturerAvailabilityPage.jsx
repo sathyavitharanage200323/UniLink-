@@ -74,8 +74,9 @@ export default function LecturerAvailabilityPage({ currentUser, onLogout }) {
       });
 
       slots.forEach(slot => {
-        if (grid[slot.dayOfWeek] && grid[slot.dayOfWeek][slot.startTime] !== undefined) {
-          grid[slot.dayOfWeek][slot.startTime] = slot.available;
+        const sTime = slot.startTime.length > 5 ? slot.startTime.substring(0, 5) : slot.startTime;
+        if (grid[slot.dayOfWeek] && grid[slot.dayOfWeek][sTime] !== undefined) {
+          grid[slot.dayOfWeek][sTime] = slot.available;
         }
       });
 

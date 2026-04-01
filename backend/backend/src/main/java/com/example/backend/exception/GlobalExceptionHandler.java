@@ -27,9 +27,15 @@ public class GlobalExceptionHandler {
         return build(HttpStatus.BAD_REQUEST, ex.getMessage());
     }
 
+    @ExceptionHandler(org.springframework.web.server.ResponseStatusException.class)
+    public ResponseEntity<Map<String, Object>> handleResponseStatus(org.springframework.web.server.ResponseStatusException ex) {
+        return build(HttpStatus.valueOf(ex.getStatusCode().value()), ex.getReason());
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Map<String, Object>> handleGeneral(Exception ex) {
-        return build(HttpStatus.INTERNAL_SERVER_ERROR, "An unexpected error occurred.");
+        ex.printStackTrace();
+        return build(HttpStatus.INTERNAL_SERVER_ERROR, "An unexpected error occurred: " + ex.getMessage());
     }
 
     private ResponseEntity<Map<String, Object>> build(HttpStatus status, String message) {

@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { toast } from 'react-toastify';
 import {
   Send, Code, Paperclip, Zap,
 } from 'lucide-react';
@@ -71,7 +72,23 @@ export default function ComposeBar({
 
   function handleSend() {
     const trimmed = content.trim();
-    if (!trimmed || roomClosed || blocked) return;
+
+    if (roomClosed) {
+      toast.info('This chat room is closed.');
+      return;
+    }
+    if (blocked) {
+      toast.error('You are currently blocked from messaging this lecturer.');
+      return;
+    }
+    if (!trimmed) {
+      toast.warning('Cannot send an empty message.');
+      return;
+    }
+    if (trimmed.length > 2000) {
+      toast.error(`Message is too long. Limit is 2000 characters.`);
+      return;
+    }
 
     onSend({
       senderId: currentUserId,
@@ -87,6 +104,16 @@ export default function ComposeBar({
   async function handleFileChange(e) {
     const file = e.target.files?.[0];
     if (!file) return;
+
+    // File Size Validation (limit to 5 MB)
+    const MAX_FILE_SIZE_MB = 5;
+    const fileSizeMB = file.size / (1024 * 1024);
+    if (fileSizeMB > MAX_FILE_SIZE_MB) {
+      toast.error(`File is too large! Maximum allowed size is ${MAX_FILE_SIZE_MB}MB. Your file is ${fileSizeMB.toFixed(2)}MB.`);
+      e.target.value = ''; // Reset input
+      return;
+    }
+
     setUploading(true);
     try {
       const res = await chatApi.uploadFile(file);
@@ -115,7 +142,14 @@ export default function ComposeBar({
 
   if (roomClosed || blocked) {
     return (
-      <div className="compose-area" style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+      <div 
+        className="compose-area" 
+        style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.85rem', cursor: 'pointer', padding: '20px' }}
+        onClick={() => {
+          if (blocked) toast.error('You are currently blocked from messaging this lecturer.');
+          else if (roomClosed) toast.info('This chat room is closed. You can no longer send messages.');
+        }}
+      >
         {roomClosed
           ? 'This chat is resolved. No new messages can be sent.'
           : 'You are blocked from sending messages in this chat.'}
@@ -212,3 +246,5 @@ export default function ComposeBar({
     </div>
   );
 }
+
+

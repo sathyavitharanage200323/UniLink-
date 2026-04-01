@@ -1,0 +1,17 @@
+diff a/frontend/src/components/ChatPage.jsx b/frontend/src/components/ChatPage.jsx	(rejected hunks)
+@@ -45,9 +45,14 @@ export default function ChatPage({ currentUser, appointments = [], onLogout, onU
+   const [dndMsg] = useState(currentUser?.autoReplyMessage ?? '');
+   const [savingDnd, setSavingDnd] = useState(false);
+   const [loading, setLoading] = useState(false);
+-  const [roomsMap, setRoomsMap] = useState({}); // appointmentId -> room
++  const [roomSummaries, setRoomSummaries] = useState([]);
+   const [isBlocked, setIsBlocked] = useState(false);
+   const [unreadByRoom, setUnreadByRoom] = useState({});
++  const [showLecturerFinder, setShowLecturerFinder] = useState(false);
++  const [searchingLecturers, setSearchingLecturers] = useState(false);
++  const [lecturerFilters, setLecturerFilters] = useState({ query: '', department: '', designation: '' });
++  const [lecturerResults, setLecturerResults] = useState([]);
++  const totalUnread = Object.values(unreadByRoom).reduce((sum, n) => sum + (n || 0), 0);
+ 
+   const messagesEndRef = useRef(null);
+   const typingTimer = useRef(null);

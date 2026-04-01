@@ -8,12 +8,20 @@ export const chatApi = {
     api.get(`/chat/rooms/${roomId}`),
   getRoomByAppointment: (appointmentId) =>
     api.get(`/chat/rooms/by-appointment/${appointmentId}`),
+  createDirectRoom: (studentId, lecturerId) =>
+    api.post('/chat/rooms/direct', { studentId, lecturerId }),
+  createDirectRoomNew: (studentId, lecturerId) =>
+    api.post('/chat/rooms/direct/new', { studentId, lecturerId }),
+  getRoomsForUser: (userId) =>
+    api.get(`/chat/rooms/user/${userId}`),
   resolveRoom: (roomId, userId) =>
     api.patch(`/chat/rooms/${roomId}/resolve?userId=${userId}`),
 
   // Messages
   getMessages: (roomId) =>
     api.get(`/chat/rooms/${roomId}/messages`),
+  sendMessage: (roomId, payload) =>
+    api.post(`/chat/rooms/${roomId}/messages`, payload),
   searchMessages: (roomId, keyword) =>
     api.get(`/chat/rooms/${roomId}/messages/search?keyword=${encodeURIComponent(keyword)}`),
   filterByType: (roomId, type) =>
@@ -71,7 +79,10 @@ export const disciplineApi = {
 
 export const userApi = {
   get: (id) => api.get(`/users/${id}`),
+  getFull: (id) => api.get(`/users/${id}/full`),
   create: (user) => api.post('/users', user),
+  searchLecturers: ({ query = '', department = '', designation = '' } = {}) => 
+    api.get(`/users/lecturers/search?query=${encodeURIComponent(query)}&department=${encodeURIComponent(department)}&designation=${encodeURIComponent(designation)}`),
   toggleDnd: (id, dnd, autoReplyMessage) =>
     api.patch(`/users/${id}/dnd`, { dnd, autoReplyMessage }),
   updateProfile: (id, payload) => api.put(`/users/${id}/profile`, payload),

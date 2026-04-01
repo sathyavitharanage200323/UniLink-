@@ -1,0 +1,11 @@
+﻿
+        <Route
+>         path="/lecturer/availability"
+          element={
+            activeUser?.role === 'LECTURER'
+              ? <LecturerSlotsPage user={activeUser} onLogout={onLogout} />
+              : <Navigate to="/student/home" replace />
+          }
+        />
+
+

@@ -2,19 +2,19 @@ package com.example.backend.model;
 
 import jakarta.persistence.*;
 import lombok.*;
+import java.time.LocalDate;
 import java.time.LocalTime;
 
 /**
- * Represents a lecturer's recurring weekly availability slot.
- * Used for the weekly grid availability management system.
+ * Represents a lecturer's availability slot on a specific date.
  */
 @Entity
 @Table(name = "availability_slots", indexes = {
-    @Index(name = "idx_lecturer_day", columnList = "lecturer_id, day_of_week")
+    @Index(name = "idx_lecturer_date", columnList = "lecturer_id, slot_date")
 })
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
 public class AvailabilitySlot {
-    
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -23,9 +23,8 @@ public class AvailabilitySlot {
     @JoinColumn(name = "lecturer_id", nullable = false)
     private User lecturer;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "day_of_week", nullable = false)
-    private DayOfWeek dayOfWeek;
+    @Column(name = "slot_date", nullable = false)
+    private LocalDate slotDate;
 
     @Column(name = "start_time", nullable = false)
     private LocalTime startTime;
@@ -33,10 +32,24 @@ public class AvailabilitySlot {
     @Column(name = "end_time", nullable = false)
     private LocalTime endTime;
 
-    @Column(name = "is_available", nullable = false)
-    private boolean available = true;
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    @Builder.Default
+    private SlotStatus status = SlotStatus.AVAILABLE;
 
-    public enum DayOfWeek {
-        MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY, SATURDAY, SUNDAY
+    @Column
+    private String mode; // e.g. "Online" or "Physical"
+
+    @Column
+    private String location;
+
+    @Column(name = "meeting_link")
+    private String meetingLink;
+
+    @Column(name = "block_reason")
+    private String blockReason;
+
+    public enum SlotStatus {
+        AVAILABLE, BOOKED, BLOCKED, EXPIRED
     }
 }
