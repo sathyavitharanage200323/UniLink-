@@ -66,7 +66,6 @@ public class AuthService {
             lecturer = LecturerProfile.builder()
                     .user(user)
                     .employeeCode(req.getEmployeeCode().trim())
-                    .designation(req.getDesignation())
                     .officeLocation(req.getOfficeLocation())
                     .officeHours(req.getOfficeHours())
                     .bio(req.getBio())
@@ -122,9 +121,6 @@ public class AuthService {
         }
         if (req.getRole() == User.Role.LECTURER && isBlank(req.getEmployeeCode())) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Employee code is required for lecturers");
-        }
-        if (req.getRole() == User.Role.LECTURER && isBlank(req.getDesignation())) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Designation is required for lecturers");
         }
     }
 

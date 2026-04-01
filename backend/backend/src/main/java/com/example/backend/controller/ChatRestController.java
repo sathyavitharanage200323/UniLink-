@@ -1,15 +1,12 @@
 package com.example.backend.controller;
 
-import com.example.backend.dto.ChatRoomSummaryDTO;
 import com.example.backend.dto.ChatMessageDTO;
-import com.example.backend.dto.SendMessageRequest;
 import com.example.backend.model.ChatMessage;
 import com.example.backend.model.ChatRoom;
 import com.example.backend.service.ChatExportService;
 import com.example.backend.service.ChatService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.*;
-import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -30,7 +27,6 @@ public class ChatRestController {
 
     private final ChatService chatService;
     private final ChatExportService exportService;
-    private final SimpMessagingTemplate messagingTemplate;
 
     // ─── Rooms ───────────────────────────────────────────────────
 
@@ -52,28 +48,6 @@ public class ChatRestController {
         return ResponseEntity.ok(chatService.getRoomByAppointmentId(appointmentId));
     }
 
-    /** Create or get direct room between a student and lecturer */
-    @PostMapping("/rooms/direct")
-    public ResponseEntity<ChatRoom> createDirectRoom(@RequestBody Map<String, Object> body) {
-        Long studentId = Long.valueOf(body.get("studentId").toString());
-        Long lecturerId = Long.valueOf(body.get("lecturerId").toString());
-        return ResponseEntity.ok(chatService.createOrGetDirectRoom(studentId, lecturerId));
-    }
-
-    /** Always create a brand-new direct room between a student and lecturer */
-    @PostMapping("/rooms/direct/new")
-    public ResponseEntity<ChatRoom> createNewDirectRoom(@RequestBody Map<String, Object> body) {
-        Long studentId = Long.valueOf(body.get("studentId").toString());
-        Long lecturerId = Long.valueOf(body.get("lecturerId").toString());
-        return ResponseEntity.ok(chatService.createNewDirectRoom(studentId, lecturerId));
-    }
-
-    /** Get room summaries visible to a user (appointment + direct) */
-    @GetMapping("/rooms/user/{userId}")
-    public ResponseEntity<List<ChatRoomSummaryDTO>> getRoomsForUser(@PathVariable Long userId) {
-        return ResponseEntity.ok(chatService.getRoomSummariesForUser(userId));
-    }
-
     /** Mark room as resolved */
     @PatchMapping("/rooms/{roomId}/resolve")
     public ResponseEntity<ChatRoom> resolveRoom(@PathVariable Long roomId,
@@ -90,23 +64,6 @@ public class ChatRestController {
                 chatService.getMessages(roomId).stream()
                         .map(ChatMessageDTO::from).toList());
     }
-
-        /** Send message via REST and broadcast to websocket subscribers for reliability. */
-        @PostMapping("/rooms/{roomId}/messages")
-        public ResponseEntity<ChatMessageDTO> sendMessage(@PathVariable Long roomId,
-                                  @RequestBody SendMessageRequest request) {
-        ChatMessage saved = chatService.sendMessage(
-            roomId,
-            request.getSenderId(),
-            request.getContent(),
-            request.getMessageType(),
-            request.getFileUrl(),
-            request.getFileName());
-
-        ChatMessageDTO dto = ChatMessageDTO.from(saved);
-        messagingTemplate.convertAndSend("/topic/room/" + roomId, dto);
-        return ResponseEntity.ok(dto);
-        }
 
     /** Keyword search across messages */
     @GetMapping("/rooms/{roomId}/messages/search")

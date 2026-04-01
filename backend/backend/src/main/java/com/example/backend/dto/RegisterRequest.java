@@ -22,7 +22,6 @@ public class RegisterRequest {
 
     // Lecturer fields
     private String employeeCode;
-    private String designation;
     private String officeLocation;
     private String officeHours;
     private String expertise;

@@ -1,6 +1,5 @@
 package com.example.backend.service;
 
-import com.example.backend.dto.ChatRoomSummaryDTO;
 import com.example.backend.exception.AccessDeniedException;
 import com.example.backend.exception.ResourceNotFoundException;
 import com.example.backend.model.*;
@@ -10,9 +9,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.Comparator;
 import java.util.List;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -22,7 +19,6 @@ public class ChatService {
     private final ChatMessageRepository chatMessageRepository;
     private final AppointmentRepository appointmentRepository;
     private final UserRepository userRepository;
-    private final LecturerProfileRepository lecturerProfileRepository;
     private final StudentDisciplineRepository disciplineRepository;
     private final ProfanityFilterService profanityFilter;
 
@@ -64,73 +60,6 @@ public class ChatService {
                         "ChatRoom for appointment " + appointmentId + " not found."));
     }
 
-    /** Create or return a direct message room between student and lecturer. */
-    @Transactional
-    public ChatRoom createOrGetDirectRoom(Long studentId, Long lecturerId) {
-        User student = userRepository.findById(studentId)
-                .orElseThrow(() -> new ResourceNotFoundException("User", studentId));
-        User lecturer = userRepository.findById(lecturerId)
-                .orElseThrow(() -> new ResourceNotFoundException("User", lecturerId));
-
-        if (student.getRole() != User.Role.STUDENT) {
-            throw new IllegalArgumentException("Direct room requires a student as sender.");
-        }
-        if (lecturer.getRole() != User.Role.LECTURER) {
-            throw new IllegalArgumentException("Direct room requires a lecturer as recipient.");
-        }
-
-        List<ChatRoom> existingRooms = chatRoomRepository.findDirectRooms(studentId, lecturerId);
-        ChatRoom latest = existingRooms.isEmpty() ? null : existingRooms.get(0);
-
-        if (latest != null && latest.getStatus() == ChatRoom.RoomStatus.OPEN) {
-            return latest;
-        }
-
-        ChatRoom room = ChatRoom.builder()
-                .participantStudent(student)
-                .participantLecturer(lecturer)
-                .status(ChatRoom.RoomStatus.OPEN)
-                .build();
-        return chatRoomRepository.save(room);
-    }
-
-    /** Always create a new direct room between student and lecturer for a new question thread. */
-    @Transactional
-    public ChatRoom createNewDirectRoom(Long studentId, Long lecturerId) {
-        User student = userRepository.findById(studentId)
-                .orElseThrow(() -> new ResourceNotFoundException("User", studentId));
-        User lecturer = userRepository.findById(lecturerId)
-                .orElseThrow(() -> new ResourceNotFoundException("User", lecturerId));
-
-        if (student.getRole() != User.Role.STUDENT) {
-            throw new IllegalArgumentException("Direct room requires a student as sender.");
-        }
-        if (lecturer.getRole() != User.Role.LECTURER) {
-            throw new IllegalArgumentException("Direct room requires a lecturer as recipient.");
-        }
-
-        ChatRoom room = ChatRoom.builder()
-                .participantStudent(student)
-                .participantLecturer(lecturer)
-                .status(ChatRoom.RoomStatus.OPEN)
-                .build();
-        return chatRoomRepository.save(room);
-    }
-
-    @Transactional(readOnly = true)
-    public List<ChatRoomSummaryDTO> getRoomSummariesForUser(Long userId) {
-        return chatRoomRepository.findAllByUserId(userId).stream()
-                .sorted(Comparator.comparing(ChatRoom::getCreatedAt, Comparator.nullsLast(Comparator.reverseOrder())))
-                .map(room -> {
-                    User lecturer = room.getAppointment() != null ? room.getAppointment().getLecturer() : room.getParticipantLecturer();
-                    String designation = lecturer == null ? null : lecturerProfileRepository.findById(lecturer.getId())
-                            .map(LecturerProfile::getDesignation)
-                            .orElse(null);
-                    return ChatRoomSummaryDTO.from(room, designation);
-                })
-                .collect(Collectors.toList());
-    }
-
     /**
      * Mark a chat room as Resolved (lecturer closes the thread).
      */
@@ -166,12 +95,9 @@ public class ChatService {
             throw new IllegalArgumentException("This chat room is closed or resolved.");
         }
 
-        User lecturer = room.getAppointment() != null ? room.getAppointment().getLecturer() : room.getParticipantLecturer();
-        User student  = room.getAppointment() != null ? room.getAppointment().getStudent() : room.getParticipantStudent();
-
-        if (lecturer == null || student == null) {
-            throw new IllegalArgumentException("Invalid room participants.");
-        }
+        // Auto-reply: if lecturer has DND on and sender is a student
+        User lecturer = room.getAppointment().getLecturer();
+        User student  = room.getAppointment().getStudent();
 
         // Security: block student messages when an active discipline block exists.
         if (sender.getId().equals(student.getId()) &&
@@ -236,9 +162,6 @@ public class ChatService {
     /** Returns unread message count in a room for a specific user. */
     public long getUnreadCount(Long roomId, Long userId) {
         ChatRoom room = getRoom(roomId);
-        if (room.getStatus() == ChatRoom.RoomStatus.RESOLVED || room.getStatus() == ChatRoom.RoomStatus.CLOSED) {
-            return 0;
-        }
         return chatMessageRepository.countUnreadByRoomAndNotSender(room, userId);
     }
 
