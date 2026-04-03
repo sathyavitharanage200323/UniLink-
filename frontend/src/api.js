@@ -13,8 +13,14 @@ async function apiFetch(path, options = {}) {
     ...options,
   });
   if (!res.ok) {
-    const text = await res.text().catch(() => res.statusText);
-    throw new Error(`${res.status}: ${text}`);
+    let message = res.statusText;
+    try {
+      const body = await res.json();
+      message = body?.message || body?.error || JSON.stringify(body);
+    } catch {
+      message = await res.text().catch(() => res.statusText);
+    }
+    throw new Error(message || `Request failed with status ${res.status}`);
   }
   // 204 No Content has no body
   if (res.status === 204) return null;

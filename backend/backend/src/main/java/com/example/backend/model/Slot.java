@@ -16,10 +16,16 @@ public class Slot {
     @JoinColumn(name = "lecturer_id", nullable = false)
     private User lecturer;
 
+    @Column(name = "day_label")
     private String day; // Monday, Tuesday, etc.
+
+    @Column(name = "time_label")
     private String time; // e.g., "09:00 AM - 10:00 AM"
     
+    @Column(name = "start_time")
     private LocalDateTime startTime;
+
+    @Column(name = "end_time")
     private LocalDateTime endTime;
 
     @Enumerated(EnumType.STRING)

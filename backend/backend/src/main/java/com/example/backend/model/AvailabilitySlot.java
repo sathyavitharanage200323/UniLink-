@@ -49,6 +49,10 @@ public class AvailabilitySlot {
     @Column(name = "block_reason")
     private String blockReason;
 
+    @Column(name = "is_available", columnDefinition = "boolean default true")
+    @Builder.Default
+    private Boolean isAvailable = true;
+
     public enum SlotStatus {
         AVAILABLE, BOOKED, BLOCKED, EXPIRED
     }

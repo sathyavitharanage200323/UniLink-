@@ -21,6 +21,7 @@ function BookingPage({ user, onLogout }) {
   
   const [notes, setNotes] = useState('');
   const [loading, setLoading] = useState(false);
+  const [bookingError, setBookingError] = useState('');
 
   useEffect(() => {
     // Fetch all lecturers so student can pick one
@@ -58,14 +59,23 @@ function BookingPage({ user, onLogout }) {
   }, [selectedLecturerId]);
 
   const handleBook = async () => {
+    setBookingError('');
     if (!selectedLecturerId) {
-      alert('Please select a lecturer first!');
+      setBookingError('Please select a lecturer first.');
       return;
     }
-    if (!selectedSlot) return;
+    if (!selectedSlot) {
+      setBookingError('Please select a time slot first.');
+      return;
+    }
 
-    if (!notes.trim()) {
-      alert('Please provide a reason for the appointment.');
+    const trimmedNotes = notes.trim();
+    if (!trimmedNotes) {
+      setBookingError('Please provide a reason for the appointment.');
+      return;
+    }
+    if (trimmedNotes.length < 10) {
+      setBookingError('Please provide at least 10 characters for the reason.');
       return;
     }
 
@@ -73,16 +83,17 @@ function BookingPage({ user, onLogout }) {
     try {
       await createAppointment({
         studentId: user.id,
-        lecturerId: selectedLecturerId,
+        lecturerId: Number(selectedLecturerId),
         startTime: `${selectedSlot.slotDate}T${selectedSlot.startTime.substring(0,5)}:00`,
         endTime: `${selectedSlot.slotDate}T${selectedSlot.endTime.substring(0,5)}:00`,
-        notes: notes
+        notes: trimmedNotes
       });
+      setBookingError('');
       alert('Appointment booked successfully! Wait for lecturer confirmation.');
       navigate('/student/home');
     } catch (err) {
       console.error('Error booking appointment', err);
-      alert('Failed to book appointment.');
+      setBookingError(err?.message || 'Failed to book appointment.');
     } finally {
       setLoading(false);
     }
@@ -237,6 +248,13 @@ function BookingPage({ user, onLogout }) {
                     <button className="btn-book" onClick={handleBook} disabled={loading || !notes.trim()}>
                       {loading ? 'Booking...' : (notes.trim() ? 'Confirm Booking' : 'Enter reason')}
                     </button>
+                  </div>
+                )}
+
+                {bookingError && (
+                  <div className="empty-state" style={{ marginTop: '16px', borderColor: '#fecaca', backgroundColor: '#fef2f2' }}>
+                    <h3 style={{ color: '#b91c1c' }}>Booking failed</h3>
+                    <p style={{ color: '#7f1d1d' }}>{bookingError}</p>
                   </div>
                 )}
               </>
