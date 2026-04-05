@@ -31,6 +31,7 @@ import java.io.ByteArrayOutputStream;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -52,10 +53,10 @@ public class ChatSummaryService {
     @Value("${gemini.api.key:}")
     private String geminiApiKey;
 
-    @Value("${gemini.model:gemini-2.0-flash}")
+    @Value("${gemini.model:gemini-1.5-flash}")
     private String geminiModel;
 
-    @Value("${gemini.base-url:https://generativelanguage.googleapis.com/v1/models}")
+    @Value("${gemini.base-url:https://generativelanguage.googleapis.com/v1beta/models}")
     private String geminiBaseUrl;
 
     public ChatSummaryDTO generateSummary(Long roomId, boolean includeSystemMessages) {
@@ -72,12 +73,18 @@ public class ChatSummaryService {
                 .collect(Collectors.toList());
 
         String transcript = buildTranscript(room, messages);
-        GeminiCallResult result = callGemini(transcript);
-
-        ChatSummaryDTO parsed = parseSummaryJson(roomId, result.text());
-        parsed.setModel(result.model());
-        parsed.setGeneratedAt(LocalDateTime.now());
-        return parsed;
+        try {
+            GeminiCallResult result = callGemini(transcript);
+            ChatSummaryDTO parsed = parseSummaryJson(roomId, result.text());
+            parsed.setModel(result.model());
+            parsed.setGeneratedAt(LocalDateTime.now());
+            return parsed;
+        } catch (RuntimeException e) {
+            if (isQuotaExceeded(e)) {
+                return buildLocalFallbackSummary(roomId, messages, "local-fallback-quota-exceeded");
+            }
+            throw e;
+        }
     }
 
     public String exportSummaryToText(ChatSummaryDTO summary) {
@@ -211,33 +218,224 @@ public class ChatSummaryService {
             } catch (HttpClientErrorException.NotFound nf) {
                 // Try next candidate model.
                 lastError = new RuntimeException("Gemini model not found or not supported: " + model, nf);
+            } catch (HttpClientErrorException.BadRequest br) {
+                 // Might be unsupported model version, fallback to next
+                lastError = new RuntimeException("Gemini model bad request: " + model, br);
             } catch (Exception e) {
                 lastError = new RuntimeException("Gemini request failed for model " + model + ": " + e.getMessage(), e);
             }
         }
 
         if (lastError != null) {
+            if (isQuotaExceeded(lastError)) {
+                throw new RuntimeException("Gemini quota exceeded for available models. Configure billing/quota or try again later.", lastError);
+            }
             throw lastError;
         }
         throw new RuntimeException("Gemini request failed: no usable model available.");
+    }
+
+    private boolean isQuotaExceeded(Throwable t) {
+        Throwable cur = t;
+        while (cur != null) {
+            if (cur instanceof HttpClientErrorException.TooManyRequests) {
+                return true;
+            }
+            String msg = cur.getMessage();
+            if (msg != null) {
+                String lower = msg.toLowerCase();
+                if (lower.contains("quota") || lower.contains("resource_exhausted") || lower.contains("429")) {
+                    return true;
+                }
+            }
+            cur = cur.getCause();
+        }
+        return false;
+    }
+
+    private ChatSummaryDTO buildLocalFallbackSummary(Long roomId, List<ChatMessage> messages, String modelName) {
+        if (messages == null || messages.isEmpty()) {
+            return ChatSummaryDTO.builder()
+                    .roomId(roomId)
+                    .summary("No messages available to summarize.")
+                    .keyPoints(List.of("The chat room currently has no messages."))
+                    .actionItems(List.of())
+                    .model(modelName)
+                    .generatedAt(LocalDateTime.now())
+                    .build();
+        }
+
+        List<ChatMessage> sorted = messages.stream()
+                .sorted(Comparator.comparing(ChatMessage::getSentAt,
+                        Comparator.nullsLast(Comparator.naturalOrder())))
+                .toList();
+
+        List<String> allTexts = sorted.stream()
+                .map(this::messageText)
+                .filter(t -> t != null && !t.isBlank())
+                .toList();
+
+        String mergedText = String.join(" ", allTexts);
+        List<String> extractedSentences = extractImportantSentences(mergedText, 6);
+
+        String summaryCore;
+        if (extractedSentences.isEmpty()) {
+            summaryCore = "The conversation includes " + sorted.size() + " message(s), but no detailed text content was available.";
+        } else if (extractedSentences.size() == 1) {
+            summaryCore = extractedSentences.get(0);
+        } else {
+            summaryCore = extractedSentences.get(0) + " " + extractedSentences.get(1);
+        }
+
+        String summary = "Summary generated locally because Gemini quota is currently exhausted. " + clip(summaryCore, 700);
+
+        List<String> keyPoints = new ArrayList<>();
+        ChatMessage first = sorted.get(0);
+        ChatMessage last = sorted.get(sorted.size() - 1);
+
+        addUniqueKeyPoint(keyPoints, "Started by " + safeSender(first) + ": " + clip(messageText(first), 140));
+        if (sorted.size() > 1) {
+            addUniqueKeyPoint(keyPoints, "Latest message from " + safeSender(last) + ": " + clip(messageText(last), 140));
+        }
+
+        for (String sentence : extractedSentences) {
+            if (keyPoints.size() >= 6) {
+                break;
+            }
+            addUniqueKeyPoint(keyPoints, clip(sentence, 220));
+        }
+
+        long attachmentCount = sorted.stream()
+                .filter(m -> m.getFileName() != null && !m.getFileName().isBlank())
+                .count();
+        if (attachmentCount > 0) {
+            keyPoints.add("Attachments shared: " + attachmentCount);
+        }
+
+        List<String> actionItems = new ArrayList<>();
+    List<String> questionPrompts = sorted.stream()
+        .map(this::messageText)
+        .filter(t -> t != null && t.contains("?"))
+        .map(t -> "Follow up on question: " + clip(t, 180))
+        .distinct()
+        .limit(2)
+        .toList();
+
+    actionItems.addAll(questionPrompts);
+    actionItems.add("Retry AI summary after Gemini quota resets or billing is enabled.");
+
+        return ChatSummaryDTO.builder()
+                .roomId(roomId)
+                .summary(summary)
+                .keyPoints(keyPoints)
+                .actionItems(actionItems)
+                .model(modelName)
+                .generatedAt(LocalDateTime.now())
+                .build();
+    }
+
+    private String safeSender(ChatMessage m) {
+        if (m == null || m.getSender() == null || m.getSender().getName() == null || m.getSender().getName().isBlank()) {
+            return "Unknown";
+        }
+        return m.getSender().getName();
+    }
+
+    private String messageText(ChatMessage m) {
+        if (m == null) return "";
+        String text = m.getFilteredContent() != null ? m.getFilteredContent() : m.getContent();
+        return text == null ? "" : text.trim();
+    }
+
+    private String clip(String text, int maxLen) {
+        if (text == null || text.isBlank()) {
+            return "(empty)";
+        }
+        if (text.length() <= maxLen) {
+            return text;
+        }
+        return text.substring(0, Math.max(0, maxLen - 3)) + "...";
+    }
+
+    private void addUniqueKeyPoint(List<String> keyPoints, String candidate) {
+        if (candidate == null || candidate.isBlank()) {
+            return;
+        }
+
+        String normalizedCandidate = normalizeForDuplicateCheck(candidate);
+        boolean exists = keyPoints.stream()
+                .map(this::normalizeForDuplicateCheck)
+                .anyMatch(existing -> existing.equals(normalizedCandidate)
+                        || existing.contains(normalizedCandidate)
+                        || normalizedCandidate.contains(existing));
+
+        if (!exists) {
+            keyPoints.add(candidate);
+        }
+    }
+
+    private String normalizeForDuplicateCheck(String value) {
+        if (value == null) {
+            return "";
+        }
+        return value
+                .toLowerCase()
+                .replaceAll("[^a-z0-9\\s]", " ")
+                .replaceAll("\\s+", " ")
+                .trim();
+    }
+
+    private List<String> extractImportantSentences(String text, int limit) {
+        if (text == null || text.isBlank() || limit <= 0) {
+            return List.of();
+        }
+
+        String[] raw = text
+                .replace("\r", " ")
+                .replace("\n", " ")
+                .split("(?<=[.!?])\\s+");
+
+        List<String> picked = new ArrayList<>();
+        for (String r : raw) {
+            if (picked.size() >= limit) {
+                break;
+            }
+
+            String sentence = r == null ? "" : r.trim();
+            if (sentence.isBlank()) {
+                continue;
+            }
+
+            String normalizedSentence = sentence.replaceAll("\\s+", " ");
+
+            if (normalizedSentence.length() < 30) {
+                continue;
+            }
+
+            boolean duplicate = picked.stream().anyMatch(p -> p.equalsIgnoreCase(normalizedSentence));
+            if (!duplicate) {
+                picked.add(normalizedSentence);
+            }
+        }
+
+        if (picked.isEmpty()) {
+            return List.of(clip(text.replaceAll("\\s+", " ").trim(), 220));
+        }
+
+        return picked;
     }
 
     private List<String> buildCandidateModels(RestTemplate restTemplate) {
         Set<String> models = new LinkedHashSet<>();
 
         String configured = normalizeModelName(geminiModel);
-        if ("gemini-1.5-flash".equalsIgnoreCase(configured)) {
-            configured = "gemini-2.0-flash";
-        }
 
         models.add(configured);
         models.add("gemini-2.5-flash");
         models.add("gemini-2.5-flash-lite");
-        models.add("gemini-2.5-pro");
         models.add("gemini-2.0-flash");
         models.add("gemini-2.0-flash-lite");
-        models.add("gemini-1.5-flash-latest");
-        models.add("gemini-1.5-pro-latest");
+        models.add("gemini-1.5-flash");
 
         models.addAll(fetchFallbackModels(restTemplate));
 
@@ -350,13 +548,9 @@ public class ChatSummaryService {
 
     private String normalizeBaseUrl(String raw) {
         if (raw == null || raw.isBlank()) {
-            return "https://generativelanguage.googleapis.com/v1/models";
+            return "https://generativelanguage.googleapis.com/v1beta/models";
         }
-        String cleaned = raw.trim();
-        if (cleaned.contains("/v1beta/")) {
-            return cleaned.replace("/v1beta/", "/v1/");
-        }
-        return cleaned;
+        return raw.trim();
     }
 
     private ChatSummaryDTO parseSummaryJson(Long roomId, String rawOutput) {
