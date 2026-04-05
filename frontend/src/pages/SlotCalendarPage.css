@@ -9,6 +9,7 @@
 
 .sc-main {
   width: min(1400px, calc(100% - 48px));
+  
   margin: 0 auto;
   padding: 24px 0 42px;
 }
