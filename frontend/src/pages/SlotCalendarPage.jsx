@@ -65,6 +65,7 @@ function dateToKey(date) {
 }
 
 function formatLongDate(date) {
+  
   return new Date(date).toLocaleDateString('en-US', {
     weekday: 'short',
     month: 'short',
