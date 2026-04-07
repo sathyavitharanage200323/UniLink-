@@ -21,6 +21,11 @@ public class AppointmentController {
 
     private final AppointmentService appointmentService;
 
+    @GetMapping
+    public ResponseEntity<List<Appointment>> getAll() {
+        return ResponseEntity.ok(appointmentService.getAll());
+    }
+
     /** All appointments for a student */
     @GetMapping("/student/{studentId}")
     public ResponseEntity<List<Appointment>> getByStudent(@PathVariable Long studentId) {

@@ -24,6 +24,10 @@ public class AppointmentService {
     private final UserService userService;
     private final DisciplineService disciplineService;
 
+    public List<Appointment> getAll() {
+        return appointmentRepository.findAll();
+    }
+
     public List<Appointment> getByStudent(Long studentId) {
         User student = userService.getUser(studentId);
         return appointmentRepository.findByStudent(student);

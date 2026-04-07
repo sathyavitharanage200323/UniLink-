@@ -25,6 +25,7 @@ public class ManagementService {
     private final UserRepository userRepository;
     private final StudentProfileRepository studentProfileRepository;
     private final LecturerProfileRepository lecturerProfileRepository;
+    private final UserDeletionService userDeletionService;
 
     @Transactional(readOnly = true)
     public List<AuthUserResponse> getStudents() {
@@ -98,7 +99,7 @@ public class ManagementService {
     public void deleteUser(Long userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User", userId));
-        userRepository.delete(user);
+        userDeletionService.deleteUserAndDependencies(user);
     }
 
     private User getUserByRole(Long userId, User.Role role) {

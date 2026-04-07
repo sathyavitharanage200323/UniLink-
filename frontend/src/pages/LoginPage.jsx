@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { loginUser, registerUser } from '../api';
 import '../App.css';
@@ -217,6 +218,12 @@ export default function LoginPage({ onLogin }) {
           >
             Register
           </button>
+        </div>
+
+        <div style={{ marginBottom: 14, textAlign: 'right' }}>
+          <Link to="/admin-login" style={{ color: '#dbeafe', textDecoration: 'none', fontWeight: 600 }}>
+            Admin login
+          </Link>
         </div>
 
         {tab === 'LOGIN' ? (

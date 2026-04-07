@@ -1,0 +1,124 @@
+.admin-home-page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background:
+    radial-gradient(circle at 15% 20%, rgba(14, 116, 144, 0.14), transparent 40%),
+    radial-gradient(circle at 85% 85%, rgba(2, 132, 199, 0.16), transparent 35%),
+    #f4f7fb;
+}
+
+.admin-home-main {
+  flex: 1;
+  max-width: 1120px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 22px 18px 26px;
+}
+
+.admin-home-hero {
+  background: linear-gradient(125deg, #0b2239 0%, #12385b 52%, #205f84 100%);
+  color: #f8fafc;
+  border-radius: 18px;
+  padding: 24px;
+  margin-bottom: 18px;
+  border: 1px solid rgba(186, 230, 253, 0.3);
+  box-shadow: 0 18px 30px rgba(15, 23, 42, 0.2);
+}
+
+.admin-home-hero-title-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.admin-home-hero h1 {
+  margin: 0;
+  font-size: 1.55rem;
+  letter-spacing: 0.2px;
+}
+
+.admin-home-hero p {
+  margin: 0;
+  color: #dbeafe;
+  max-width: 640px;
+  line-height: 1.45;
+}
+
+.admin-home-grid {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+}
+
+.admin-home-card {
+  text-align: left;
+  border: 1px solid #dbe3ee;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+  border-radius: 14px;
+  padding: 16px;
+  cursor: pointer;
+  transition: transform 0.16s ease, box-shadow 0.16s ease, border-color 0.16s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.admin-home-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(120deg, rgba(14, 116, 144, 0.09), rgba(125, 211, 252, 0));
+  opacity: 0;
+  transition: opacity 0.18s ease;
+  pointer-events: none;
+}
+
+.admin-home-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.11);
+  border-color: #7dd3fc;
+}
+
+.admin-home-card:hover::before {
+  opacity: 1;
+}
+
+.admin-home-card-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+  color: #0c4a6e;
+  font-size: 1rem;
+}
+
+.admin-home-card-desc {
+  color: #475569;
+  line-height: 1.42;
+  margin-bottom: 12px;
+}
+
+.admin-home-card-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #0ea5e9;
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+
+@media (max-width: 768px) {
+  .admin-home-main {
+    padding: 14px;
+  }
+
+  .admin-home-hero {
+    padding: 18px;
+    border-radius: 14px;
+  }
+
+  .admin-home-hero h1 {
+    font-size: 1.28rem;
+  }
+}

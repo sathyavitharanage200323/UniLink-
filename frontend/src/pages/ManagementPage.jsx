@@ -67,6 +67,7 @@ function EditableRow({ person, role, onSave, onDelete }) {
 
 export default function ManagementPage({ currentUser, onLogout }) {
   const navigate = useNavigate();
+  const homeRoute = currentUser?.role === 'ADMIN' ? '/admin/home' : '/lecturer/home';
   const [activeTab, setActiveTab] = useState('STUDENT');
   const [students, setStudents] = useState([]);
   const [lecturers, setLecturers] = useState([]);
@@ -126,7 +127,7 @@ export default function ManagementPage({ currentUser, onLogout }) {
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: '#f8fafc' }}>
       <Header currentUser={currentUser} onLogout={onLogout} unreadCount={0} />
       <main style={{ flex: 1, maxWidth: 1200, width: '100%', margin: '0 auto', padding: 16 }}>
-        <button className="mg-back" onClick={() => navigate('/lecturer/home')}>
+        <button className="mg-back" onClick={() => navigate(homeRoute)}>
           <ArrowLeft size={16} /> Back
         </button>
 

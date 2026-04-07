@@ -39,6 +39,8 @@ const ACADEMIC_PERIODS = [
 export function AppointmentsPage({ currentUser, appointments = [], onLogout }) {
 	const navigate = useNavigate();
 	const isLecturer = currentUser?.role === 'LECTURER';
+	const isAdmin = currentUser?.role === 'ADMIN';
+	const backRoute = isAdmin ? '/admin/home' : (isLecturer ? '/lecturer/home' : '/student/home');
 	const list = appointments.length > 0 ? appointments : [];
 
 	return (
@@ -47,7 +49,7 @@ export function AppointmentsPage({ currentUser, appointments = [], onLogout }) {
 			<main style={{ flex: 1, maxWidth: 1100, margin: '0 auto', width: '100%', padding: '28px 16px' }}>
 				<button
 					type="button"
-					onClick={() => navigate(isLecturer ? '/lecturer/home' : '/student/home')}
+					onClick={() => navigate(backRoute)}
 					style={{ display: 'inline-flex', alignItems: 'center', gap: 8, border: '1px solid #cbd5e1', background: 'white', padding: '8px 12px', borderRadius: 10, cursor: 'pointer' }}
 				>
 					<ArrowLeft size={16} /> Back
@@ -60,13 +62,15 @@ export function AppointmentsPage({ currentUser, appointments = [], onLogout }) {
 					<p style={{ margin: '8px 0 0', color: '#475569' }}>
 						{list.length} appointment(s) loaded from backend.
 					</p>
-					<button
-						type="button"
-						onClick={() => navigate('/book')}
-						style={{ marginTop: 12, padding: '8px 16px', borderRadius: 10, border: 'none', background: '#2563eb', color: 'white', fontWeight: 700, cursor: 'pointer' }}
-					>
-						+ Book New Appointment
-					</button>
+					{!isAdmin && (
+						<button
+							type="button"
+							onClick={() => navigate('/book')}
+							style={{ marginTop: 12, padding: '8px 16px', borderRadius: 10, border: 'none', background: '#2563eb', color: 'white', fontWeight: 700, cursor: 'pointer' }}
+						>
+							+ Book New Appointment
+						</button>
+					)}
 
 					<div style={{ marginTop: 16, display: 'grid', gap: 10 }}>
 						{list.map((a) => (
@@ -95,6 +99,8 @@ export function AppointmentsPage({ currentUser, appointments = [], onLogout }) {
 export function ComingSoonPage({ currentUser, onLogout }) {
 	const navigate = useNavigate();
 	const isLecturer = currentUser?.role === 'LECTURER';
+	const isAdmin = currentUser?.role === 'ADMIN';
+	const backRoute = isAdmin ? '/admin/home' : (isLecturer ? '/lecturer/home' : '/student/home');
 
 	return (
 		<div style={{ minHeight: '100vh', background: '#f8fafc', display: 'flex', flexDirection: 'column' }}>
@@ -102,7 +108,7 @@ export function ComingSoonPage({ currentUser, onLogout }) {
 			<main style={{ flex: 1, maxWidth: 860, margin: '0 auto', width: '100%', padding: '28px 16px' }}>
 				<button
 					type="button"
-					onClick={() => navigate(isLecturer ? '/lecturer/home' : '/student/home')}
+					onClick={() => navigate(backRoute)}
 					style={{ display: 'inline-flex', alignItems: 'center', gap: 8, border: '1px solid #cbd5e1', background: 'white', padding: '8px 12px', borderRadius: 10, cursor: 'pointer' }}
 				>
 					<ArrowLeft size={16} /> Back

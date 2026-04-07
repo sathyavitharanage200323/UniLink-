@@ -46,7 +46,6 @@ public class AuthService {
 
         StudentProfile student = null;
         LecturerProfile lecturer = null;
-
         if (req.getRole() == User.Role.STUDENT) {
             if (studentProfileRepository.existsByRegistrationNumber(req.getRegistrationNumber())) {
                 throw new ResponseStatusException(HttpStatus.CONFLICT, "Registration number already exists");
@@ -94,7 +93,7 @@ public class AuthService {
         LecturerProfile lecturer = null;
         if (user.getRole() == User.Role.STUDENT) {
             student = studentProfileRepository.findById(user.getId()).orElse(null);
-        } else {
+        } else if (user.getRole() == User.Role.LECTURER) {
             lecturer = lecturerProfileRepository.findById(user.getId()).orElse(null);
         }
 
@@ -116,6 +115,9 @@ public class AuthService {
         }
         if (req.getRole() == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Role is required");
+        }
+        if (req.getRole() == User.Role.ADMIN) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Admin accounts cannot be self-registered");
         }
         if (req.getRole() == User.Role.STUDENT && isBlank(req.getRegistrationNumber())) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Registration number is required for students");

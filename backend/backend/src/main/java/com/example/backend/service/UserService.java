@@ -26,6 +26,7 @@ public class UserService {
     private final UserRepository userRepository;
     private final StudentProfileRepository studentProfileRepository;
     private final LecturerProfileRepository lecturerProfileRepository;
+    private final UserDeletionService userDeletionService;
     private final BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
 
     public User getUser(Long id) {
@@ -177,7 +178,7 @@ public class UserService {
     @Transactional
     public void deleteUser(Long userId) {
         User user = getUser(userId);
-        userRepository.delete(user);
+        userDeletionService.deleteUserAndDependencies(user);
     }
 
     @Transactional(readOnly = true)

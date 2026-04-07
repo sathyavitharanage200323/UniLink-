@@ -2,6 +2,7 @@ package com.example.backend.repository;
 
 import com.example.backend.model.ChatMessage;
 import com.example.backend.model.ChatRoom;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -34,4 +35,12 @@ public interface ChatMessageRepository extends JpaRepository<ChatMessage, Long> 
            "AND m.sender.id <> :userId AND m.read = false AND m.deleted = false")
     long countUnreadByRoomAndNotSender(@Param("room") ChatRoom room,
                                        @Param("userId") Long userId);
+
+    @Modifying
+       @Query("DELETE FROM ChatMessage m WHERE m.sender.id = :senderId")
+       void deleteBySenderId(@Param("senderId") Long senderId);
+
+    @Modifying
+       @Query("DELETE FROM ChatMessage m WHERE m.room.id IN :roomIds")
+       void deleteByRoomIds(@Param("roomIds") List<Long> roomIds);
 }

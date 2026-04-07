@@ -47,4 +47,8 @@ public interface AvailabilitySlotRepository extends JpaRepository<AvailabilitySl
     @Modifying
     @Query("DELETE FROM AvailabilitySlot a WHERE a.lecturer = ?1")
     void deleteByLecturer(User lecturer);
+
+        @Modifying
+        @Query("DELETE FROM AvailabilitySlot a WHERE a.lecturer.id = :lecturerId")
+        void deleteByLecturerId(@Param("lecturerId") Long lecturerId);
 }

@@ -34,7 +34,7 @@ export function getUsers() {
   return apiFetch('/api/users');
 }
 
-/** Fetch users filtered by role: 'STUDENT' or 'LECTURER'. */
+/** Fetch users filtered by role: 'STUDENT', 'LECTURER', or 'ADMIN'. */
 export function getUsersByRole(role) {
   return apiFetch(`/api/users/role/${role}`);
 }
@@ -65,6 +65,11 @@ export function toggleDnd(userId, dnd, autoReplyMessage) {
 /** Get all appointments for a student. */
 export function getStudentAppointments(studentId) {
   return apiFetch(`/api/appointments/student/${studentId}`);
+}
+
+/** Get every appointment in the system (admin use). */
+export function getAllAppointments() {
+  return apiFetch('/api/appointments');
 }
 
 /** Get all appointments for a lecturer. */

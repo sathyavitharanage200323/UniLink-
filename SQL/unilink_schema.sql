@@ -16,7 +16,7 @@ CREATE TABLE IF NOT EXISTS users (
     id                  BIGINT          NOT NULL AUTO_INCREMENT,
     email               VARCHAR(255)    NOT NULL,
     name                VARCHAR(255)    NOT NULL,
-    role                ENUM('STUDENT','LECTURER') NOT NULL,
+    role                ENUM('STUDENT','LECTURER','ADMIN') NOT NULL,
     department          VARCHAR(255)    DEFAULT NULL,
     expertise           VARCHAR(500)    DEFAULT NULL,
     do_not_disturb      TINYINT(1)      NOT NULL DEFAULT 0,

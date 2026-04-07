@@ -28,7 +28,7 @@ public class User {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private Role role; // STUDENT or LECTURER
+    private Role role; // STUDENT, LECTURER, or ADMIN
 
     @Column(length = 100)
     private String department;
@@ -56,6 +56,6 @@ public class User {
     }
 
     public enum Role {
-        STUDENT, LECTURER
+        STUDENT, LECTURER, ADMIN
     }
 }

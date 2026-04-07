@@ -2,6 +2,7 @@ package com.example.backend.repository;
 
 import com.example.backend.model.Appointment;
 import com.example.backend.model.ChatRoom;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -25,4 +26,12 @@ public interface ChatRoomRepository extends JpaRepository<ChatRoom, Long> {
             "LEFT JOIN FETCH r.participantLecturer " +
             "WHERE (a.student.id = :userId OR a.lecturer.id = :userId OR r.participantStudent.id = :userId OR r.participantLecturer.id = :userId)")
     List<ChatRoom> findAllByUserId(@Param("userId") Long userId);
+
+            @Query("SELECT r.id FROM ChatRoom r LEFT JOIN r.appointment a " +
+                "WHERE a.student.id = :userId OR a.lecturer.id = :userId OR r.participantStudent.id = :userId OR r.participantLecturer.id = :userId OR r.resolvedBy.id = :userId")
+            List<Long> findAllLinkedRoomIds(@Param("userId") Long userId);
+
+        @Modifying
+            @Query("DELETE FROM ChatRoom r WHERE r.id IN :roomIds")
+            void deleteAllByRoomIds(@Param("roomIds") List<Long> roomIds);
 }

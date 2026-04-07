@@ -25,7 +25,8 @@ export default function Header({ currentUser, onLogout, unreadCount = 0 }) {
   const navigate = useNavigate();
 
   const isLecturer = currentUser?.role === 'LECTURER';
-  const homeRoute  = isLecturer ? '/lecturer/home' : '/student/home';
+  const isAdmin = currentUser?.role === 'ADMIN';
+  const homeRoute  = isAdmin ? '/admin/home' : (isLecturer ? '/lecturer/home' : '/student/home');
   const effectiveUnreadCount = liveUnreadCount === null ? unreadCount : liveUnreadCount;
   const initials   = (currentUser?.name ?? 'U')
     .split(' ')
@@ -170,7 +171,7 @@ export default function Header({ currentUser, onLogout, unreadCount = 0 }) {
             <div className="header__user-meta">
               <span className="header__user-name">{currentUser?.name}</span>
               <span className="header__user-role">
-                {isLecturer ? 'Lecturer' : 'Student'}
+                {isAdmin ? 'Admin' : (isLecturer ? 'Lecturer' : 'Student')}
               </span>
             </div>
           </button>

@@ -2,6 +2,7 @@ package com.example.backend.repository;
 
 import com.example.backend.model.StudentDiscipline;
 import com.example.backend.model.User;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -25,4 +26,13 @@ public interface StudentDisciplineRepository extends JpaRepository<StudentDiscip
     boolean isStudentBlockedByLecturer(@Param("student") User student,
                                        @Param("lecturer") User lecturer,
                                        @Param("now") LocalDateTime now);
+
+       @Modifying
+       @Query("DELETE FROM StudentDiscipline d WHERE d.student = :student OR d.lecturer = :lecturer")
+       void deleteByStudentOrLecturer(@Param("student") User student,
+                                                           @Param("lecturer") User lecturer);
+
+       @Modifying
+       @Query("DELETE FROM StudentDiscipline d WHERE d.student.id = :userId OR d.lecturer.id = :userId")
+       void deleteByUserId(@Param("userId") Long userId);
 }
