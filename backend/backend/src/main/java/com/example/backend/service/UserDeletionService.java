@@ -3,6 +3,7 @@ package com.example.backend.service;
 import com.example.backend.model.User;
 import com.example.backend.repository.AppointmentRepository;
 import com.example.backend.repository.AvailabilitySlotRepository;
+import com.example.backend.repository.BugReportRepository;
 import com.example.backend.repository.CannedResponseRepository;
 import com.example.backend.repository.ChatMessageRepository;
 import com.example.backend.repository.ChatRoomRepository;
@@ -31,6 +32,7 @@ public class UserDeletionService {
     private final AppointmentRepository appointmentRepository;
     private final ChatRoomRepository chatRoomRepository;
     private final ChatMessageRepository chatMessageRepository;
+    private final BugReportRepository bugReportRepository;
 
     @Transactional
     public void deleteUserAndDependencies(User user) {
@@ -54,6 +56,7 @@ public class UserDeletionService {
         studentDisciplineRepository.deleteByUserId(userId);
         appointmentRepository.deleteByStudentId(userId);
         appointmentRepository.deleteByLecturerId(userId);
+        bugReportRepository.deleteByReporterOrFixedBy(userId);
 
         studentProfileRepository.findById(userId).ifPresent(studentProfileRepository::delete);
         lecturerProfileRepository.findById(userId).ifPresent(lecturerProfileRepository::delete);

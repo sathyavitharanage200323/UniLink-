@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import {
   Bell, LogOut, MessageSquare, Menu, X,
-  Home, Calendar, User, GraduationCap,
+  Home, Calendar, User, GraduationCap, Bug,
 } from 'lucide-react';
 import { chatApi } from '../api/chatApi';
 import './Header.css';
@@ -27,6 +27,7 @@ export default function Header({ currentUser, onLogout, unreadCount = 0 }) {
   const isLecturer = currentUser?.role === 'LECTURER';
   const isAdmin = currentUser?.role === 'ADMIN';
   const homeRoute  = isAdmin ? '/admin/home' : (isLecturer ? '/lecturer/home' : '/student/home');
+  const bugRoute = isAdmin ? '/admin/bug-reports' : '/reports';
   const effectiveUnreadCount = liveUnreadCount === null ? unreadCount : liveUnreadCount;
   const initials   = (currentUser?.name ?? 'U')
     .split(' ')
@@ -124,6 +125,9 @@ export default function Header({ currentUser, onLogout, unreadCount = 0 }) {
             {effectiveUnreadCount > 0 && (
               <span className="header__nav-badge">{effectiveUnreadCount}</span>
             )}
+          </Link>
+          <Link to={bugRoute} className="header__nav-link" onClick={close}>
+            <Bug size={15} /><span>Reports</span>
           </Link>
           <Link to="/profile" className="header__nav-link" onClick={close}>
             <User size={15} /><span>Profile</span>

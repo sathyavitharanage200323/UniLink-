@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Settings, Users, CalendarClock, MessagesSquare, UserCircle } from 'lucide-react';
+import { Settings, Users, CalendarClock, MessagesSquare, UserCircle, Bug } from 'lucide-react';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 import './AdminHome.css';
@@ -23,6 +23,12 @@ const cards = [
     desc: 'Open messaging workspace and monitor conversations.',
     icon: MessagesSquare,
     path: '/chat',
+  },
+  {
+    title: 'Bug Reports',
+    desc: 'Review user-reported bugs and publish fixes.',
+    icon: Bug,
+    path: '/admin/bug-reports',
   },
   {
     title: 'Admin Profile',

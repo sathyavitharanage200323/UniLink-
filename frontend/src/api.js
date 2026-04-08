@@ -207,3 +207,31 @@ export function blockSlot(slotId, reason) {
     body: JSON.stringify({ reason }),
   });
 }
+
+// â”€â”€ Bug Reports â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+export function createBugReport(payload) {
+  return apiFetch('/api/bug-reports', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+export function getBugReportsByReporter(reporterId) {
+  return apiFetch(`/api/bug-reports/reporter/${reporterId}`);
+}
+
+export function getBugReportsAdmin() {
+  return apiFetch('/api/bug-reports/admin');
+}
+
+export function updateBugReportStatus(reportId, payload) {
+  return apiFetch(`/api/bug-reports/${reportId}/status`, {
+    method: 'PATCH',
+    body: JSON.stringify(payload),
+  });
+}
+
+export function getBugReportNotifications(reporterId) {
+  return apiFetch(`/api/bug-reports/notifications/${reporterId}`);
+}

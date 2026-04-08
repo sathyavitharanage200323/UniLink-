@@ -7,6 +7,8 @@ import StudentHome from './pages/StudentHome';
 import LecturerHome from './pages/LecturerHome';
 import AdminHome from './pages/AdminHome';
 import ManagementPage from './pages/ManagementPage';
+import BugReportPage from './pages/BugReportPage';
+import AdminBugReportsPage from './pages/AdminBugReportsPage';
 import { AppointmentsPage, ComingSoonPage } from './pages/UtilityPages';
 import ProfilePage from './pages/ProfilePage.jsx';
 import BookingPage from './pages/BookingPage.jsx';
@@ -103,6 +105,24 @@ function AppRoutes({ activeUser, appointments, onLogin, onLogout, onUserUpdate }
         element={
           (isLecturer || isAdmin)
             ? <ManagementPage currentUser={activeUser} onLogout={onLogout} />
+            : <Navigate to={homeRedirect} replace />
+        }
+      />
+
+      <Route
+        path="/reports"
+        element={
+          (isStudent || isLecturer)
+            ? <BugReportPage currentUser={activeUser} onLogout={onLogout} />
+            : <Navigate to={homeRedirect} replace />
+        }
+      />
+
+      <Route
+        path="/admin/bug-reports"
+        element={
+          isAdmin
+            ? <AdminBugReportsPage currentUser={activeUser} onLogout={onLogout} />
             : <Navigate to={homeRedirect} replace />
         }
       />
