@@ -54,6 +54,26 @@ export default function BugReportPage({ currentUser, onLogout }) {
     loadUpdates();
   }, [currentUser?.id]);
 
+  useEffect(() => {
+    if (!currentUser?.id) return undefined;
+
+    const intervalId = setInterval(() => {
+      loadUpdates();
+    }, 10000);
+
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        loadUpdates();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => {
+      clearInterval(intervalId);
+      document.removeEventListener('visibilitychange', handleVisibility);
+    };
+  }, [currentUser?.id]);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!form.title.trim()) {
@@ -96,6 +116,9 @@ export default function BugReportPage({ currentUser, onLogout }) {
   };
 
   const sortedReports = useMemo(() => reports, [reports]);
+  const displayUpdates = updates.length > 0
+    ? updates
+    : reports.filter((item) => item.status === 'FIXED');
 
   return (
     <div className="bug-report-page">
@@ -160,11 +183,11 @@ export default function BugReportPage({ currentUser, onLogout }) {
               <Bell size={18} />
               <h2>Fix updates</h2>
             </div>
-            {updates.length === 0 ? (
+            {displayUpdates.length === 0 ? (
               <div className="bug-report-empty">No new fixes yet.</div>
             ) : (
               <div className="bug-report-updates">
-                {updates.map((item) => (
+                {displayUpdates.map((item) => (
                   <div key={item.id} className="bug-report-update-card">
                     <CheckCircle2 size={18} />
                     <div>
