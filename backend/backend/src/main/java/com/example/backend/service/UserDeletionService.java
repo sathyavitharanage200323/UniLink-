@@ -8,6 +8,7 @@ import com.example.backend.repository.CannedResponseRepository;
 import com.example.backend.repository.ChatMessageRepository;
 import com.example.backend.repository.ChatRoomRepository;
 import com.example.backend.repository.LecturerProfileRepository;
+import com.example.backend.repository.PasswordResetTokenRepository;
 import com.example.backend.repository.SlotRepository;
 import com.example.backend.repository.StudentDisciplineRepository;
 import com.example.backend.repository.StudentProfileRepository;
@@ -33,6 +34,7 @@ public class UserDeletionService {
     private final ChatRoomRepository chatRoomRepository;
     private final ChatMessageRepository chatMessageRepository;
     private final BugReportRepository bugReportRepository;
+    private final PasswordResetTokenRepository passwordResetTokenRepository;
 
     @Transactional
     public void deleteUserAndDependencies(User user) {
@@ -57,6 +59,7 @@ public class UserDeletionService {
         appointmentRepository.deleteByStudentId(userId);
         appointmentRepository.deleteByLecturerId(userId);
         bugReportRepository.deleteByReporterOrFixedBy(userId);
+        passwordResetTokenRepository.deleteByUserId(userId);
 
         studentProfileRepository.findById(userId).ifPresent(studentProfileRepository::delete);
         lecturerProfileRepository.findById(userId).ifPresent(lecturerProfileRepository::delete);

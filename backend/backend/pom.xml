@@ -67,6 +67,12 @@
 			<artifactId>spring-boot-starter-websocket</artifactId>
 		</dependency>
 
+		<!-- Email support (password reset) -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-mail</artifactId>
+		</dependency>
+
 		<!-- Lombok – reduces boilerplate -->
 		<dependency>
 			<groupId>org.projectlombok</groupId>

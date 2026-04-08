@@ -244,6 +244,11 @@ export default function LoginPage({ onLogin }) {
               className="auth-field"
               style={authInputStyle}
             />
+            <div style={{ textAlign: 'right' }}>
+              <Link to="/reset-password" style={{ color: '#dbeafe', textDecoration: 'none', fontWeight: 600 }}>
+                Forgot password?
+              </Link>
+            </div>
             <button type="submit" disabled={submitting} style={authButtonStyle}>
               {submitting ? 'Signing in...' : 'Sign In'}
             </button>

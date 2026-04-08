@@ -143,6 +143,27 @@ export function registerUser(payload) {
   });
 }
 
+export function requestPasswordReset(payload) {
+  return apiFetch('/api/auth/password-reset/request', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+export function verifyPasswordReset(payload) {
+  return apiFetch('/api/auth/password-reset/verify', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+export function confirmPasswordReset(payload) {
+  return apiFetch('/api/auth/password-reset/confirm', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
 // â”€â”€ Student/Lecturer Management â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export function getManagedStudents() {

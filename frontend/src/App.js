@@ -9,6 +9,7 @@ import AdminHome from './pages/AdminHome';
 import ManagementPage from './pages/ManagementPage';
 import BugReportPage from './pages/BugReportPage';
 import AdminBugReportsPage from './pages/AdminBugReportsPage';
+import ResetPasswordPage from './pages/ResetPasswordPage';
 import { AppointmentsPage, ComingSoonPage } from './pages/UtilityPages';
 import ProfilePage from './pages/ProfilePage.jsx';
 import BookingPage from './pages/BookingPage.jsx';
@@ -31,6 +32,7 @@ function AppRoutes({ activeUser, appointments, onLogin, onLogout, onUserUpdate }
       <Routes>
         <Route path="/" element={<LoginPage onLogin={onLogin} />} />
         <Route path="/admin-login" element={<AdminLoginPage onLogin={onLogin} />} />
+        <Route path="/reset-password" element={<ResetPasswordPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     );
