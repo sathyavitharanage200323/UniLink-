@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import { X } from 'lucide-react';
 import { disciplineApi } from '../api/chatApi';
 import { toast } from 'react-toastify';
@@ -54,9 +54,9 @@ export default function DisciplineModal({
           <div className="form-group">
             <label>Action Type</label>
             <select className="form-control" value={type} onChange={(e) => setType(e.target.value)}>
-              <option value="WARNING">⚠️ Warning (visible label)</option>
-              <option value="TEMP_BLOCK">⏱ Temporary Block</option>
-              <option value="PERM_BLOCK">🚫 Permanent Block</option>
+              <option value="WARNING">âš ï¸ Warning (visible label)</option>
+              <option value="TEMP_BLOCK">â± Temporary Block</option>
+              <option value="PERM_BLOCK">ðŸš« Permanent Block</option>
             </select>
           </div>
 
@@ -65,7 +65,7 @@ export default function DisciplineModal({
             <textarea
               className="form-control"
               rows={3}
-              placeholder="Describe the behaviour…"
+              placeholder="Describe the behaviourâ€¦"
               value={reason}
               onChange={(e) => setReason(e.target.value)}
               required
@@ -87,7 +87,7 @@ export default function DisciplineModal({
           <div className="modal-actions">
             <button type="button" className="btn btn-ghost" onClick={onClose}>Cancel</button>
             <button type="submit" className="btn btn-danger" disabled={loading}>
-              {loading ? 'Applying…' : 'Apply'}
+              {loading ? 'Applyingâ€¦' : 'Apply'}
             </button>
           </div>
         </form>
@@ -95,3 +95,4 @@ export default function DisciplineModal({
     </div>
   );
 }
+

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+﻿import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { ArrowLeft, Users, GraduationCap, Search, Trash2 } from 'lucide-react';
@@ -177,3 +177,4 @@ export default function ManagementPage({ currentUser, onLogout }) {
     </div>
   );
 }
+

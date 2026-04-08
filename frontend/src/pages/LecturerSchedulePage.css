@@ -1,4 +1,4 @@
-/* ── Page shell ─────────────────────────────────────────────── */
+﻿/* â”€â”€ Page shell â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .lsp-page {
   min-height: 100vh;
   background: linear-gradient(135deg, #f0f4ff 0%, #f8fafc 60%, #eff6ff 100%);
@@ -12,7 +12,7 @@
   padding: 24px 20px 48px;
 }
 
-/* ── Back button ─────────────────────────────────────────────── */
+/* â”€â”€ Back button â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .lsp-back-btn {
   display: inline-flex;
   align-items: center;
@@ -30,7 +30,7 @@
 }
 .lsp-back-btn:hover { background: #f8fafc; border-color: #cbd5e1; }
 
-/* ── Header ──────────────────────────────────────────────────── */
+/* â”€â”€ Header â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .lsp-header {
   display: flex;
   justify-content: space-between;
@@ -54,7 +54,7 @@
   margin: 0;
 }
 
-/* ── Stats bar ───────────────────────────────────────────────── */
+/* â”€â”€ Stats bar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .lsp-stats {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
@@ -96,7 +96,7 @@
   margin-top: 2px;
 }
 
-/* ── Filter bar ──────────────────────────────────────────────── */
+/* â”€â”€ Filter bar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .lsp-filter-bar {
   background: white;
   border: 1px solid #e2e8f0;
@@ -142,7 +142,7 @@
   color: #2563eb;
 }
 
-/* ── Appointments list ───────────────────────────────────────── */
+/* â”€â”€ Appointments list â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .lsp-list {
   display: flex;
   flex-direction: column;
@@ -162,7 +162,7 @@
   gap: 12px;
 }
 
-/* ── Appointment card ────────────────────────────────────────── */
+/* â”€â”€ Appointment card â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .lsp-card {
   background: white;
   border: 1.5px solid #e2e8f0;
@@ -175,6 +175,12 @@
 .lsp-card--priority {
   border-color: #fbbf24;
   background: linear-gradient(to right, #fffbeb 0%, white 20%);
+}
+
+.lsp-card--rescheduled {
+  border-color: #fca5a5;
+  background: linear-gradient(to right, #fff1f1 0%, white 25%);
+  border-left: 4px solid #dc2626;
 }
 
 .lsp-card__header {
@@ -241,7 +247,7 @@
   color: #94a3b8;
 }
 
-/* ── Priority badge ──────────────────────────────────────────── */
+/* â”€â”€ Priority badge â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .lsp-priority-badge {
   display: inline-flex;
   align-items: center;
@@ -255,7 +261,7 @@
   font-weight: 700;
 }
 
-/* ── Status badge ────────────────────────────────────────────── */
+/* â”€â”€ Status badge â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .lsp-status-badge {
   display: inline-flex;
   align-items: center;
@@ -267,7 +273,7 @@
   font-weight: 700;
 }
 
-/* ── Card body ───────────────────────────────────────────────── */
+/* â”€â”€ Card body â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .lsp-card__body {
   border-top: 1px solid #e2e8f0;
   padding: 18px;
@@ -301,7 +307,7 @@
   margin: 4px 0;
 }
 
-/* ── Actions ─────────────────────────────────────────────────── */
+/* â”€â”€ Actions â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .lsp-card__actions {
   display: flex;
   gap: 8px;
@@ -355,7 +361,7 @@
   cursor: not-allowed;
 }
 
-/* ── Action form ─────────────────────────────────────────────── */
+/* â”€â”€ Action form â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .lsp-action-form {
   background: #f8fafc;
   border: 1px solid #e2e8f0;
@@ -413,7 +419,7 @@
   margin-top: 12px;
 }
 
-/* ── Spinner ─────────────────────────────────────────────────── */
+/* â”€â”€ Spinner â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .lsp-spin {
   animation: lsp-rotate 0.8s linear infinite;
 }
@@ -423,10 +429,63 @@
   to { transform: rotate(360deg); }
 }
 
-/* ── Responsive ──────────────────────────────────────────────── */
+/* â”€â”€ Responsive â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 @media (max-width: 768px) {
   .lsp-card__header { flex-direction: column; align-items: flex-start; gap: 10px; }
   .lsp-card__right { width: 100%; justify-content: space-between; }
   .lsp-stats { grid-template-columns: 1fr; }
   .lsp-filter-bar { flex-direction: column; align-items: flex-start; }
+}
+
+
+
+/* ── Image and Document Display ────────────────────────────────────────────────────────────── */
+.lsp-card__image-container {
+  width: 100%;
+  max-width: 400px;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+}
+
+.lsp-card__image {
+  width: 100%;
+  height: auto;
+  display: block;
+  max-height: 300px;
+  object-fit: cover;
+}
+
+.lsp-card__image-error {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 40px 20px;
+  color: #94a3b8;
+  font-size: 0.9rem;
+  text-align: center;
+}
+
+.lsp-card__document-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 10px;
+  color: #2563eb;
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 0.9rem;
+  transition: all 0.15s;
+  cursor: pointer;
+}
+
+.lsp-card__document-link:hover {
+  background: #dbeafe;
+  border-color: #93c5fd;
+  transform: translateY(-1px);
 }

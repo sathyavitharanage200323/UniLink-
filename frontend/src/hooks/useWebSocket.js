@@ -1,4 +1,4 @@
-import { useRef, useEffect, useCallback, useState } from 'react';
+﻿import { useRef, useEffect, useCallback, useState } from 'react';
 import { Client } from '@stomp/stompjs';
 import SockJS from 'sockjs-client';
 import { BACKEND_BASE_URL } from '../config';
@@ -6,9 +6,9 @@ import { BACKEND_BASE_URL } from '../config';
 /**
  * Custom hook for STOMP WebSocket connection.
  *
- * @param {number|null} roomId  – the chat room to join
- * @param {function}    onMessage   – called with each new ChatMessageDTO
- * @param {function}    onTyping    – called with TypingPayload
+ * @param {number|null} roomId  â€“ the chat room to join
+ * @param {function}    onMessage   â€“ called with each new ChatMessageDTO
+ * @param {function}    onTyping    â€“ called with TypingPayload
  */
 export function useWebSocket(roomId, onMessage, onTyping) {
   const clientRef = useRef(null);
@@ -93,3 +93,4 @@ export function useWebSocket(roomId, onMessage, onTyping) {
 
   return { sendMessage, sendTyping, sendReadReceipt, isConnected };
 }
+

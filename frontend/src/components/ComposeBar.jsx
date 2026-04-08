@@ -1,5 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { toast } from 'react-toastify';
+﻿import React, { useState, useRef, useEffect } from 'react';
 import {
   Send, Code, Paperclip, Zap,
 } from 'lucide-react';
@@ -13,11 +12,11 @@ const DEBOUNCE_MS = 800;
  *
  * Props:
  *   roomId, currentUserId, currentUserRole
- *   onSend(wsPayload)  – call the WebSocket sender
- *   onTyping(isTyping) – propagate typing state
- *   cannedResponses    – array of { id, title, content }
- *   roomClosed         – bool, disable when resolved
- *   blocked            – bool, disable when student is blocked by lecturer
+ *   onSend(wsPayload)  â€“ call the WebSocket sender
+ *   onTyping(isTyping) â€“ propagate typing state
+ *   cannedResponses    â€“ array of { id, title, content }
+ *   roomClosed         â€“ bool, disable when resolved
+ *   blocked            â€“ bool, disable when student is blocked by lecturer
  */
 export default function ComposeBar({
   roomId,
@@ -72,23 +71,7 @@ export default function ComposeBar({
 
   function handleSend() {
     const trimmed = content.trim();
-
-    if (roomClosed) {
-      toast.info('This chat room is closed.');
-      return;
-    }
-    if (blocked) {
-      toast.error('You are currently blocked from messaging this lecturer.');
-      return;
-    }
-    if (!trimmed) {
-      toast.warning('Cannot send an empty message.');
-      return;
-    }
-    if (trimmed.length > 2000) {
-      toast.error(`Message is too long. Limit is 2000 characters.`);
-      return;
-    }
+    if (!trimmed || roomClosed || blocked) return;
 
     onSend({
       senderId: currentUserId,
@@ -104,16 +87,6 @@ export default function ComposeBar({
   async function handleFileChange(e) {
     const file = e.target.files?.[0];
     if (!file) return;
-
-    // File Size Validation (limit to 5 MB)
-    const MAX_FILE_SIZE_MB = 5;
-    const fileSizeMB = file.size / (1024 * 1024);
-    if (fileSizeMB > MAX_FILE_SIZE_MB) {
-      toast.error(`File is too large! Maximum allowed size is ${MAX_FILE_SIZE_MB}MB. Your file is ${fileSizeMB.toFixed(2)}MB.`);
-      e.target.value = ''; // Reset input
-      return;
-    }
-
     setUploading(true);
     try {
       const res = await chatApi.uploadFile(file);
@@ -142,14 +115,7 @@ export default function ComposeBar({
 
   if (roomClosed || blocked) {
     return (
-      <div 
-        className="compose-area" 
-        style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.85rem', cursor: 'pointer', padding: '20px' }}
-        onClick={() => {
-          if (blocked) toast.error('You are currently blocked from messaging this lecturer.');
-          else if (roomClosed) toast.info('This chat room is closed. You can no longer send messages.');
-        }}
-      >
+      <div className="compose-area" style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
         {roomClosed
           ? 'This chat is resolved. No new messages can be sent.'
           : 'You are blocked from sending messages in this chat.'}
@@ -216,7 +182,7 @@ export default function ComposeBar({
           </span>
         )}
 
-        {uploading && <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Uploading…</span>}
+        {uploading && <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Uploadingâ€¦</span>}
       </div>
 
       {/* Input row */}
@@ -226,8 +192,8 @@ export default function ComposeBar({
           className={`compose-textarea ${mode === 'CODE' ? 'code-mode' : ''}`}
           placeholder={
             mode === 'CODE'
-              ? 'Paste your code here…'
-              : 'Type a message… (Enter to send, Shift+Enter for new line)'
+              ? 'Paste your code hereâ€¦'
+              : 'Type a messageâ€¦ (Enter to send, Shift+Enter for new line)'
           }
           value={content}
           onChange={handleChange}
@@ -246,5 +212,4 @@ export default function ComposeBar({
     </div>
   );
 }
-
 

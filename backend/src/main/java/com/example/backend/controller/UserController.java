@@ -1,0 +1,95 @@
+package com.example.backend.controller;
+
+import com.example.backend.dto.AuthUserResponse;
+import com.example.backend.dto.UserProfileUpdateRequest;
+import com.example.backend.model.User;
+import com.example.backend.service.UserService;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.util.List;
+import java.util.Map;
+
+/**
+ * REST API for user management and DND toggle.
+ * Base URL: /api/users
+ */
+@RestController
+@RequestMapping("/api/users")
+@RequiredArgsConstructor
+public class UserController {
+
+    private final UserService userService;
+
+    @GetMapping
+    public ResponseEntity<List<User>> getAllUsers() {
+        return ResponseEntity.ok(userService.getAllUsers());
+    }
+
+    @GetMapping("/role/{role}")
+    public ResponseEntity<List<User>> getUsersByRole(@PathVariable User.Role role) {
+        return ResponseEntity.ok(userService.getUsersByRole(role));
+    }
+
+    @GetMapping("/lecturers/search")
+    public ResponseEntity<List<AuthUserResponse>> searchLecturers(
+            @RequestParam(required = false) String query,
+            @RequestParam(required = false) String department,
+            @RequestParam(required = false) String designation) {
+        return ResponseEntity.ok(userService.searchLecturers(query, department, designation));
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<User> getUser(@PathVariable Long id) {
+        return ResponseEntity.ok(userService.getUser(id));
+    }
+
+    @GetMapping("/{id}/full")
+    public ResponseEntity<AuthUserResponse> getFullUser(@PathVariable Long id) {
+        try {
+            return ResponseEntity.ok(userService.getFullUser(id));
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw e;
+        }
+    }
+
+    @PostMapping
+    public ResponseEntity<User> createUser(@RequestBody User user) {
+        return ResponseEntity.ok(userService.save(user));
+    }
+
+    /**
+     * Toggle Do Not Disturb for a lecturer.
+     * Body: { dnd: true/false, autoReplyMessage: "..." }
+     */
+    @PatchMapping("/{id}/dnd")
+    public ResponseEntity<User> toggleDnd(@PathVariable Long id,
+                                           @RequestBody Map<String, Object> body) {
+        boolean dnd = Boolean.parseBoolean(body.get("dnd").toString());
+        String msg = body.containsKey("autoReplyMessage")
+                ? body.get("autoReplyMessage").toString() : null;
+        return ResponseEntity.ok(userService.toggleDoNotDisturb(id, dnd, msg));
+    }
+
+    @PutMapping("/{id}/profile")
+    public ResponseEntity<AuthUserResponse> updateProfile(@PathVariable Long id,
+                                                          @RequestBody UserProfileUpdateRequest request) {
+        return ResponseEntity.ok(userService.updateProfile(id, request));
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteUser(@PathVariable Long id) {
+        userService.deleteUser(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/{id}/profile-image")
+    public ResponseEntity<AuthUserResponse> uploadProfileImage(
+            @PathVariable Long id,
+            @RequestParam("image") MultipartFile image) {
+        return ResponseEntity.ok(userService.uploadProfileImage(id, image));
+    }
+}

@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import { format, isToday, isYesterday } from 'date-fns';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -103,7 +103,7 @@ function MessageBubble({ msg, currentUserId, currentUserRole, onPin, onMarkAnswe
           <span>{msg.sentAt ? format(new Date(msg.sentAt), 'HH:mm') : ''}</span>
           {isMe && (
             <span className="read-tick" title={msg.read ? 'Read' : 'Delivered'}>
-              {msg.read ? '✓✓' : '✓'}
+              {msg.read ? 'âœ“âœ“' : 'âœ“'}
             </span>
           )}
           {msg.pinned && <Pin size={10} />}
@@ -171,7 +171,7 @@ function BubbleContent({ msg, isMe }) {
   );
 }
 
-// ── Helpers ──────────────────────────────────────────────────────
+// â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function groupByDate(messages) {
   const groups = [];
   let currentLabel = null;
@@ -196,3 +196,4 @@ function formatDateLabel(date) {
   if (isYesterday(date)) return 'Yesterday';
   return format(date, 'MMMM d, yyyy');
 }
+

@@ -1,9 +1,9 @@
-/* ─────────────────────────────────────
-   Footer.css — UniLink Site Footer
-   Brand palette: #0F2854 · #1C4D8D · #4988C4 · #BDE8F5
-   ───────────────────────────────────── */
+﻿/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+   Footer.css â€” UniLink Site Footer
+   Brand palette: #0F2854 Â· #1C4D8D Â· #4988C4 Â· #BDE8F5
+   â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
-/* ── CSS Variables ── */
+/* â”€â”€ CSS Variables â”€â”€ */
 :root {
   --navy:     #0F2854;
   --royal:    #1C4D8D;
@@ -11,7 +11,7 @@
   --sky:      #BDE8F5;
 }
 
-/* ── Keyframes ── */
+/* â”€â”€ Keyframes â”€â”€ */
 @keyframes fadeSlideUp {
   from { opacity: 0; transform: translateY(20px); }
   to   { opacity: 1; transform: translateY(0);    }
@@ -22,7 +22,7 @@
   100% { background-position: 0%   50%; }
 }
 
-/* ── Base ── */
+/* â”€â”€ Base â”€â”€ */
 .footer {
   background: linear-gradient(
     135deg,
@@ -38,7 +38,7 @@
   border-top: 1px solid rgba(189, 232, 245, 0.12);
 }
 
-/* ── Main grid ── */
+/* â”€â”€ Main grid â”€â”€ */
 .footer__inner {
   max-width: 1280px;
   margin: 0 auto;
@@ -49,7 +49,7 @@
   animation: fadeSlideUp 0.6s 0.1s cubic-bezier(0.22,1,0.36,1) both;
 }
 
-/* ── Brand column ── */
+/* â”€â”€ Brand column â”€â”€ */
 .footer__brand-heading {
   display: flex;
   align-items: center;
@@ -89,7 +89,7 @@
   max-width: 270px;
 }
 
-/* ── Socials ── */
+/* â”€â”€ Socials â”€â”€ */
 .footer__socials {
   display: flex;
   gap: 8px;
@@ -114,7 +114,7 @@
   transform: translateY(-3px) scale(1.08);
 }
 
-/* ── Link columns ── */
+/* â”€â”€ Link columns â”€â”€ */
 .footer__col h4 {
   color: var(--sky);
   font-size: 0.78rem;
@@ -150,7 +150,7 @@
   padding-left: 5px;
 }
 
-/* ── Contact column ── */
+/* â”€â”€ Contact column â”€â”€ */
 .footer__contact-item {
   display: flex;
   align-items: flex-start;
@@ -168,7 +168,7 @@
   color: var(--mid-blue);
 }
 
-/* ── Bottom bar ── */
+/* â”€â”€ Bottom bar â”€â”€ */
 .footer__bottom {
   max-width: 1280px;
   margin: 0 auto;
@@ -189,7 +189,7 @@
 }
 .footer__bottom a:hover { color: var(--sky); }
 
-/* ── Responsive ── */
+/* â”€â”€ Responsive â”€â”€ */
 @media (max-width: 960px) {
   .footer__inner {
     grid-template-columns: 1fr 1fr;
@@ -210,10 +210,11 @@
   }
 }
 
-/* ── Reduced-motion override ── */
+/* â”€â”€ Reduced-motion override â”€â”€ */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 0.01ms !important;
     transition-duration: 0.01ms !important;
   }
 }
+

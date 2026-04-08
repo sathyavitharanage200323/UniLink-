@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Centralised API client for the UniLink backend (http://localhost:8080).
  * Every function returns a Promise that resolves to parsed JSON or throws an Error.
  */
@@ -162,37 +162,3 @@ export function deleteManagedUser(id) {
   });
 }
 
-// ++ Availability Management ++
-
-export function getLecturerAvailability(lecturerId) {
-  return apiFetch('/api/availability/lecturer/' + lecturerId);
-}
-
-export function getLecturerAvailableSlots(lecturerId) {
-  return apiFetch('/api/availability/lecturer/' + lecturerId + '/available');
-}
-
-export function createSlot(lecturerId, data) {
-  return apiFetch('/api/availability/lecturer/' + lecturerId + '/slot', {
-    method: 'POST',
-    body: JSON.stringify(data),
-  });
-}
-export function updateSlot(slotId, data) {
-  return apiFetch('/api/availability/slot/' + slotId, {
-    method: 'PUT',
-    body: JSON.stringify(data),
-  });
-}
-export function deleteSlot(slotId) {
-  return apiFetch('/api/availability/slot/' + slotId, {
-    method: 'DELETE',
-  });
-}
-
-export function blockSlot(slotId, reason) {
-  return apiFetch('/api/availability/slot/' + slotId + '/block', {
-    method: 'PATCH',
-    body: JSON.stringify({ reason }),
-  });
-}

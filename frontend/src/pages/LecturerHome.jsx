@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+﻿import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import {
@@ -10,26 +10,35 @@ import {
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 import { chatApi, userApi } from '../api/chatApi';
+import api from '../api/axiosInstance';
 import './LecturerHome.css';
 
-/**
- * LecturerHome — dashboard for lecturers.
- *
- * Props:
- *   currentUser  – { id, name, role, department, expertise, doNotDisturb }
- *   appointments – array from App.js
- *   onLogout     – () => void
- */
 export default function LecturerHome({ currentUser, appointments = [], onLogout, onUserUpdate }) {
   const navigate = useNavigate();
   const [dnd, setDnd] = useState(currentUser?.doNotDisturb ?? false);
   const [savingDnd, setSavingDnd] = useState(false);
   const [studentThreads, setStudentThreads] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [liveAppointments, setLiveAppointments] = useState(appointments);
 
+  useEffect(() => { setDnd(currentUser?.doNotDisturb ?? false); }, [currentUser?.doNotDisturb]);
+  useEffect(() => { setLiveAppointments(appointments); }, [appointments]);
+
+  // Poll appointments every 5 seconds for real-time updates
   useEffect(() => {
-    setDnd(currentUser?.doNotDisturb ?? false);
-  }, [currentUser?.doNotDisturb]);
+    if (!currentUser?.id) return;
+    const poll = async () => {
+      try {
+        const res = await api.get(`/appointments/lecturer/${currentUser.id}`);
+        setLiveAppointments(res.data || []);
+      } catch (err) {
+        console.error('Error polling appointments:', err);
+      }
+    };
+    poll();
+    const interval = setInterval(poll, 5000);
+    return () => clearInterval(interval);
+  }, [currentUser?.id]);
 
   async function handleDndToggle(nextVal) {
     if (!currentUser?.id || savingDnd) return;
@@ -39,13 +48,7 @@ export default function LecturerHome({ currentUser, appointments = [], onLogout,
     try {
       const res = await userApi.toggleDnd(currentUser.id, nextVal, currentUser?.autoReplyMessage || '');
       const updatedUser = res.data;
-      if (onUserUpdate) {
-        onUserUpdate({
-          ...currentUser,
-          doNotDisturb: updatedUser.doNotDisturb,
-          autoReplyMessage: updatedUser.autoReplyMessage,
-        });
-      }
+      if (onUserUpdate) onUserUpdate({ ...currentUser, doNotDisturb: updatedUser.doNotDisturb, autoReplyMessage: updatedUser.autoReplyMessage });
       toast.success(nextVal ? 'Do Not Disturb ON' : 'Do Not Disturb OFF');
     } catch {
       setDnd(prev);
@@ -55,11 +58,32 @@ export default function LecturerHome({ currentUser, appointments = [], onLogout,
     }
   }
 
-  /* ── Derived appointment lists ── */
-  const confirmedAppts = appointments.filter((a) => a.status === 'CONFIRMED');
-  const pendingAppts   = appointments.filter((a) => a.status === 'PENDING');
+  async function handleAccept(apptId) {
+    try {
+      await api.patch(`/appointments/${apptId}/status`, { status: 'CONFIRMED' });
+      toast.success('Appointment confirmed!');
+      const res = await api.get(`/appointments/lecturer/${currentUser.id}`);
+      setLiveAppointments(res.data || []);
+    } catch {
+      toast.error('Failed to confirm appointment');
+    }
+  }
 
-  const todaySchedule = confirmedAppts;
+  async function handleDecline(apptId) {
+    try {
+      await api.patch(`/appointments/${apptId}/status`, { status: 'CANCELLED' });
+      toast.success('Appointment declined.');
+      const res = await api.get(`/appointments/lecturer/${currentUser.id}`);
+      setLiveAppointments(res.data || []);
+    } catch {
+      toast.error('Failed to decline appointment');
+    }
+  }
+
+  /* -- Derived appointment lists -- */
+  const confirmedAppts  = liveAppointments.filter((a) => a.status === 'CONFIRMED');
+  const pendingAppts    = liveAppointments.filter((a) => a.status === 'PENDING');
+  const todaySchedule   = confirmedAppts;
   const pendingRequests = pendingAppts;
 
   useEffect(() => {
@@ -76,9 +100,7 @@ export default function LecturerHome({ currentUser, appointments = [], onLogout,
               try {
                 const unreadRes = await chatApi.getUnreadCount(r.roomId, currentUser.id);
                 unread = unreadRes.data?.count || 0;
-              } catch {
-                unread = 0;
-              }
+              } catch { unread = 0; }
             }
             return {
               id: r.roomId,
@@ -102,10 +124,10 @@ export default function LecturerHome({ currentUser, appointments = [], onLogout,
 
   /* Stats */
   const stats = [
-    { label: "Today's Students", value: todaySchedule.length,       icon: Users,           bg: '#faf5ff', color: '#7c3aed' },
-    { label: 'Pending Requests', value: pendingRequests.length, icon: Clock,           bg: '#fff7ed', color: '#ea580c' },
-    { label: 'Active Chats',     value: studentThreads.length,       icon: MessageSquare,   bg: '#f0fdf4', color: '#16a34a' },
-    { label: 'DND Status',       value: dnd ? 'ON' : 'OFF',           icon: dnd ? BellOff : Bell, bg: dnd ? '#fef9c3' : '#f8fafc', color: dnd ? '#a16207' : '#6b7280' },
+    { label: "Today's Students", value: todaySchedule.length,   icon: Users,                bg: '#faf5ff', color: '#7c3aed' },
+    { label: 'Pending Requests', value: pendingRequests.length, icon: Clock,                bg: '#fff7ed', color: '#ea580c' },
+    { label: 'Active Chats',     value: studentThreads.length,  icon: MessageSquare,        bg: '#f0fdf4', color: '#16a34a' },
+    { label: 'DND Status',       value: dnd ? 'ON' : 'OFF',     icon: dnd ? BellOff : Bell, bg: dnd ? '#fef9c3' : '#f8fafc', color: dnd ? '#a16207' : '#6b7280' },
   ];
 
   const initials = getInitials(currentUser?.name);
@@ -116,7 +138,7 @@ export default function LecturerHome({ currentUser, appointments = [], onLogout,
 
       <main className="lh-main">
 
-        {/* ─────────── HERO ─────────── */}
+        {/* HERO */}
         <section className="lh-hero">
           <div className="lh-hero__inner">
             <div className="lh-hero__text">
@@ -128,32 +150,20 @@ export default function LecturerHome({ currentUser, appointments = [], onLogout,
                 {currentUser?.department ?? 'Information Technology'} Department
               </p>
               {currentUser?.expertise && (
-                <p className="lh-hero__expertise">
-                  Expertise: {currentUser.expertise}
-                </p>
+                <p className="lh-hero__expertise">Expertise: {currentUser.expertise}</p>
               )}
               <div className="lh-hero__actions">
-                <button
-                  className="lh-btn lh-btn--primary"
-                  onClick={() => navigate('/lecturer/availability')}
-                >
+                <button className="lh-btn lh-btn--primary" onClick={() => navigate('/lecturer/availability')}>
                   <Calendar size={16} /> Manage Availability
                 </button>
-                <button
-                  className="lh-btn lh-btn--outline"
-                  onClick={() => navigate('/lecturer/schedule')}
-                >
+                <button className="lh-btn lh-btn--outline" onClick={() => navigate('/lecturer/schedule')}>
                   <Clock size={16} /> View Requests
                 </button>
-                <button
-                  className="lh-btn lh-btn--outline"
-                  onClick={() => navigate('/chat')}
-                >
+                <button className="lh-btn lh-btn--outline" onClick={() => navigate('/chat')}>
                   <MessageSquare size={16} /> Student Messages
                 </button>
               </div>
             </div>
-
             <div className="lh-hero__visual">
               <div className="lh-hero__avatar-ring">{initials}</div>
               <div className="lh-hero__role-tag">
@@ -163,7 +173,7 @@ export default function LecturerHome({ currentUser, appointments = [], onLogout,
           </div>
         </section>
 
-        {/* ─────────── STATS ─────────── */}
+        {/* STATS */}
         <section className="lh-stats">
           <div className="lh-stats__grid">
             {stats.map((s) => (
@@ -180,7 +190,6 @@ export default function LecturerHome({ currentUser, appointments = [], onLogout,
           </div>
         </section>
 
-        {/* DND banner */}
         {dnd && (
           <div className="lh-container">
             <div className="lh-dnd-banner">
@@ -190,10 +199,10 @@ export default function LecturerHome({ currentUser, appointments = [], onLogout,
           </div>
         )}
 
-        {/* ─────────── CONTENT GRID ─────────── */}
+        {/* CONTENT GRID */}
         <div className="lh-content-grid">
 
-          {/* ── Today's Schedule ── */}
+          {/* Today's Schedule */}
           <section className="lh-card">
             <div className="lh-card__header">
               <h2><Calendar size={17} style={{ color: '#7c3aed' }} /> Today's Schedule</h2>
@@ -203,39 +212,35 @@ export default function LecturerHome({ currentUser, appointments = [], onLogout,
             </div>
             <div className="lh-card__body">
               {todaySchedule.slice(0, 4).map((a) => {
-                const t        = formatTime(a.startTime);
-                const student  = a.student?.name ?? a.studentName ?? 'Student';
-                const notes    = a.notes ?? 'Appointment';
-                const status   = a.status ?? 'CONFIRMED';
+                const t       = formatTime(a.startTime);
+                const student = a.student?.name ?? a.studentName ?? 'Student';
+                const notes   = a.notes ?? 'Appointment';
+                const status  = a.status ?? 'CONFIRMED';
                 return (
                   <div className="lh-schedule-item" key={a.id}>
                     <div className="lh-schedule-time">
                       <span className="lh-time-hour">{t.hour}</span>
                       <span className="lh-time-ampm">{t.ampm}</span>
                     </div>
-                    <div
-                      className={`lh-schedule-dot lh-schedule-dot--${status.toLowerCase()}`}
-                    />
+                    <div className={`lh-schedule-dot lh-schedule-dot--${status.toLowerCase()}`} />
                     <div className="lh-schedule-info">
                       <strong>{student}</strong>
                       <span>{notes}</span>
                     </div>
-                    <span className={`lh-status lh-status--${status.toLowerCase()}`}>
-                      {status}
-                    </span>
+                    <span className={`lh-status lh-status--${status.toLowerCase()}`}>{status}</span>
                   </div>
                 );
               })}
               {todaySchedule.length === 0 && (
                 <div className="lh-empty">
                   <Calendar size={38} />
-                  <p>No appointments scheduled for today</p>
+                  <p>No confirmed appointments yet</p>
                 </div>
               )}
             </div>
           </section>
 
-          {/* ── Student Chats ── */}
+          {/* Student Chats */}
           <section className="lh-card">
             <div className="lh-card__header">
               <h2><MessageSquare size={17} style={{ color: '#7c3aed' }} /> Student Chats</h2>
@@ -245,16 +250,10 @@ export default function LecturerHome({ currentUser, appointments = [], onLogout,
             </div>
             <div className="lh-card__body">
               {studentThreads.map((t) => (
-                <button
-                  key={t.id}
-                  className="lh-chat-item"
-                  onClick={() => navigate('/chat')}
-                >
+                <button key={t.id} className="lh-chat-item" onClick={() => navigate('/chat')}>
                   <div className="lh-chat-avatar-wrap">
                     <div className="lh-chat-avatar">{getInitials(t.name)}</div>
-                    {t.unread > 0 && (
-                      <span className="lh-unread-badge">{t.unread}</span>
-                    )}
+                    {t.unread > 0 && <span className="lh-unread-badge">{t.unread}</span>}
                   </div>
                   <div className="lh-chat-info">
                     <div className="lh-chat-row1">
@@ -262,9 +261,7 @@ export default function LecturerHome({ currentUser, appointments = [], onLogout,
                       <span className="lh-chat-time">{t.status === 'RESOLVED' || t.status === 'CLOSED' ? 'resolved' : 'open'}</span>
                     </div>
                     <div className="lh-chat-preview">{t.lastMsg}</div>
-                    {t.dept && (
-                      <div className="lh-chat-dept">{t.dept} · Student</div>
-                    )}
+                    {t.dept && <div className="lh-chat-dept">{t.dept} · Student</div>}
                   </div>
                   <ArrowRight size={15} className="lh-chat-arrow" />
                 </button>
@@ -278,7 +275,7 @@ export default function LecturerHome({ currentUser, appointments = [], onLogout,
             </div>
           </section>
 
-          {/* ── Pending Requests ── */}
+          {/* Pending Requests */}
           <section className="lh-card">
             <div className="lh-card__header">
               <h2><Clock size={17} style={{ color: '#ea580c' }} /> Pending Requests</h2>
@@ -300,10 +297,16 @@ export default function LecturerHome({ currentUser, appointments = [], onLogout,
                       </span>
                     </div>
                     <div className="lh-request-actions">
-                      <button className="lh-btn lh-btn--sm lh-btn--success">
+                      <button
+                        className="lh-btn lh-btn--sm lh-btn--success"
+                        onClick={() => handleAccept(r.id)}
+                      >
                         <CheckCircle size={12} /> Accept
                       </button>
-                      <button className="lh-btn lh-btn--sm lh-btn--danger">
+                      <button
+                        className="lh-btn lh-btn--sm lh-btn--danger"
+                        onClick={() => handleDecline(r.id)}
+                      >
                         Decline
                       </button>
                     </div>
@@ -319,33 +322,24 @@ export default function LecturerHome({ currentUser, appointments = [], onLogout,
             </div>
           </section>
 
-          {/* ── Settings Panel ── */}
+          {/* Settings Panel */}
           <section className="lh-card">
             <div className="lh-card__header">
               <h2><Settings size={17} style={{ color: '#6b7280' }} /> Availability Settings</h2>
             </div>
             <div className="lh-card__body" style={{ padding: '8px 24px 16px' }}>
-
-              {/* DND Toggle */}
               <div className="lh-dnd-row">
                 <div className="lh-dnd-label">
                   <strong>🔕 Do Not Disturb</strong>
                   <span>Students will receive your auto-reply while DND is active</span>
                 </div>
                 <label className="lh-toggle">
-                  <input
-                    type="checkbox"
-                    checked={dnd}
-                    disabled={savingDnd}
-                    onChange={(e) => handleDndToggle(e.target.checked)}
-                  />
+                  <input type="checkbox" checked={dnd} disabled={savingDnd} onChange={(e) => handleDndToggle(e.target.checked)} />
                   <div className={`lh-toggle-track ${dnd ? 'on' : ''}`}>
                     <div className="lh-toggle-thumb" />
                   </div>
                 </label>
               </div>
-
-              {/* Accept appointments */}
               <div className="lh-dnd-row">
                 <div className="lh-dnd-label">
                   <strong>📅 Accept Appointments</strong>
@@ -353,13 +347,9 @@ export default function LecturerHome({ currentUser, appointments = [], onLogout,
                 </div>
                 <label className="lh-toggle">
                   <input type="checkbox" defaultChecked />
-                  <div className="lh-toggle-track on">
-                    <div className="lh-toggle-thumb" style={{ transform: 'translateX(20px)' }} />
-                  </div>
+                  <div className="lh-toggle-track on"><div className="lh-toggle-thumb" style={{ transform: 'translateX(20px)' }} /></div>
                 </label>
               </div>
-
-              {/* Profanity filter */}
               <div className="lh-dnd-row">
                 <div className="lh-dnd-label">
                   <strong>🛡️ Profanity Filter</strong>
@@ -367,18 +357,15 @@ export default function LecturerHome({ currentUser, appointments = [], onLogout,
                 </div>
                 <label className="lh-toggle">
                   <input type="checkbox" defaultChecked />
-                  <div className="lh-toggle-track on">
-                    <div className="lh-toggle-thumb" style={{ transform: 'translateX(20px)' }} />
-                  </div>
+                  <div className="lh-toggle-track on"><div className="lh-toggle-thumb" style={{ transform: 'translateX(20px)' }} /></div>
                 </label>
               </div>
-
             </div>
           </section>
 
         </div>
 
-        {/* ─────────── QUICK ACTIONS ─────────── */}
+        {/* QUICK ACTIONS */}
         <div className="lh-full-width">
           <div className="lh-card">
             <div className="lh-card__header">
@@ -386,51 +373,35 @@ export default function LecturerHome({ currentUser, appointments = [], onLogout,
             </div>
             <div className="lh-quick-grid">
               <button className="lh-quick-btn" onClick={() => navigate('/chat')}>
-                <div className="lh-quick-icon" style={{ background: '#f5f3ff', color: '#7c3aed' }}>
-                  <MessageSquare size={24} />
-                </div>
+                <div className="lh-quick-icon" style={{ background: '#f5f3ff', color: '#7c3aed' }}><MessageSquare size={24} /></div>
                 <span>Student Chats</span>
               </button>
               <button className="lh-quick-btn" onClick={() => navigate('/lecturer/schedule')}>
-                <div className="lh-quick-icon" style={{ background: '#fff7ed', color: '#ea580c' }}>
-                  <Calendar size={24} />
-                </div>
+                <div className="lh-quick-icon" style={{ background: '#fff7ed', color: '#ea580c' }}><Calendar size={24} /></div>
                 <span>My Schedule</span>
               </button>
               <button className="lh-quick-btn" onClick={() => navigate('/chat')}>
-                <div className="lh-quick-icon" style={{ background: '#fff7ed', color: '#d97706' }}>
-                  <Zap size={24} />
-                </div>
+                <div className="lh-quick-icon" style={{ background: '#fff7ed', color: '#d97706' }}><Zap size={24} /></div>
                 <span>Quick Responses</span>
               </button>
               <button className="lh-quick-btn" onClick={() => navigate('/chat')}>
-                <div className="lh-quick-icon" style={{ background: '#fdf2f8', color: '#db2777' }}>
-                  <Shield size={24} />
-                </div>
+                <div className="lh-quick-icon" style={{ background: '#fdf2f8', color: '#db2777' }}><Shield size={24} /></div>
                 <span>Moderation</span>
               </button>
               <button className="lh-quick-btn" onClick={() => navigate('/profile')}>
-                <div className="lh-quick-icon" style={{ background: '#f0f9ff', color: '#0284c7' }}>
-                  <BookOpen size={24} />
-                </div>
+                <div className="lh-quick-icon" style={{ background: '#f0f9ff', color: '#0284c7' }}><BookOpen size={24} /></div>
                 <span>My Profile</span>
               </button>
               <button className="lh-quick-btn" onClick={() => navigate('/coming-soon')}>
-                <div className="lh-quick-icon" style={{ background: '#f0fdf4', color: '#16a34a' }}>
-                  <FileText size={24} />
-                </div>
+                <div className="lh-quick-icon" style={{ background: '#f0fdf4', color: '#16a34a' }}><FileText size={24} /></div>
                 <span>Export Reports</span>
               </button>
               <button className="lh-quick-btn" onClick={() => navigate('/management')}>
-                <div className="lh-quick-icon" style={{ background: '#faf5ff', color: '#9333ea' }}>
-                  <Users size={24} />
-                </div>
+                <div className="lh-quick-icon" style={{ background: '#faf5ff', color: '#9333ea' }}><Users size={24} /></div>
                 <span>Student List</span>
               </button>
               <button className="lh-quick-btn" onClick={() => navigate('/coming-soon')}>
-                <div className="lh-quick-icon" style={{ background: '#f8fafc', color: '#64748b' }}>
-                  <Settings size={24} />
-                </div>
+                <div className="lh-quick-icon" style={{ background: '#f8fafc', color: '#64748b' }}><Settings size={24} /></div>
                 <span>Settings</span>
               </button>
             </div>
@@ -438,13 +409,12 @@ export default function LecturerHome({ currentUser, appointments = [], onLogout,
         </div>
 
       </main>
-
       <Footer />
     </div>
   );
 }
 
-/* ── Helpers ── */
+/* -- Helpers -- */
 function getInitials(name) {
   return (name ?? 'U').split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase();
 }

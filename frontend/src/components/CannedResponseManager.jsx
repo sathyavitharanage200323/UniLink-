@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import { X, Plus, Pencil, Trash2 } from 'lucide-react';
 import { cannedApi } from '../api/chatApi';
 import { toast } from 'react-toastify';
@@ -8,7 +8,7 @@ import { toast } from 'react-toastify';
  *
  * Props:
  *   lecturerId
- *   responses – current list
+ *   responses â€“ current list
  *   onClose()
  *   onUpdated(newList)
  */
@@ -54,7 +54,7 @@ export default function CannedResponseManager({ lecturerId, responses, onClose, 
     <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
       <div className="modal" style={{ width: 500 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-          <h3>⚡ Quick Responses</h3>
+          <h3>âš¡ Quick Responses</h3>
           <button className="icon-btn" onClick={onClose}><X size={18} /></button>
         </div>
 
@@ -106,7 +106,7 @@ export default function CannedResponseManager({ lecturerId, responses, onClose, 
               <textarea
                 className="form-control"
                 rows={4}
-                placeholder="The full pre-written reply…"
+                placeholder="The full pre-written replyâ€¦"
                 value={editing.content}
                 onChange={(e) => setEditing({ ...editing, content: e.target.value })}
                 required
@@ -115,7 +115,7 @@ export default function CannedResponseManager({ lecturerId, responses, onClose, 
             <div className="modal-actions">
               <button type="button" className="btn btn-ghost" onClick={() => setEditing(null)}>Back</button>
               <button type="submit" className="btn btn-primary" disabled={loading}>
-                {loading ? 'Saving…' : 'Save'}
+                {loading ? 'Savingâ€¦' : 'Save'}
               </button>
             </div>
           </form>
@@ -124,3 +124,4 @@ export default function CannedResponseManager({ lecturerId, responses, onClose, 
     </div>
   );
 }
+

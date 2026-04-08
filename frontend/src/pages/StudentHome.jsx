@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+﻿import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Calendar, MessageSquare, Clock, CheckCircle,
@@ -8,10 +8,11 @@ import {
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 import { chatApi } from '../api/chatApi';
+import api from '../api/axiosInstance';
 import './StudentHome.css';
 
 /**
- * StudentHome — dashboard for students.
+ * StudentHome – dashboard for students.
  *
  * Props:
  *   currentUser  – { id, name, role, department }
@@ -22,13 +23,42 @@ export default function StudentHome({ currentUser, appointments = [], onLogout }
   const navigate   = useNavigate();
   const [displayThreads, setDisplayThreads] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [liveAppointments, setLiveAppointments] = useState(appointments);
 
   /* ── Derived appointment lists ── */
-  const confirmedAppts = appointments.filter((a) => a.status === 'CONFIRMED');
-  const pendingAppts   = appointments.filter((a) => a.status === 'PENDING');
-  const completedCount = appointments.filter((a) => a.status === 'COMPLETED').length;
+  const confirmedAppts = liveAppointments.filter((a) => a.status === 'CONFIRMED');
+  const pendingAppts   = liveAppointments.filter((a) => a.status === 'PENDING');
+  const completedCount = liveAppointments.filter((a) => a.status === 'COMPLETED').length;
 
-  const displayAppts = confirmedAppts;
+  // Show CONFIRMED + PENDING (all active appointments), sorted by date
+  const displayAppts = liveAppointments
+    .filter((a) => a.status === 'CONFIRMED' || a.status === 'PENDING')
+    .sort((a, b) => new Date(a.startTime) - new Date(b.startTime));
+
+  // Update live appointments when prop changes
+  useEffect(() => {
+    setLiveAppointments(appointments);
+  }, [appointments]);
+
+  // Polling - refresh appointments every 5 seconds for real-time updates
+  useEffect(() => {
+    if (!currentUser?.id) return;
+
+    const pollAppointments = async () => {
+      try {
+        const res = await api.get(`/appointments/student/${currentUser.id}`);
+        setLiveAppointments(res.data || []);
+      } catch (err) {
+        console.error('Error polling appointments:', err);
+      }
+    };
+
+    // Poll immediately and then every 5 seconds
+    pollAppointments();
+    const pollInterval = setInterval(pollAppointments, 5000);
+
+    return () => clearInterval(pollInterval);
+  }, [currentUser?.id]);
 
   useEffect(() => {
     async function loadThreads() {
@@ -72,7 +102,7 @@ export default function StudentHome({ currentUser, appointments = [], onLogout }
   const stats = [
     {
       label: 'Upcoming',
-      value: confirmedAppts.length,
+      value: displayAppts.length,
       icon: Calendar,
       bg: '#eff6ff',
       color: '#2563eb',
@@ -108,7 +138,7 @@ export default function StudentHome({ currentUser, appointments = [], onLogout }
 
       <main className="sh-main">
 
-        {/* ─────────── HERO ─────────── */}
+        {/* ─────────────── HERO ─────────────── */}
         <section className="sh-hero">
           <div className="sh-hero__inner">
             <div className="sh-hero__text">
@@ -116,7 +146,7 @@ export default function StudentHome({ currentUser, appointments = [], onLogout }
               <h1 className="sh-hero__name">{currentUser?.name}</h1>
               <p className="sh-hero__sub">
                 You have{' '}
-                <strong>{confirmedAppts.length} upcoming appointments</strong>{' '}
+                <strong>{displayAppts.length} upcoming appointments</strong>{' '}
                 and <strong>{unreadCount} unread messages</strong>. Keep up the great work!
               </p>
               <div className="sh-hero__actions">
@@ -145,7 +175,7 @@ export default function StudentHome({ currentUser, appointments = [], onLogout }
           </div>
         </section>
 
-        {/* ─────────── STATS ─────────── */}
+        {/* ─────────────── STATS ─────────────── */}
         <section className="sh-stats">
           <div className="sh-stats__grid">
             {stats.map((s) => (
@@ -165,7 +195,7 @@ export default function StudentHome({ currentUser, appointments = [], onLogout }
           </div>
         </section>
 
-        {/* ─────────── CONTENT GRID ─────────── */}
+        {/* ─────────────── CONTENT GRID ─────────────── */}
         <div className="sh-content-grid">
 
           {/* ── Upcoming Appointments ── */}
@@ -177,23 +207,59 @@ export default function StudentHome({ currentUser, appointments = [], onLogout }
               </button>
             </div>
             <div className="sh-card__body">
-              {displayAppts.slice(0, 4).map((a) => (
-                <div className="sh-appt-item" key={a.id}>
-                  <div className="sh-appt-avatar">
-                    {getInitials(a.lecturer?.name ?? 'L')}
-                  </div>
-                  <div className="sh-appt-info">
-                    <strong>{a.lecturer?.name ?? 'Lecturer'}</strong>
-                    <span>{a.notes ?? 'Appointment'}</span>
-                    <span className="sh-appt-time">
-                      <Clock size={11} /> {fmtDate(a.startTime)}
+              {displayAppts.slice(0, 4).map((a) => {
+                const isRescheduled = a.rescheduledAt;
+                const statusColor = isRescheduled ? '#dc2626' : (a.status === 'PENDING' ? '#d97706' : '#0f766e');
+                const statusBg    = isRescheduled ? '#fee2e2' : (a.status === 'PENDING' ? '#fef9c3' : '#dcfce7');
+                const statusLabel = isRescheduled ? 'RESCHEDULED' : (a.status ?? 'CONFIRMED');
+                
+                return (
+                  <div
+                    className="sh-appt-item"
+                    key={a.id}
+                    style={isRescheduled ? { borderLeft: '3px solid #dc2626', background: '#fff8f8' } : {}}
+                  >
+                    <div className="sh-appt-avatar">
+                      {getInitials(a.lecturer?.name ?? 'L')}
+                    </div>
+                    <div className="sh-appt-info">
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <strong>{a.lecturer?.name ?? 'Lecturer'}</strong>
+                      </div>
+                      <span>{a.notes ?? 'Appointment'}</span>
+                      <span className="sh-appt-time">
+                        <Clock size={11} /> {fmtDate(a.startTime)}
+                      </span>
+                      {isRescheduled && a.rescheduleReason && (
+                        <span style={{
+                          fontSize: '0.72rem', color: '#dc2626', fontWeight: 600,
+                          display: 'flex', alignItems: 'center', gap: 3, marginTop: 2
+                        }}>
+                          Reason: {a.rescheduleReason}
+                        </span>
+                      )}
+                    </div>
+                    <span 
+                      className="sh-status"
+                      style={{ 
+                        background: statusBg, 
+                        color: statusColor,
+                        border: `1px solid ${statusColor}`,
+                        fontSize: '0.70rem',
+                        fontWeight: 700,
+                        padding: '3px 9px',
+                        borderRadius: '999px',
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.4px',
+                        flexShrink: 0,
+                        transition: 'transform 0.14s'
+                      }}
+                    >
+                      {statusLabel}
                     </span>
                   </div>
-                  <span className={`sh-status sh-status--${(a.status ?? 'confirmed').toLowerCase()}`}>
-                    {a.status ?? 'CONFIRMED'}
-                  </span>
-                </div>
-              ))}
+                );
+              })}
               {displayAppts.length === 0 && (
                 <div className="sh-empty">
                   <Calendar size={38} />
@@ -256,7 +322,7 @@ export default function StudentHome({ currentUser, appointments = [], onLogout }
 
         </div>
 
-        {/* ─────────── QUICK ACTIONS ─────────── */}
+        {/* ─────────────── QUICK ACTIONS ─────────────── */}
         <div className="sh-full-width">
           <div className="sh-card">
             <div className="sh-card__header">

@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   GraduationCap, Mail, Phone, MapPin,
@@ -7,7 +7,7 @@ import {
 import './Footer.css';
 
 /**
- * Footer — shared site footer for all pages.
+ * Footer â€” shared site footer for all pages.
  * No props required.
  */
 export default function Footer() {
@@ -18,7 +18,7 @@ export default function Footer() {
     <footer className="footer">
       <div className="footer__inner">
 
-        {/* ── Brand column ── */}
+        {/* â”€â”€ Brand column â”€â”€ */}
         <div className="footer__brand-col footer__col">
           <Link to="/" className="footer__brand-heading">
             <div className="footer__brand-logo-box">
@@ -49,7 +49,7 @@ export default function Footer() {
           </div>
         </div>
 
-        {/* ── Portals column ── */}
+        {/* â”€â”€ Portals column â”€â”€ */}
         <div className="footer__col">
           <h4>Portals</h4>
           <ul>
@@ -61,7 +61,7 @@ export default function Footer() {
           </ul>
         </div>
 
-        {/* ── Support column ── */}
+        {/* â”€â”€ Support column â”€â”€ */}
         <div className="footer__col">
           <h4>Support</h4>
           <ul>
@@ -73,7 +73,7 @@ export default function Footer() {
           </ul>
         </div>
 
-        {/* ── Contact column ── */}
+        {/* â”€â”€ Contact column â”€â”€ */}
         <div className="footer__col">
           <h4>Contact Us</h4>
           <div className="footer__contact-item">
@@ -92,14 +92,15 @@ export default function Footer() {
 
       </div>
 
-      {/* ── Bottom bar ── */}
+      {/* â”€â”€ Bottom bar â”€â”€ */}
       <div className="footer__bottom">
         <span>
-          © {year} UniLink — University Lecturer Appointment Booking System.
+          Â© {year} UniLink â€” University Lecturer Appointment Booking System.
           All rights reserved.
         </span>
-        <span>Crafted with ♥ for better university experiences.</span>
+        <span>Crafted with â™¥ for better university experiences.</span>
       </div>
     </footer>
   );
 }
+

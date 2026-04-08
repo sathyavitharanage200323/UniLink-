@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+﻿import React, { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import {
@@ -9,12 +9,12 @@ import { chatApi } from '../api/chatApi';
 import './Header.css';
 
 /**
- * Header — shared navigation bar for all pages.
+ * Header â€” shared navigation bar for all pages.
  *
  * Props:
- *   currentUser  – { id, name, role, department }
- *   onLogout     – () => void
- *   unreadCount  – number (optional, default 0)
+ *   currentUser  â€“ { id, name, role, department }
+ *   onLogout     â€“ () => void
+ *   unreadCount  â€“ number (optional, default 0)
  */
 export default function Header({ currentUser, onLogout, unreadCount = 0 }) {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -100,17 +100,17 @@ export default function Header({ currentUser, onLogout, unreadCount = 0 }) {
     <header className={`header ${isLecturer ? 'header--lecturer' : 'header--student'}`}>
       <div className="header__inner">
 
-        {/* ── Brand ── */}
+        {/* â”€â”€ Brand â”€â”€ */}
         <Link to={homeRoute} className="header__brand" onClick={close}>
           <div className="header__logo-box">
-            <img src="/Logo2.png" alt="UniLink" style={{ width: 26, height: 26, objectFit: 'contain' }} />
+            <GraduationCap size={20} />
           </div>
           <span className="header__brand-text">
             Uni<strong>Link</strong>
           </span>
         </Link>
 
-        {/* ── Nav links ── */}
+        {/* â”€â”€ Nav links â”€â”€ */}
         <nav className={`header__nav ${menuOpen ? 'header__nav--open' : ''}`}>
           <Link to={homeRoute} className="header__nav-link" onClick={close}>
             <Home size={15} /><span>Home</span>
@@ -129,7 +129,7 @@ export default function Header({ currentUser, onLogout, unreadCount = 0 }) {
           </Link>
         </nav>
 
-        {/* ── Right cluster ── */}
+        {/* â”€â”€ Right cluster â”€â”€ */}
         <div className="header__right">
           {/* Notifications */}
           <button
@@ -157,7 +157,7 @@ export default function Header({ currentUser, onLogout, unreadCount = 0 }) {
                     }}
                   >
                     <div className="header__notif-item-name">{n.name}</div>
-                    <div className="header__notif-item-meta">{n.label} · {n.unread} unread</div>
+                    <div className="header__notif-item-meta">{n.label} Â· {n.unread} unread</div>
                   </button>
                 ))
               )}
@@ -195,3 +195,4 @@ export default function Header({ currentUser, onLogout, unreadCount = 0 }) {
     </header>
   );
 }
+
