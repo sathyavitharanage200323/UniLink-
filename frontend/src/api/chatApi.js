@@ -1,25 +1,59 @@
 import api from './axiosInstance';
 
 export const chatApi = {
-  createRoom: (appointmentId) => api.post(`/chat/rooms/appointment/${appointmentId}`),
-  getRoom: (roomId) => api.get(`/chat/rooms/${roomId}`),
-  getRoomByAppointment: (appointmentId) => api.get(`/chat/rooms/by-appointment/${appointmentId}`),
-  createDirectRoom: (studentId, lecturerId) => api.post('/chat/rooms/direct', { studentId, lecturerId }),
-  createDirectRoomNew: (studentId, lecturerId) => api.post('/chat/rooms/direct/new', { studentId, lecturerId }),
-  getRoomsForUser: (userId) => api.get(`/chat/rooms/user/${userId}`),
-  resolveRoom: (roomId, userId) => api.patch(`/chat/rooms/${roomId}/resolve?userId=${userId}`),
-  getMessages: (roomId) => api.get(`/chat/rooms/${roomId}/messages`),
-  sendMessage: (roomId, payload) => api.post(`/chat/rooms/${roomId}/messages`, payload),
-  searchMessages: (roomId, keyword) => api.get(`/chat/rooms/${roomId}/messages/search?keyword=${encodeURIComponent(keyword)}`),
-  filterByType: (roomId, type) => api.get(`/chat/rooms/${roomId}/messages/filter?type=${type}`),
-  getPinnedMessages: (roomId) => api.get(`/chat/rooms/${roomId}/messages/pinned`),
-  getUnreadCount: (roomId, userId) => api.get(`/chat/rooms/${roomId}/messages/unread-count?userId=${userId}`),
-  togglePin: (messageId) => api.patch(`/chat/messages/${messageId}/pin`),
-  markAsAnswer: (messageId) => api.patch(`/chat/messages/${messageId}/mark-answer`),
-  markRead: (messageId) => api.patch(`/chat/messages/${messageId}/read`),
-  deleteMessage: (messageId, userId) => api.delete(`/chat/messages/${messageId}?userId=${userId}`),
-  exportPdf: (roomId) => api.get(`/chat/rooms/${roomId}/export/pdf`, { responseType: 'blob' }),
-  exportTxt: (roomId) => api.get(`/chat/rooms/${roomId}/export/txt`, { responseType: 'blob' }),
+  // Rooms
+  createRoom: (appointmentId) =>
+    api.post(`/chat/rooms/appointment/${appointmentId}`),
+  getRoom: (roomId) =>
+    api.get(`/chat/rooms/${roomId}`),
+  getRoomByAppointment: (appointmentId) =>
+    api.get(`/chat/rooms/by-appointment/${appointmentId}`),
+  createDirectRoom: (studentId, lecturerId) =>
+    api.post('/chat/rooms/direct', { studentId, lecturerId }),
+  createDirectRoomNew: (studentId, lecturerId) =>
+    api.post('/chat/rooms/direct/new', { studentId, lecturerId }),
+  getRoomsForUser: (userId) =>
+    api.get(`/chat/rooms/user/${userId}`),
+  resolveRoom: (roomId, userId) =>
+    api.patch(`/chat/rooms/${roomId}/resolve?userId=${userId}`),
+
+  // Messages
+  getMessages: (roomId) =>
+    api.get(`/chat/rooms/${roomId}/messages`),
+  sendMessage: (roomId, payload) =>
+    api.post(`/chat/rooms/${roomId}/messages`, payload),
+  searchMessages: (roomId, keyword) =>
+    api.get(`/chat/rooms/${roomId}/messages/search?keyword=${encodeURIComponent(keyword)}`),
+  filterByType: (roomId, type) =>
+    api.get(`/chat/rooms/${roomId}/messages/filter?type=${type}`),
+  getPinnedMessages: (roomId) =>
+    api.get(`/chat/rooms/${roomId}/messages/pinned`),
+  getUnreadCount: (roomId, userId) =>
+    api.get(`/chat/rooms/${roomId}/messages/unread-count?userId=${userId}`),
+  togglePin: (messageId) =>
+    api.patch(`/chat/messages/${messageId}/pin`),
+  markAsAnswer: (messageId) =>
+    api.patch(`/chat/messages/${messageId}/mark-answer`),
+  markRead: (messageId) =>
+    api.patch(`/chat/messages/${messageId}/read`),
+  deleteMessage: (messageId, userId) =>
+    api.delete(`/chat/messages/${messageId}?userId=${userId}`),
+
+  // Export
+  exportPdf: (roomId) =>
+    api.get(`/chat/rooms/${roomId}/export/pdf`, { responseType: 'blob' }),
+  exportTxt: (roomId) =>
+    api.get(`/chat/rooms/${roomId}/export/txt`, { responseType: 'blob' }),
+
+  // Gemini summary
+  generateSummary: (roomId, includeSystemMessages = false) =>
+    api.post(`/chat/rooms/${roomId}/summary/generate?includeSystemMessages=${includeSystemMessages}`),
+  exportSummaryPdf: (roomId, includeSystemMessages = false) =>
+    api.get(`/chat/rooms/${roomId}/summary/export/pdf?includeSystemMessages=${includeSystemMessages}`, { responseType: 'blob' }),
+  exportSummaryTxt: (roomId, includeSystemMessages = false) =>
+    api.get(`/chat/rooms/${roomId}/summary/export/txt?includeSystemMessages=${includeSystemMessages}`, { responseType: 'blob' }),
+
+  // File upload
   uploadFile: (file) => {
     const form = new FormData();
     form.append('file', file);
