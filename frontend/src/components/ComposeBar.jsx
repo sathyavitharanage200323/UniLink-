@@ -47,6 +47,7 @@ export default function ComposeBar({
   const recordTimerRef = useRef(null);
   const recordWarnedRef = useRef(false);
   const discardOnStopRef = useRef(false);
+  const sendOnStopRef = useRef(false);
 
   // Auto-resize textarea
   useEffect(() => {
@@ -140,37 +141,51 @@ export default function ComposeBar({
     onTyping && onTyping(false);
   }
 
-  async function sendAudioMessage() {
-    if (!audioPreview?.blob) return;
+  async function uploadAndSendAudio(blob, mime) {
+    if (!blob) return false;
     if (roomClosed) {
       toast.info('This chat room is closed.');
-      return;
+      return false;
     }
     if (blocked) {
       toast.error('You are currently blocked from messaging this lecturer.');
-      return;
+      return false;
     }
 
     setUploading(true);
     try {
-      const mime = audioPreview.blob.type || 'audio/webm';
-      const extension = mime.includes('mpeg') ? 'mp3' : 'webm';
-      const file = new File([audioPreview.blob], `voice-${Date.now()}.${extension}`, { type: mime });
+      const safeMime = mime || 'audio/webm';
+      const extension = safeMime.includes('mpeg') ? 'mp3' : 'webm';
+      const file = new File([blob], `voice-${Date.now()}.${extension}`, { type: safeMime });
       const res = await chatApi.uploadFile(file);
       const { fileUrl, fileName } = res.data;
-      onSend({
+      const sent = await Promise.resolve(onSend && onSend({
         senderId: currentUserId,
         content: 'Voice message',
         messageType: 'AUDIO',
         fileUrl,
         fileName,
-      });
+      }));
+
+      if (sent === false) {
+        return false;
+      }
+
       toast.success('Voice message sent');
-      clearAudioPreview();
+      return true;
     } catch {
       toast.error('Voice upload failed. Please try again.');
+      return false;
     } finally {
       setUploading(false);
+    }
+  }
+
+  async function sendAudioMessage() {
+    if (!audioPreview?.blob) return;
+    const ok = await uploadAndSendAudio(audioPreview.blob, audioPreview.type);
+    if (ok) {
+      clearAudioPreview();
     }
   }
 
@@ -254,6 +269,17 @@ export default function ComposeBar({
           recorderRef.current = null;
           return;
         }
+        if (sendOnStopRef.current) {
+          sendOnStopRef.current = false;
+          const ok = await uploadAndSendAudio(blob, blob.type || 'audio/webm');
+          if (!ok) {
+            setAudioPreview({ blob, url: URL.createObjectURL(blob), type: blob.type || 'audio/webm' });
+          }
+          setRecordSeconds(0);
+          recorderRef.current = null;
+          return;
+        }
+
         setAudioPreview({ blob, url: URL.createObjectURL(blob), type: blob.type || 'audio/webm' });
         setRecordSeconds(0);
         recorderRef.current = null;
@@ -299,6 +325,7 @@ export default function ComposeBar({
 
   function discardRecording() {
     if (isRecording) {
+      sendOnStopRef.current = false;
       discardOnStopRef.current = true;
       stopRecording();
       return;
@@ -306,6 +333,16 @@ export default function ComposeBar({
     if (audioPreview) {
       clearAudioPreview();
     }
+  }
+
+  function handleSendClick() {
+    if (isRecording) {
+      sendOnStopRef.current = true;
+      discardOnStopRef.current = false;
+      stopRecording();
+      return;
+    }
+    handleSend();
   }
 
   function applyCanned(cr) {
@@ -451,9 +488,9 @@ export default function ComposeBar({
         />
         <button
           className="send-btn"
-          onClick={handleSend}
-          disabled={uploading || isRecording || (!content.trim() && !audioPreview)}
-          title="Send"
+          onClick={handleSendClick}
+          disabled={uploading || (!content.trim() && !audioPreview && !isRecording)}
+          title={isRecording ? 'Stop and send' : 'Send'}
         >
           <Send size={18} />
         </button>

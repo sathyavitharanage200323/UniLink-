@@ -298,9 +298,11 @@ export default function ChatPage({ currentUser, appointments = [], onLogout, onU
         const exists = prev.some((m) => m.id === saved.id);
         return exists ? prev : [...prev, saved];
       });
+      return true;
     } catch (err) {
       const msg = err?.response?.data?.message || 'Could not send message.';
       toast.error(msg);
+      return false;
     }
   }
 
