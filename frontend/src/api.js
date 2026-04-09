@@ -229,6 +229,12 @@ export function blockSlot(slotId, reason) {
   });
 }
 
+export function copyTodaySlots(lecturerId) {
+  return apiFetch('/api/availability/lecturer/' + lecturerId + '/copy-today', {
+    method: 'POST',
+  });
+}
+
 // â”€â”€ Bug Reports â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export function createBugReport(payload) {

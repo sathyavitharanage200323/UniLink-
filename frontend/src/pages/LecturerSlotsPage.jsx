@@ -1,7 +1,13 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { BookOpenCheck } from 'lucide-react';
-import { createSlot, deleteSlot, getLecturerAvailability, updateSlot } from '../api';
+import { BookOpenCheck, Copy } from 'lucide-react';
+import {
+  createSlot,
+  deleteSlot,
+  getLecturerAvailability,
+  updateSlot,
+  copyTodaySlots,
+} from '../api';
 import './LecturerSlotsPage.css';
 
 const START_HOUR = 9;
@@ -113,6 +119,7 @@ export default function LecturerSlotsPage({ currentUser, onLogout }) {
   const [slots, setSlots] = useState([]);
   const [loading, setLoading] = useState(true);
   const [banner, setBanner] = useState({ type: '', text: '' });
+  const [copyingSlots, setCopyingSlots] = useState(false);
 
   const [slotDate, setSlotDate] = useState('');
   const [startTime, setStartTime] = useState('');
@@ -246,6 +253,26 @@ export default function LecturerSlotsPage({ currentUser, onLogout }) {
       await loadSlots();
     } catch (err) {
       setBanner({ type: 'error', text: err.message || 'Failed to save slot.' });
+    }
+  }
+
+  async function handleCopyToday() {
+    if (!currentUser?.id) return;
+    const confirmed = window.confirm('Copy today\'s available slots to tomorrow?');
+    if (!confirmed) return;
+
+    try {
+      setCopyingSlots(true);
+      const res = await copyTodaySlots(currentUser.id);
+      const created = res?.created ?? 0;
+      const skipped = res?.skipped ?? 0;
+      const note = skipped ? ` (${skipped} skipped)` : '';
+      setBanner({ type: 'success', text: `Copied ${created} slot(s) to tomorrow${note}.` });
+      await loadSlots();
+    } catch (err) {
+      setBanner({ type: 'error', text: err.message || 'Failed to copy slots.' });
+    } finally {
+      setCopyingSlots(false);
     }
   }
 
@@ -411,6 +438,15 @@ export default function LecturerSlotsPage({ currentUser, onLogout }) {
                   onClick={() => navigate('/lecturer/slots/calendar')}
                 >
                   📅 Calendar View
+                </button>
+
+                <button
+                  type="button"
+                  className="ls-btn ls-btn--outline"
+                  onClick={handleCopyToday}
+                  disabled={copyingSlots}
+                >
+                  <Copy size={16} /> {copyingSlots ? 'Copying...' : 'Copy Today -> Tomorrow'}
                 </button>
 
                 <button

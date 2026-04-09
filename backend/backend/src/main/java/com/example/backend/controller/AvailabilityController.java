@@ -66,4 +66,13 @@ public class AvailabilityController {
             return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
         }
     }
+
+    @PostMapping("/lecturer/{lecturerId}/copy-today")
+    public ResponseEntity<?> copyTodayToTomorrow(@PathVariable Long lecturerId) {
+        try {
+            return ResponseEntity.ok(availabilityService.copyTodayToTomorrow(lecturerId));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+        }
+    }
 }

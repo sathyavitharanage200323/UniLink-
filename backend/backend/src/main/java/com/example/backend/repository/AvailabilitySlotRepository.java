@@ -20,6 +20,8 @@ public interface AvailabilitySlotRepository extends JpaRepository<AvailabilitySl
     
     List<AvailabilitySlot> findByLecturerOrderBySlotDateAscStartTimeAsc(User lecturer);
 
+        List<AvailabilitySlot> findByLecturerAndSlotDateOrderByStartTimeAsc(User lecturer, LocalDate slotDate);
+
     List<AvailabilitySlot> findByLecturerAndStatusOrderBySlotDateAscStartTimeAsc(User lecturer, AvailabilitySlot.SlotStatus status);
 
     Optional<AvailabilitySlot> findByLecturerAndSlotDateAndStartTimeAndEndTime(

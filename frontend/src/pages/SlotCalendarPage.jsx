@@ -1,6 +1,13 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getLecturerAvailability, createSlot, updateSlot, deleteSlot } from '../api';
+import { Copy } from 'lucide-react';
+import {
+  getLecturerAvailability,
+  createSlot,
+  updateSlot,
+  deleteSlot,
+  copyTodaySlots,
+} from '../api';
 import './SlotCalendarPage.css';
 
 const monthNames = [
@@ -223,6 +230,7 @@ export default function SlotCalendarPage({ currentUser, onLogout }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [banner, setBanner] = useState({ type: '', text: '' });
+  const [copyingSlots, setCopyingSlots] = useState(false);
 
   const [filter, setFilter] = useState('All');
   const [currentMonth, setCurrentMonth] = useState(new Date());
@@ -580,6 +588,26 @@ export default function SlotCalendarPage({ currentUser, onLogout }) {
     }
   }
 
+  async function handleCopyToday() {
+    if (!currentUser?.id) return;
+    const confirmed = window.confirm('Copy today\'s available slots to tomorrow?');
+    if (!confirmed) return;
+
+    try {
+      setCopyingSlots(true);
+      const res = await copyTodaySlots(currentUser.id);
+      const created = res?.created ?? 0;
+      const skipped = res?.skipped ?? 0;
+      const note = skipped ? ` (${skipped} skipped)` : '';
+      setBanner({ type: 'success', text: `Copied ${created} slot(s) to tomorrow${note}.` });
+      await loadSlots();
+    } catch (err) {
+      setBanner({ type: 'error', text: err.message || 'Failed to copy slots.' });
+    } finally {
+      setCopyingSlots(false);
+    }
+  }
+
   const selectedDateStatus = getStatus(selectedDateKey);
   const usedSlotsForDay = selectedDateSlots.length;
   const remainingSlotsForDay = Math.max(MAX_SLOTS_PER_DAY - usedSlotsForDay, 0);
@@ -612,6 +640,15 @@ export default function SlotCalendarPage({ currentUser, onLogout }) {
                   onClick={onLogout}
                 >
                   Logout
+                </button>
+
+                <button
+                  type="button"
+                  className="sc-btn sc-btn--outline"
+                  onClick={handleCopyToday}
+                  disabled={copyingSlots}
+                >
+                  <Copy size={16} /> {copyingSlots ? 'Copying...' : 'Copy Today -> Tomorrow'}
                 </button>
               </div>
             </div>

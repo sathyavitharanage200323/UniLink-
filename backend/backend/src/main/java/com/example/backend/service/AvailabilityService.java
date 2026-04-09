@@ -12,7 +12,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
@@ -134,5 +136,62 @@ public class AvailabilityService {
         slot.setBlockReason(reason);
         // In the future, if it's BOOKED, we might want to also cancel the appointment.
         return AvailabilitySlotDTO.from(availabilitySlotRepository.save(slot));
+    }
+
+    @Transactional
+    public Map<String, Integer> copyTodayToTomorrow(Long lecturerId) {
+        User lecturer = userService.getUser(lecturerId);
+        LocalDate today = LocalDate.now();
+        LocalDate tomorrow = today.plusDays(1);
+
+        List<AvailabilitySlot> todaySlots = availabilitySlotRepository
+                .findByLecturerAndSlotDateOrderByStartTimeAsc(lecturer, today);
+
+        List<AvailabilitySlot> toCreate = new ArrayList<>();
+        int skipped = 0;
+
+        for (AvailabilitySlot slot : todaySlots) {
+            if (slot.getStatus() != AvailabilitySlot.SlotStatus.AVAILABLE) {
+                skipped++;
+                continue;
+            }
+
+            boolean exists = availabilitySlotRepository
+                    .findByLecturerAndSlotDateAndStartTimeAndEndTime(
+                            lecturer,
+                            tomorrow,
+                            slot.getStartTime(),
+                            slot.getEndTime()
+                    )
+                    .isPresent();
+
+            if (exists) {
+                skipped++;
+                continue;
+            }
+
+            AvailabilitySlot copy = AvailabilitySlot.builder()
+                    .lecturer(lecturer)
+                    .slotDate(tomorrow)
+                    .startTime(slot.getStartTime())
+                    .endTime(slot.getEndTime())
+                    .status(AvailabilitySlot.SlotStatus.AVAILABLE)
+                    .mode(slot.getMode())
+                    .location(slot.getLocation())
+                    .meetingLink(slot.getMeetingLink())
+                    .blockReason(null)
+                    .isAvailable(true)
+                    .build();
+            toCreate.add(copy);
+        }
+
+        if (!toCreate.isEmpty()) {
+            availabilitySlotRepository.saveAll(toCreate);
+        }
+
+        return Map.of(
+                "created", toCreate.size(),
+                "skipped", skipped
+        );
     }
 }
