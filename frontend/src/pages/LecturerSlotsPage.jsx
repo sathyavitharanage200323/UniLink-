@@ -1,330 +1,777 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getLecturerAvailability, updateLecturerAvailability } from '../api';
-import Header from '../components/Header';
-import Footer from '../components/Footer';
+import { BookOpenCheck } from 'lucide-react';
+import { createSlot, deleteSlot, getLecturerAvailability, updateSlot } from '../api';
 import './LecturerSlotsPage.css';
-import './LecturerHome.css';
-import { Calendar, Clock, Users, BookOpen } from 'lucide-react';
 
-function LecturerSlotsPage({ user, onLogout }) {
+const START_HOUR = 9;
+const END_HOUR = 21;
+const SLOT_MINUTES = 30;
+const BREAK_MINUTES = 15;
+
+function pad(value) {
+  return String(value).padStart(2, '0');
+}
+
+function toDateInputValue(date) {
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+}
+
+function normalizeTime(value) {
+  if (!value) return '';
+  return value.length === 5 ? `${value}:00` : value;
+}
+
+function timeLabel(value) {
+  const normalized = normalizeTime(value);
+  if (!normalized) return '--:--';
+  return normalized.slice(0, 5);
+}
+
+function minutesBetween(start, end) {
+  const [sh, sm] = normalizeTime(start).split(':').map(Number);
+  const [eh, em] = normalizeTime(end).split(':').map(Number);
+  return eh * 60 + em - (sh * 60 + sm);
+}
+
+function addMinutes(time, minsToAdd) {
+  const [h, m] = normalizeTime(time).split(':').map(Number);
+  const total = h * 60 + m + minsToAdd;
+  const nh = Math.floor(total / 60);
+  const nm = total % 60;
+  return `${pad(nh)}:${pad(nm)}:00`;
+}
+
+function generateStartTimes() {
+  const values = [];
+  const first = START_HOUR * 60;
+  const lastStart = END_HOUR * 60 - SLOT_MINUTES;
+
+  for (let mins = first; mins <= lastStart; mins += BREAK_MINUTES) {
+    const h = Math.floor(mins / 60);
+    const m = mins % 60;
+    values.push(`${pad(h)}:${pad(m)}:00`);
+  }
+
+  return values;
+}
+
+function getSlotStatus(slot) {
+  const now = new Date();
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const slotDate = new Date(slot.slotDate);
+  slotDate.setHours(0, 0, 0, 0);
+
+  const slotEnd = new Date(`${slot.slotDate}T${timeLabel(slot.endTime)}:00`);
+
+  if (slot.isBlocked) {
+    return { label: 'Blocked', className: 'blocked' };
+  }
+
+  if (slotEnd < now || slotDate < today) {
+    return { label: 'Expired', className: 'expired' };
+  }
+
+  if (slotDate.getTime() === today.getTime()) {
+    return { label: 'Today', className: 'today' };
+  }
+
+  return { label: 'Available', className: 'available' };
+}
+
+function hasConflict(slots, slotDate, startTime, endTime, ignoreId = null) {
+  const nextStart = normalizeTime(startTime);
+  const nextEnd = normalizeTime(endTime);
+
+  return slots.some((slot) => {
+    if (ignoreId && slot.id === ignoreId) return false;
+    if (slot.slotDate !== slotDate) return false;
+    if (slot.isBlocked) return false;
+
+    const existingStart = normalizeTime(slot.startTime);
+    const existingEnd = normalizeTime(slot.endTime);
+
+    return nextStart < existingEnd && nextEnd > existingStart;
+  });
+}
+
+function formatDateDisplay(dateString) {
+  return new Date(dateString).toLocaleDateString('en-GB', {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  });
+}
+
+export default function LecturerSlotsPage({ currentUser, onLogout }) {
   const navigate = useNavigate();
+
   const [slots, setSlots] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [banner, setBanner] = useState({ type: '', text: '' });
+
   const [slotDate, setSlotDate] = useState('');
   const [startTime, setStartTime] = useState('');
   const [endTime, setEndTime] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [viewFilter, setViewFilter] = useState('upcoming');
+
+  const [editingId, setEditingId] = useState(null);
+  const [selectedSlot, setSelectedSlot] = useState(null);
+
+  const [filter, setFilter] = useState('ALL');
+  const [search, setSearch] = useState('');
+
+  const todayDateString = useMemo(() => toDateInputValue(new Date()), []);
+  const startTimeOptions = useMemo(() => generateStartTimes(), []);
+  const lecturerInitial = currentUser?.name ? currentUser.name.charAt(0).toUpperCase() : 'L';
 
   useEffect(() => {
-    fetchSlots();
+    if (currentUser?.id) {
+      loadSlots();
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user.id]);
+  }, [currentUser?.id]);
 
-  const fetchSlots = async () => {
+  async function loadSlots() {
     try {
       setLoading(true);
-      const data = await getLecturerAvailability(user.id);
-      setSlots(data || []);
+      setBanner({ type: '', text: '' });
+      const data = await getLecturerAvailability(currentUser.id);
+      setSlots(Array.isArray(data) ? data : []);
     } catch (err) {
-      console.error('Error fetching slots', err);
+      setSlots([]);
+      setBanner({ type: 'error', text: err.message || 'Failed to load slots.' });
     } finally {
       setLoading(false);
     }
-  };
+  }
 
-  const calculateEndTime = (start) => {
-    if (!start) return '';
-    const [hours, minutes] = start.split(':').map(Number);
-    const date = new Date();
-    date.setHours(hours, minutes + 30, 0);
-    return date.toTimeString().substring(0, 5);
-  };
+  function clearForm() {
+    setSlotDate('');
+    setStartTime('');
+    setEndTime('');
+    setEditingId(null);
+    setBanner({ type: '', text: '' });
+  }
 
-  const handleStartTimeChange = (e) => {
-    const start = e.target.value;
-    setStartTime(start);
-    setEndTime(calculateEndTime(start));
-  };
+  function closeModal() {
+    setSelectedSlot(null);
+  }
 
-  const handleAddSlot = async (e) => {
+  function handleStartTimeChange(value) {
+    const normalized = normalizeTime(value);
+    setStartTime(normalized);
+
+    if (normalized) {
+      setEndTime(addMinutes(normalized, SLOT_MINUTES));
+    } else {
+      setEndTime('');
+    }
+  }
+
+  function validateForm() {
+    if (!slotDate) {
+      return 'Please select a date.';
+    }
+
+    if (!startTime || !endTime) {
+      return 'Please select a valid start time.';
+    }
+
+    if (slotDate < todayDateString) {
+      return 'You cannot create slots for past dates.';
+    }
+
+    const duration = minutesBetween(startTime, endTime);
+
+    if (duration !== SLOT_MINUTES) {
+      return `Each slot must be exactly ${SLOT_MINUTES} minutes.`;
+    }
+
+    if (normalizeTime(startTime) < `${pad(START_HOUR)}:00:00`) {
+      return `Slots can start only from ${pad(START_HOUR)}:00.`;
+    }
+
+    if (normalizeTime(endTime) > `${pad(END_HOUR)}:00:00`) {
+      return `Slots cannot end after ${pad(END_HOUR)}:00.`;
+    }
+
+    if (normalizeTime(endTime) <= normalizeTime(startTime)) {
+      return 'End time must be later than start time.';
+    }
+
+    if (hasConflict(slots, slotDate, startTime, endTime, editingId)) {
+      return 'This slot overlaps with an existing slot on the selected date.';
+    }
+
+    return '';
+  }
+
+  async function handleSubmit(e) {
     e.preventDefault();
-    if (!slotDate || !startTime || !endTime) {
-      alert('Please fill out all fields.');
+
+    const validationMessage = validateForm();
+    if (validationMessage) {
+      setBanner({ type: 'error', text: validationMessage });
       return;
     }
 
-    const newSlot = {
+    const payload = {
+      lecturerId: currentUser.id,
       slotDate,
-      startTime,
-      endTime,
-      available: true
+      startTime: normalizeTime(startTime),
+      endTime: normalizeTime(endTime),
+      isBlocked: false,
     };
 
-    // Keep existing slots and add the new one
-    const updatedSlots = [...slots, newSlot];
-
     try {
-      await updateLecturerAvailability(user.id, updatedSlots);
-      setSlotDate('');
-      setStartTime('');
-      setEndTime('');
-      fetchSlots();
-      alert('Slot added successfully!');
-    } catch (err) {
-      console.error('Error adding slot', err);
-      alert('Failed to add slot.');
-    }
-  };
+      if (editingId) {
+        const existingSlot = slots.find((slot) => slot.id === editingId);
 
-  const handleDeleteSlot = async (slotId) => {
-    if (!window.confirm("Are you sure you want to remove this slot?")) return;
-    try {
-      const updatedSlots = slots.filter(s => s.id !== slotId);
-      await updateLecturerAvailability(user.id, updatedSlots);
-      fetchSlots();
-    } catch (err) {
-      console.error('Error deleting slot', err);
-      alert('Failed to delete slot.');
-    }
-  };
+        await updateSlot(editingId, {
+          ...payload,
+          isBlocked: existingSlot?.isBlocked || false,
+        });
 
-  // Group slots by date
-  const groupedSlots = slots.reduce((acc, slot) => {
-    if (!acc[slot.slotDate]) acc[slot.slotDate] = [];
-    acc[slot.slotDate].push(slot);
-    return acc;
-  }, {});
-
-  const generateTimeOptions = () => {
-    const times = [];
-    for (let h = 9; h <= 20; h++) {
-      for (let m = 0; m < 60; m += 15) {
-        const hh = h.toString().padStart(2, '0');
-        const mm = m.toString().padStart(2, '0');
-        times.push(`${hh}:${mm}`);
+        setBanner({ type: 'success', text: 'Slot updated successfully.' });
+      } else {
+        await createSlot(currentUser.id, payload);
+        setBanner({ type: 'success', text: 'Slot added successfully.' });
       }
-    }
-    return times;
-  };
 
-  const initials = (user?.name ?? 'U').split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase();
+      clearForm();
+      await loadSlots();
+    } catch (err) {
+      setBanner({ type: 'error', text: err.message || 'Failed to save slot.' });
+    }
+  }
+
+  function handleEdit(slot) {
+    const slotStatus = getSlotStatus(slot);
+
+    if (slotStatus.className === 'expired') {
+      setBanner({ type: 'error', text: 'Expired slots cannot be edited.' });
+      return;
+    }
+
+    setEditingId(slot.id);
+    setSlotDate(slot.slotDate);
+    setStartTime(normalizeTime(slot.startTime));
+    setEndTime(normalizeTime(slot.endTime));
+    setBanner({ type: '', text: '' });
+
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  function handleView(slot) {
+    setSelectedSlot(slot);
+  }
+
+  async function handleDelete(id) {
+    const confirmed = window.confirm('Are you sure you want to delete this slot?');
+    if (!confirmed) return;
+
+    try {
+      await deleteSlot(id);
+
+      if (editingId === id) {
+        clearForm();
+      }
+
+      if (selectedSlot?.id === id) {
+        closeModal();
+      }
+
+      setBanner({ type: 'success', text: 'Slot deleted successfully.' });
+      await loadSlots();
+    } catch (err) {
+      setBanner({ type: 'error', text: err.message || 'Failed to delete slot.' });
+    }
+  }
+
+  async function handleToggleBlock(slot) {
+    const slotStatus = getSlotStatus(slot);
+
+    if (slotStatus.className === 'expired') {
+      setBanner({ type: 'error', text: 'Expired slots cannot be blocked or unblocked.' });
+      return;
+    }
+
+    try {
+      const updatedSlot = {
+        lecturerId: slot.lecturerId,
+        slotDate: slot.slotDate,
+        startTime: normalizeTime(slot.startTime),
+        endTime: normalizeTime(slot.endTime),
+        isBlocked: !slot.isBlocked,
+      };
+
+      await updateSlot(slot.id, updatedSlot);
+
+      if (editingId === slot.id) {
+        clearForm();
+      }
+
+      if (selectedSlot?.id === slot.id) {
+        setSelectedSlot({
+          ...slot,
+          isBlocked: !slot.isBlocked,
+        });
+      }
+
+      setBanner({
+        type: 'success',
+        text: slot.isBlocked ? 'Slot unblocked successfully.' : 'Slot blocked successfully.',
+      });
+
+      await loadSlots();
+    } catch (err) {
+      setBanner({
+        type: 'error',
+        text: err.message || 'Failed to update slot status.',
+      });
+    }
+  }
+
+  const totalSlots = slots.length;
+  const todaySlots = slots.filter((slot) => getSlotStatus(slot).className === 'today').length;
+  const availableSlots = slots.filter((slot) => getSlotStatus(slot).className === 'available').length;
+  const blockedSlots = slots.filter((slot) => getSlotStatus(slot).className === 'blocked').length;
+  const expiredSlots = slots.filter((slot) => getSlotStatus(slot).className === 'expired').length;
+
+  const filteredSlots = useMemo(() => {
+    let data = [...slots];
+
+    data.sort((a, b) => {
+      const first = `${a.slotDate} ${normalizeTime(a.startTime)}`;
+      const second = `${b.slotDate} ${normalizeTime(b.startTime)}`;
+      return first.localeCompare(second);
+    });
+
+    if (filter === 'TODAY') {
+      data = data.filter((slot) => getSlotStatus(slot).className === 'today');
+    } else if (filter === 'UPCOMING') {
+      data = data.filter((slot) => getSlotStatus(slot).className === 'available');
+    } else if (filter === 'BLOCKED') {
+      data = data.filter((slot) => getSlotStatus(slot).className === 'blocked');
+    } else if (filter === 'EXPIRED') {
+      data = data.filter((slot) => getSlotStatus(slot).className === 'expired');
+    }
+
+    if (search.trim()) {
+      const q = search.trim().toLowerCase();
+
+      data = data.filter((slot) => {
+        const date = slot.slotDate?.toLowerCase?.() ?? '';
+        const start = normalizeTime(slot.startTime).toLowerCase();
+        const end = normalizeTime(slot.endTime).toLowerCase();
+        const status = getSlotStatus(slot).label.toLowerCase();
+
+        return (
+          date.includes(q) ||
+          start.includes(q) ||
+          end.includes(q) ||
+          status.includes(q)
+        );
+      });
+    }
+
+    return data;
+  }, [slots, filter, search]);
 
   return (
-    <div className="lh-layout">
-      <Header currentUser={user} onLogout={onLogout} />
-      <main className="lh-main">
-        <section className="lh-hero">
-          <div className="lh-hero__inner">
-            <div className="lh-hero__text">
-              <div className="lh-hero__badge">
-                <Calendar size={13} style={{ marginRight: '6px' }} /> Available Slot Management
-              </div>
-              <h1 className="lh-hero__name">My Available Slots</h1>
-              <p className="lh-hero__dept" style={{ opacity: 0.9, maxWidth: '600px', marginBottom: '24px' }}>
-                Set your availability for student appointments by adding specific time slots.
+    <div className="ls-layout">
+      <div className="ls-main">
+        <section className="ls-hero">
+          <div className="ls-hero__content">
+            <div className="ls-hero__left">
+              <div className="ls-badge">✨ Lecturer Availability Portal</div>
+
+              <h1>Available Slot Management</h1>
+              <p>
+                Manage lecturer availability with smart time-based validation,
+                status control, clean scheduling, and a presentation-ready dashboard.
               </p>
-              <div className="lh-hero__actions">
-                  <button className="lh-btn lh-btn--outline" onClick={() => navigate('/lecturer/home')} style={{ background: 'rgba(255,255,255,0.1)', color: 'white', borderColor: 'rgba(255,255,255,0.3)' }}>
-                    ← Back to Home
-                  </button>
-                    <button className="lh-btn lh-btn--primary" onClick={() => navigate('/lecturer/calendar')} style={{ background: 'white', color: '#0F2854' }}>
-                    <Calendar size={16} /> Calendar View
-                  </button>
-                </div>
-            </div>
-            <div className="lh-hero__visual">
-              <div className="lh-hero__avatar-ring">{initials}</div>
-              <div className="lh-hero__role-tag">
-                <BookOpen size={13} /> {user?.name} ï¿½ {user?.department ?? 'IT'}
+
+              <div className="ls-hero__actions">
+                <button
+                  type="button"
+                  className="ls-btn ls-btn--outline"
+                  onClick={() => navigate('/lecturer/home')}
+                >
+                  ← Back to Dashboard
+                </button>
+
+                <button
+                  type="button"
+                  className="ls-btn ls-btn--soft"
+                  onClick={() => navigate('/lecturer/slots/calendar')}
+                >
+                  📅 Calendar View
+                </button>
+
+                <button
+                  type="button"
+                  className="ls-btn ls-btn--guide"
+                  onClick={() => navigate('/lecturer/slots/guide')}
+                >
+                  <BookOpenCheck size={16} />
+                  Slot Guide
+                </button>
+
+                <button
+                  type="button"
+                  className="ls-btn ls-btn--soft"
+                  onClick={onLogout}
+                >
+                  Logout
+                </button>
               </div>
+            </div>
+
+            <div className="ls-hero__avatar">
+              {lecturerInitial}
             </div>
           </div>
         </section>
 
-        <div className="lh-container" style={{ marginTop: '-40px', position: 'relative', zIndex: 10 }}>
-          <div className="lh-quick-grid" style={{ gridTemplateColumns: 'repeat(3, 1fr)', maxWidth: '1000px', margin: '0 auto', gap: '20px' }}>
-            <div className="lh-stat-card" style={{ background: 'white', padding: '24px', borderRadius: '18px', display: 'flex', alignItems: 'center', gap: '20px', boxShadow: '0 4px 20px rgba(0,0,0,0.05)', border: '1px solid #f1f5f9' }}>
-              <div className="lh-stat-icon" style={{ background: '#f3e8ff', color: '#a855f7', width: '56px', height: '56px', borderRadius: '14px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <Clock size={28} />
-              </div>
-              <div>
-                <div className="lh-stat-value" style={{ fontSize: '2rem', fontWeight: 800 }}>30m</div>
-                <div className="lh-stat-label" style={{ color: '#64748b', fontSize: '1rem', fontWeight: 600 }}>Slot Duration</div>
-              </div>
-            </div>
-            
-            <div className="lh-stat-card" style={{ background: 'white', padding: '24px', borderRadius: '18px', display: 'flex', alignItems: 'center', gap: '20px', boxShadow: '0 4px 20px rgba(0,0,0,0.05)', border: '1px solid #f1f5f9' }}>
-              <div className="lh-stat-icon" style={{ background: '#dcfce7', color: '#22c55e', width: '56px', height: '56px', borderRadius: '14px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <Calendar size={28} />
-              </div>
-              <div>
-                <div className="lh-stat-value" style={{ fontSize: '2rem', fontWeight: 800 }}>{slots.length}</div>
-                <div className="lh-stat-label" style={{ color: '#64748b', fontSize: '1rem', fontWeight: 600 }}>Total Slots</div>
-              </div>
-            </div>
-            
-            <div className="lh-stat-card" style={{ background: 'white', padding: '24px', borderRadius: '18px', display: 'flex', alignItems: 'center', gap: '20px', boxShadow: '0 4px 20px rgba(0,0,0,0.05)', border: '1px solid #f1f5f9' }}>
-              <div className="lh-stat-icon" style={{ background: '#e0f2fe', color: '#3b82f6', width: '56px', height: '56px', borderRadius: '14px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <Users size={28} />
-              </div>
-              <div>
-                <div className="lh-stat-value" style={{ fontSize: '2rem', fontWeight: 800 }}>{slots.filter(s => !s.available).length}</div>
-                <div className="lh-stat-label" style={{ color: '#64748b', fontSize: '1rem', fontWeight: 600 }}>Booked Slots</div>
-              </div>
+        <section className="ls-stats ls-stats--five">
+          <div className="ls-stat-card">
+            <div className="ls-stat-icon purple">📊</div>
+            <div>
+              <h3>{totalSlots}</h3>
+              <p>Total Slots</p>
             </div>
           </div>
-        </div>
 
-        <div className="lh-container lh-content-grid" style={{ paddingTop: '32px', maxWidth: '1200px', margin: '0 auto', gap: '30px' }}>
-          
-          <section className="lh-card">
-            <div className="lh-card__header">
-              <h2><Calendar size={18} style={{ color: '#7c3aed' }} /> Add New Slot</h2>
+          <div className="ls-stat-card">
+            <div className="ls-stat-icon blue">🕒</div>
+            <div>
+              <h3>{todaySlots}</h3>
+              <p>Today&apos;s Slots</p>
             </div>
-            <div className="lh-card__body" style={{ padding: '24px' }}>
-              <div className="note-box" style={{ background: '#f3e8ff', border: '1px solid #e9d5ff', borderRadius: '12px', padding: '16px', marginBottom: '24px', color: '#6b21a8', fontSize: '0.9rem' }}>
-                Here you can add your availability slots. By default, <strong>appointment duration is 30 minutes</strong>.
-                There will be a 15-minute gap between consecutive slot options.
+          </div>
+
+          <div className="ls-stat-card">
+            <div className="ls-stat-icon green">✅</div>
+            <div>
+              <h3>{availableSlots}</h3>
+              <p>Available Slots</p>
+            </div>
+          </div>
+
+          <div className="ls-stat-card">
+            <div className="ls-stat-icon orange">⛔</div>
+            <div>
+              <h3>{blockedSlots}</h3>
+              <p>Blocked Slots</p>
+            </div>
+          </div>
+
+          <div className="ls-stat-card">
+            <div className="ls-stat-icon gray">⌛</div>
+            <div>
+              <h3>{expiredSlots}</h3>
+              <p>Expired Slots</p>
+            </div>
+          </div>
+        </section>
+
+        <section className="ls-grid">
+          <div className="ls-card">
+            <div className="ls-card__header">
+              <h2>{editingId ? '✏️ Edit Slot' : '➕ Add New Slot'}</h2>
+            </div>
+
+            <div className="ls-form">
+              <div className="ls-note">
+                <strong>Scheduling Note:</strong> Slots are available only between 09:00 AM and
+                09:00 PM. Each slot is 30 minutes long with a 15-minute interval pattern.
               </div>
 
-              <form onSubmit={handleAddSlot}>
-                <div className="form-group" style={{ marginBottom: '16px' }}>
-                  <label className="form-label" style={{ display: 'block', marginBottom: '6px', fontWeight: 600, color: '#334155' }}>Date</label>
+              <form onSubmit={handleSubmit}>
+                <div className="ls-field">
+                  <label htmlFor="slotDate">Date</label>
                   <input
+                    id="slotDate"
+                    className="ls-input"
                     type="date"
-                    className="form-control"
-                    style={{ width: '100%', padding: '10px 14px', borderRadius: '10px', border: '1px solid #cbd5e1', fontSize: '1rem' }}
                     value={slotDate}
+                    min={todayDateString}
                     onChange={(e) => setSlotDate(e.target.value)}
-                    min={new Date().toISOString().split('T')[0]}
-                    required
                   />
                 </div>
 
-                <div className="time-row" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
-                  <div className="form-group">
-                    <label className="form-label" style={{ display: 'block', marginBottom: '6px', fontWeight: 600, color: '#334155' }}>Start Time</label>
-                    <select 
-                      className="form-control" 
-                      style={{ width: '100%', padding: '10px 14px', borderRadius: '10px', border: '1px solid #cbd5e1', fontSize: '1rem', backgroundColor: 'white' }}
-                      value={startTime} 
-                      onChange={handleStartTimeChange} 
-                      required
+                <div className="ls-row">
+                  <div className="ls-field">
+                    <label htmlFor="startTime">Start Time</label>
+                    <select
+                      id="startTime"
+                      className="ls-select"
+                      value={startTime}
+                      onChange={(e) => handleStartTimeChange(e.target.value)}
                     >
-                      <option value="" disabled>Select time</option>
-                      {generateTimeOptions().map(t => (
-                        <option key={t} value={t}>{t}</option>
+                      <option value="">Select time</option>
+                      {startTimeOptions.map((time) => (
+                        <option key={time} value={time}>
+                          {timeLabel(time)}
+                        </option>
                       ))}
                     </select>
                   </div>
 
-                  <div className="form-group">
-                    <label className="form-label" style={{ display: 'block', marginBottom: '6px', fontWeight: 600, color: '#334155' }}>End Time</label>
+                  <div className="ls-field">
+                    <label htmlFor="endTime">End Time</label>
                     <input
+                      id="endTime"
+                      className="ls-input"
                       type="time"
-                      className="form-control"
-                      style={{ width: '100%', padding: '10px 14px', borderRadius: '10px', border: '1px solid #cbd5e1', fontSize: '1rem', backgroundColor: '#f8fafc', color: '#94a3b8' }}
-                      value={endTime}
-                      disabled
+                      value={timeLabel(endTime)}
+                      readOnly
                     />
                   </div>
                 </div>
 
-                <div className="rule-box" style={{ background: '#f8fafc', borderRadius: '12px', padding: '16px', marginBottom: '24px', fontSize: '0.9rem', color: '#475569' }}>
-                  <p style={{ margin: '0 0 6px 0' }}><strong>Lecturer Name:</strong> {user?.name}</p>
-                  <p style={{ margin: '0 0 6px 0' }}><strong>Duration:</strong> 30 min / appointment</p>
-                  <p style={{ margin: 0 }}><strong>Rule:</strong> Automatically checks for conflicts</p>
+                <div className="ls-helper-box">
+                  <div className="ls-helper-item">
+                    <strong>Lecturer:</strong> {currentUser?.name || 'Lecturer'}
+                  </div>
+                  <div className="ls-helper-item">
+                    <strong>Duration:</strong>{' '}
+                    {startTime && endTime ? `${minutesBetween(startTime, endTime)} mins` : '--'}
+                  </div>
+                  <div className="ls-helper-item">
+                    <strong>Rules:</strong> 09:00 - 21:00 | 30 min slot | 15 min gap pattern
+                  </div>
                 </div>
 
-                <div className="form-actions" style={{ display: 'flex', gap: '12px' }}>
-                  <button 
-                    type="submit" 
-                    className="lh-btn lh-btn--primary"
-                    style={{ flex: 1, padding: '12px', fontSize: '1rem' }}
-                    disabled={loading}
+                {banner.text ? (
+                  <div
+                    className={`ls-message ${
+                      banner.type === 'error' ? 'ls-message--error' : 'ls-message--success'
+                    }`}
                   >
-                    {loading ? 'Adding...' : 'Add Slot'}
+                    {banner.text}
+                  </div>
+                ) : null}
+
+                <div className="ls-form-actions">
+                  <button type="submit" className="ls-btn ls-btn--primary">
+                    {editingId ? 'Update Slot' : 'Add Slot'}
                   </button>
-                  <button 
-                    type="button" 
-                    className="lh-btn lh-btn--outline"
-                    style={{ flex: 1, padding: '12px', fontSize: '1rem' }}
-                    onClick={() => {
-                      setSlotDate('');
-                      setStartTime('');
-                      setEndTime('');
-                    }}
+
+                  <button
+                    type="button"
+                    className="ls-btn ls-btn--ghost"
+                    onClick={clearForm}
                   >
-                    Cancel
+                    Clear
                   </button>
                 </div>
               </form>
             </div>
-          </section>
+          </div>
 
-          <section className="lh-card">
-            <div className="lh-card__header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h2><Clock size={18} style={{ color: '#0ea5e9' }} /> Available Slots</h2>
-              <div className="filter-tabs" style={{ display: 'flex', background: '#f1f5f9', borderRadius: '999px', padding: '4px' }}>
-                <button 
-                  style={{ padding: '4px 12px', borderRadius: '999px', border: 'none', background: viewFilter === 'upcoming' ? 'white' : 'transparent', color: viewFilter === 'upcoming' ? '#0f172a' : '#64748b', fontWeight: 600, fontSize: '0.85rem', cursor: 'pointer', boxShadow: viewFilter === 'upcoming' ? '0 2px 8px rgba(0,0,0,0.05)' : 'none', transition: 'all 0.2s' }}
-                  onClick={() => setViewFilter('upcoming')}
-                >
-                  Upcoming
-                </button>
-                <button 
-                  style={{ padding: '4px 12px', borderRadius: '999px', border: 'none', background: viewFilter === 'past' ? 'white' : 'transparent', color: viewFilter === 'past' ? '#0f172a' : '#64748b', fontWeight: 600, fontSize: '0.85rem', cursor: 'pointer', boxShadow: viewFilter === 'past' ? '0 2px 8px rgba(0,0,0,0.05)' : 'none', transition: 'all 0.2s' }}
-                  onClick={() => setViewFilter('past')}
-                >
-                  Past
-                </button>
+          <div className="ls-card">
+            <div className="ls-card__header">
+              <h2>📘 My Available Slots</h2>
+            </div>
+
+            <div className="ls-toolbar">
+              <div className="ls-search">
+                <span>🔎</span>
+                <input
+                  type="text"
+                  placeholder="Search by date, time, or status"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                />
+              </div>
+
+              <div className="ls-filters">
+                {[
+                  { key: 'ALL', label: 'All' },
+                  { key: 'TODAY', label: 'Today' },
+                  { key: 'UPCOMING', label: 'Available' },
+                  { key: 'BLOCKED', label: 'Blocked' },
+                  { key: 'EXPIRED', label: 'Expired' },
+                ].map((item) => (
+                  <button
+                    key={item.key}
+                    type="button"
+                    className={`ls-filter-btn ${filter === item.key ? 'active' : ''}`}
+                    onClick={() => setFilter(item.key)}
+                  >
+                    {item.label}
+                  </button>
+                ))}
               </div>
             </div>
-            <div className="lh-card__body" style={{ padding: '24px', maxHeight: '500px', overflowY: 'auto' }}>
-              {Object.keys(groupedSlots).length === 0 ? (
-                <div style={{ textAlign: 'center', color: '#64748b', margin: '40px 0' }}>
-                  No slots found. Start by adding one.
+
+            <div className="ls-slot-list">
+              {loading ? (
+                <div className="ls-empty-state">
+                  <p>Loading slots...</p>
+                  <span>Please wait while we fetch the latest availability details.</span>
+                </div>
+              ) : filteredSlots.length === 0 ? (
+                <div className="ls-empty-state">
+                  <div style={{ fontSize: '44px' }}>🗂️</div>
+                  <p>No available slots found</p>
+                  <span>Add your first slot using the form or change the current filter.</span>
                 </div>
               ) : (
-                Object.keys(groupedSlots).sort().map(dateStr => (
-                  <div key={dateStr} className="list-date-group" style={{ marginBottom: '24px' }}>
-                    <h4 style={{ fontSize: '1rem', color: '#1e293b', paddingBottom: '8px', borderBottom: '1px solid #e2e8f0', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <Calendar size={15} color="#64748b" /> 
-                      {new Date(dateStr).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
-                    </h4>
-                    {groupedSlots[dateStr].sort((a, b) => a.startTime.localeCompare(b.startTime)).map(slot => (
-                      <div key={slot.id || (dateStr+slot.startTime)} className="slot-item" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', background: '#f8fafc', borderRadius: '10px', marginBottom: '8px', border: '1px solid #f1f5f9' }}>
-                        <div>
-                          <div className="slot-time" style={{ fontWeight: 700, color: '#334155', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                            <Clock size={14} color="#64748b" /> {slot.startTime} - {slot.endTime}
-                          </div>
-                          <div style={{ display: 'inline-block', padding: '2px 8px', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 700, marginTop: '6px', background: !slot.available ? '#fee2e2' : '#dcfce7', color: !slot.available ? '#ef4444' : '#166534' }}>
-                            {!slot.available ? 'Booked' : 'Available'}
-                          </div>
+                filteredSlots.map((slot) => {
+                  const slotStatus = getSlotStatus(slot);
+
+                  return (
+                    <div key={slot.id} className="ls-slot-item">
+                      <div>
+                        <div className="ls-slot-date">{formatDateDisplay(slot.slotDate)}</div>
+
+                        <div className="ls-slot-time">
+                          {timeLabel(slot.startTime)} - {timeLabel(slot.endTime)}
                         </div>
-                        {slot.available && (
-                          <button 
-                            style={{ width: '32px', height: '32px', borderRadius: '50%', border: 'none', background: '#fee2e2', color: '#ef4444', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'all 0.2s', fontSize: '1.2rem' }}
-                            title="Remove Slot" 
-                            onClick={() => handleDeleteSlot(slot.id)}
-                            onMouseOver={(e) => e.currentTarget.style.background = '#fecaca'}
-                            onMouseOut={(e) => e.currentTarget.style.background = '#fee2e2'}
-                          >
-                            ï¿½
-                          </button>
-                        )}
+
+                        <div className="ls-slot-meta">
+                          <span>{minutesBetween(slot.startTime, slot.endTime)} mins</span>
+                          <span className={`ls-status-badge ${slotStatus.className}`}>
+                            {slotStatus.label}
+                          </span>
+                        </div>
                       </div>
-                    ))}
-                  </div>
-                ))
+
+                      <div className="ls-slot-item__right">
+                        <button
+                          type="button"
+                          className="ls-action-btn view"
+                          onClick={() => handleView(slot)}
+                        >
+                          View
+                        </button>
+
+                        <button
+                          type="button"
+                          className="ls-action-btn edit"
+                          onClick={() => handleEdit(slot)}
+                        >
+                          Edit
+                        </button>
+
+                        <button
+                          type="button"
+                          className="ls-action-btn block"
+                          onClick={() => handleToggleBlock(slot)}
+                        >
+                          {slot.isBlocked ? 'Unblock' : 'Block'}
+                        </button>
+
+                        <button
+                          type="button"
+                          className="ls-action-btn delete"
+                          onClick={() => handleDelete(slot.id)}
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })
               )}
             </div>
-          </section>
+          </div>
+        </section>
+      </div>
+
+      {selectedSlot ? (
+        <div className="ls-modal-overlay" onClick={closeModal}>
+          <div
+            className="ls-modal ls-modal--large"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="ls-modal__header">
+              <h3>📄 Slot Details</h3>
+              <button
+                type="button"
+                className="ls-modal__close"
+                onClick={closeModal}
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="ls-modal__body">
+              <div className="ls-detail-grid">
+                <div className="ls-detail-card">
+                  <span className="ls-detail-label">Slot ID</span>
+                  <span className="ls-detail-value">{selectedSlot.id}</span>
+                </div>
+
+                <div className="ls-detail-card">
+                  <span className="ls-detail-label">Lecturer</span>
+                  <span className="ls-detail-value">{currentUser?.name || 'Lecturer'}</span>
+                </div>
+
+                <div className="ls-detail-card">
+                  <span className="ls-detail-label">Date</span>
+                  <span className="ls-detail-value">{formatDateDisplay(selectedSlot.slotDate)}</span>
+                </div>
+
+                <div className="ls-detail-card">
+                  <span className="ls-detail-label">Start Time</span>
+                  <span className="ls-detail-value">{timeLabel(selectedSlot.startTime)}</span>
+                </div>
+
+                <div className="ls-detail-card">
+                  <span className="ls-detail-label">End Time</span>
+                  <span className="ls-detail-value">{timeLabel(selectedSlot.endTime)}</span>
+                </div>
+
+                <div className="ls-detail-card">
+                  <span className="ls-detail-label">Duration</span>
+                  <span className="ls-detail-value">
+                    {minutesBetween(selectedSlot.startTime, selectedSlot.endTime)} minutes
+                  </span>
+                </div>
+
+                <div className="ls-detail-card">
+                  <span className="ls-detail-label">Status</span>
+                  <span className="ls-detail-value">
+                    <span className={`ls-status-badge ${getSlotStatus(selectedSlot).className}`}>
+                      {getSlotStatus(selectedSlot).label}
+                    </span>
+                  </span>
+                </div>
+
+                <div className="ls-detail-card">
+                  <span className="ls-detail-label">Blocked State</span>
+                  <span className="ls-detail-value">
+                    {selectedSlot.isBlocked ? 'Yes' : 'No'}
+                  </span>
+                </div>
+
+                <div className="ls-detail-card ls-detail-card--full">
+                  <span className="ls-detail-label">Time Rule</span>
+                  <span className="ls-detail-value">30 minute slot</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="ls-modal__actions">
+              <button
+                type="button"
+                className="ls-btn ls-btn--ghost"
+                onClick={closeModal}
+              >
+                Close
+              </button>
+            </div>
+          </div>
         </div>
-      </main>
-      <Footer />
+      ) : null}
     </div>
   );
 }
-export default LecturerSlotsPage;

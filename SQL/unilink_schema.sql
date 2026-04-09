@@ -74,7 +74,7 @@ CREATE TABLE IF NOT EXISTS chat_messages (
     sender_id           BIGINT          NOT NULL,
     content             TEXT            DEFAULT NULL,
     filtered_content    TEXT            DEFAULT NULL,
-    message_type        ENUM('TEXT','CODE','FILE','IMAGE','SYSTEM')
+    message_type        ENUM('TEXT','CODE','FILE','IMAGE','AUDIO','SYSTEM')
                                         NOT NULL DEFAULT 'TEXT',
     file_url            VARCHAR(1000)   DEFAULT NULL,
     file_name           VARCHAR(500)    DEFAULT NULL,

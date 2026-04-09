@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef, useState } from 'react';
 import { format, isToday, isYesterday } from 'date-fns';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -76,6 +76,7 @@ function MessageBubble({ msg, currentUserId, currentUserRole, onPin, onMarkAnswe
             msg.deleted ? 'deleted' : '',
             msg.markedAsAnswer ? 'marked-answer' : '',
             msg.messageType === 'CODE' ? 'code-bubble' : '',
+            msg.messageType === 'AUDIO' ? 'audio-bubble' : '',
             msg.pinned ? 'pinned-highlight' : '',
           ].join(' ').trim()}
         >
@@ -143,6 +144,10 @@ function BubbleContent({ msg, isMe }) {
     );
   }
 
+  if (msg.messageType === 'AUDIO') {
+    return <AudioMessage msg={msg} />;
+  }
+
   if (msg.messageType === 'FILE') {
     return (
       <a
@@ -195,4 +200,61 @@ function formatDateLabel(date) {
   if (isToday(date)) return 'Today';
   if (isYesterday(date)) return 'Yesterday';
   return format(date, 'MMMM d, yyyy');
+}
+
+function AudioMessage({ msg }) {
+  const audioRef = useRef(null);
+  const [speed, setSpeed] = useState(1);
+  const [duration, setDuration] = useState(null);
+  const [playing, setPlaying] = useState(false);
+
+  const toggleSpeed = () => {
+    const next = speed === 1 ? 1.5 : speed === 1.5 ? 2 : 1;
+    setSpeed(next);
+    if (audioRef.current) {
+      audioRef.current.playbackRate = next;
+    }
+  };
+
+  const handleLoaded = () => {
+    if (audioRef.current?.duration) {
+      setDuration(audioRef.current.duration);
+    }
+  };
+
+  const formatDuration = (value) => {
+    if (!value) return '0:00';
+    const minutes = Math.floor(value / 60);
+    const seconds = Math.floor(value % 60);
+    return `${minutes}:${String(seconds).padStart(2, '0')}`;
+  };
+
+  return (
+    <div className={`audio-message ${playing ? 'playing' : ''}`}>
+      <div className="audio-waveform">
+        {Array.from({ length: 12 }).map((_, idx) => (
+          <span key={`bar-${idx}`} className="audio-wave-bar" />
+        ))}
+      </div>
+      <div className="audio-controls">
+        <audio
+          ref={audioRef}
+          controls
+          preload="metadata"
+          src={`${BACKEND_BASE_URL}${msg.fileUrl}`}
+          onLoadedMetadata={handleLoaded}
+          onPlay={() => setPlaying(true)}
+          onPause={() => setPlaying(false)}
+          onEnded={() => setPlaying(false)}
+        />
+        <div className="audio-meta">
+          <button className="audio-speed" type="button" onClick={toggleSpeed}>
+            {speed}x
+          </button>
+          <span className="audio-duration">{formatDuration(duration)}</span>
+        </div>
+      </div>
+      {msg.fileName && <div className="audio-filename">{msg.fileName}</div>}
+    </div>
+  );
 }

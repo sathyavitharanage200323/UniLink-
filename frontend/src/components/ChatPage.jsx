@@ -735,7 +735,7 @@ export default function ChatPage({ currentUser, appointments = [], onLogout, onU
                   onChange={handleSearch}
                 />
                 <div className="filter-tabs">
-                  {['ALL', 'TEXT', 'CODE', 'FILE', 'IMAGE'].map((t) => (
+                  {['ALL', 'TEXT', 'CODE', 'FILE', 'IMAGE', 'AUDIO'].map((t) => (
                     <button
                       key={t}
                       className={`filter-tab ${filterType === t ? 'active' : ''}`}

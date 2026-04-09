@@ -83,6 +83,7 @@ public class ChatMessage {
         CODE,       // Code snippet
         FILE,       // PDF / document attachment
         IMAGE,      // Image attachment
+        AUDIO,      // Voice message
         SYSTEM      // System-generated messages (e.g., "Chat resolved")
     }
 }

@@ -1,11 +1,13 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { toast } from 'react-toastify';
 import {
-  Send, Code, Paperclip, Zap,
+  Send, Code, Paperclip, Zap, Mic, Square, Trash2,
 } from 'lucide-react';
 import { chatApi } from '../api/chatApi';
 
 const DEBOUNCE_MS = 800;
+const MAX_AUDIO_MB = 12;
+const MAX_RECORD_SECONDS = 120;
 
 /**
  * The message compose bar.
@@ -33,10 +35,18 @@ export default function ComposeBar({
   const [mode, setMode] = useState('TEXT'); // TEXT | CODE
   const [showCanned, setShowCanned] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordSeconds, setRecordSeconds] = useState(0);
+  const [audioPreview, setAudioPreview] = useState(null);
+  const [audioDuration, setAudioDuration] = useState(0);
   const textareaRef = useRef(null);
   const typingTimer = useRef(null);
   const isTypingRef = useRef(false);
   const fileInputRef = useRef(null);
+  const recorderRef = useRef(null);
+  const recordTimerRef = useRef(null);
+  const recordWarnedRef = useRef(false);
+  const discardOnStopRef = useRef(false);
 
   // Auto-resize textarea
   useEffect(() => {
@@ -46,6 +56,30 @@ export default function ComposeBar({
       ta.style.height = `${Math.min(ta.scrollHeight, 160)}px`;
     }
   }, [content]);
+
+  useEffect(() => () => {
+    if (recordTimerRef.current) {
+      clearInterval(recordTimerRef.current);
+    }
+    if (audioPreview?.url) {
+      URL.revokeObjectURL(audioPreview.url);
+    }
+  }, [audioPreview]);
+
+  function clearAudioPreview() {
+    if (audioPreview?.url) {
+      URL.revokeObjectURL(audioPreview.url);
+    }
+    setAudioPreview(null);
+    setAudioDuration(0);
+  }
+
+  function formatDuration(value) {
+    if (!value) return '0:00';
+    const minutes = Math.floor(value / 60);
+    const seconds = Math.floor(value % 60);
+    return `${minutes}:${String(seconds).padStart(2, '0')}`;
+  }
 
   function handleChange(e) {
     setContent(e.target.value);
@@ -71,6 +105,11 @@ export default function ComposeBar({
   }
 
   function handleSend() {
+    if (audioPreview) {
+      sendAudioMessage();
+      return;
+    }
+
     const trimmed = content.trim();
 
     if (roomClosed) {
@@ -99,6 +138,40 @@ export default function ComposeBar({
     setContent('');
     isTypingRef.current = false;
     onTyping && onTyping(false);
+  }
+
+  async function sendAudioMessage() {
+    if (!audioPreview?.blob) return;
+    if (roomClosed) {
+      toast.info('This chat room is closed.');
+      return;
+    }
+    if (blocked) {
+      toast.error('You are currently blocked from messaging this lecturer.');
+      return;
+    }
+
+    setUploading(true);
+    try {
+      const mime = audioPreview.blob.type || 'audio/webm';
+      const extension = mime.includes('mpeg') ? 'mp3' : 'webm';
+      const file = new File([audioPreview.blob], `voice-${Date.now()}.${extension}`, { type: mime });
+      const res = await chatApi.uploadFile(file);
+      const { fileUrl, fileName } = res.data;
+      onSend({
+        senderId: currentUserId,
+        content: 'Voice message',
+        messageType: 'AUDIO',
+        fileUrl,
+        fileName,
+      });
+      toast.success('Voice message sent');
+      clearAudioPreview();
+    } catch {
+      toast.error('Voice upload failed. Please try again.');
+    } finally {
+      setUploading(false);
+    }
   }
 
   async function handleFileChange(e) {
@@ -131,6 +204,107 @@ export default function ComposeBar({
     } finally {
       setUploading(false);
       e.target.value = '';
+    }
+  }
+
+  async function startRecording() {
+    if (roomClosed || blocked) return;
+    if (!navigator.mediaDevices?.getUserMedia) {
+      toast.error('Voice recording is not supported in this browser.');
+      return;
+    }
+    try {
+      if (audioPreview) {
+        clearAudioPreview();
+      }
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const recorder = new MediaRecorder(stream);
+      const chunks = [];
+
+      recorder.ondataavailable = (event) => {
+        if (event.data?.size > 0) chunks.push(event.data);
+      };
+
+      recorder.onstop = async () => {
+        stream.getTracks().forEach((t) => t.stop());
+        if (recordTimerRef.current) {
+          clearInterval(recordTimerRef.current);
+          recordTimerRef.current = null;
+        }
+        setIsRecording(false);
+
+        if (discardOnStopRef.current) {
+          discardOnStopRef.current = false;
+          setRecordSeconds(0);
+          recorderRef.current = null;
+          return;
+        }
+
+        const blob = new Blob(chunks, { type: chunks[0]?.type || 'audio/webm' });
+        if (blob.size === 0) {
+          toast.info('No audio captured.');
+          setRecordSeconds(0);
+          recorderRef.current = null;
+          return;
+        }
+        const fileSizeMB = blob.size / (1024 * 1024);
+        if (fileSizeMB > MAX_AUDIO_MB) {
+          toast.error(`Audio is too large! Max ${MAX_AUDIO_MB}MB.`);
+          setRecordSeconds(0);
+          recorderRef.current = null;
+          return;
+        }
+        setAudioPreview({ blob, url: URL.createObjectURL(blob), type: blob.type || 'audio/webm' });
+        setRecordSeconds(0);
+        recorderRef.current = null;
+      };
+
+      recorderRef.current = recorder;
+      recorder.start();
+      setIsRecording(true);
+      setRecordSeconds(0);
+      recordWarnedRef.current = false;
+      discardOnStopRef.current = false;
+      recordTimerRef.current = setInterval(() => {
+        setRecordSeconds((prev) => {
+          const next = prev + 1;
+          if (!recordWarnedRef.current && next >= MAX_RECORD_SECONDS - 10) {
+            recordWarnedRef.current = true;
+            toast.warning('Max recording length is 2 minutes. 10 seconds left.');
+          }
+          if (next >= MAX_RECORD_SECONDS) {
+            stopRecording();
+            toast.info('Recording stopped at 2 minutes.');
+            return next;
+          }
+          return next;
+        });
+      }, 1000);
+    } catch {
+      toast.error('Microphone permission denied.');
+    }
+  }
+
+  function stopRecording() {
+    if (recordTimerRef.current) {
+      clearInterval(recordTimerRef.current);
+      recordTimerRef.current = null;
+    }
+    if (recorderRef.current && recorderRef.current.state !== 'inactive') {
+      recorderRef.current.stop();
+    } else {
+      setIsRecording(false);
+    }
+  }
+
+  function discardRecording() {
+    if (isRecording) {
+      discardOnStopRef.current = true;
+      stopRecording();
+      return;
+    }
+    if (audioPreview) {
+      clearAudioPreview();
     }
   }
 
@@ -185,6 +359,26 @@ export default function ComposeBar({
         </button>
 
         <button
+          className={`icon-btn ${isRecording ? 'recording' : ''}`}
+          title={isRecording ? 'Stop recording' : 'Record voice message'}
+          onClick={() => (isRecording ? stopRecording() : startRecording())}
+          disabled={uploading}
+        >
+          {isRecording ? <Square size={16} /> : <Mic size={16} />}
+        </button>
+
+        {(isRecording || audioPreview) && (
+          <button
+            className="icon-btn danger"
+            title={isRecording ? 'Cancel recording' : 'Discard voice message'}
+            onClick={discardRecording}
+            disabled={uploading}
+          >
+            <Trash2 size={16} />
+          </button>
+        )}
+
+        <button
           className="icon-btn"
           title="Attach file or image"
           onClick={() => fileInputRef.current?.click()}
@@ -216,8 +410,29 @@ export default function ComposeBar({
           </span>
         )}
 
+        {isRecording && (
+          <span className="recording-pill">
+            Recording {Math.floor(recordSeconds / 60)}:{String(recordSeconds % 60).padStart(2, '0')}
+          </span>
+        )}
         {uploading && <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Uploading…</span>}
       </div>
+
+      {audioPreview && !isRecording && (
+        <div className="audio-preview">
+          <audio
+            controls
+            preload="metadata"
+            src={audioPreview.url}
+            onLoadedMetadata={(e) => setAudioDuration(e.currentTarget.duration || 0)}
+          />
+          <div className="audio-preview-meta">
+            <span className="audio-preview-label">Voice ready</span>
+            <span className="audio-preview-duration">{formatDuration(audioDuration)}</span>
+          </div>
+          <div className="audio-preview-hint">Press Send to deliver</div>
+        </div>
+      )}
 
       {/* Input row */}
       <div className="compose-input-row">
@@ -237,7 +452,7 @@ export default function ComposeBar({
         <button
           className="send-btn"
           onClick={handleSend}
-          disabled={!content.trim()}
+          disabled={uploading || isRecording || (!content.trim() && !audioPreview)}
           title="Send"
         >
           <Send size={18} />

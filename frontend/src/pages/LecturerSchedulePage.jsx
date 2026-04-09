@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import {
@@ -11,7 +11,7 @@ import Footer from '../components/Footer';
 import api from '../api/axiosInstance';
 import './LecturerSchedulePage.css';
 
-/* ─── Priority Badge ──────────────────────────────────────────── */
+/* â”€â”€â”€ Priority Badge â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 function PriorityBadge({ isHighPriority }) {
   if (!isHighPriority) return null;
   return (
@@ -21,7 +21,7 @@ function PriorityBadge({ isHighPriority }) {
   );
 }
 
-/* ─── Status Badge ───────────────────────────────────────────── */
+/* â”€â”€â”€ Status Badge â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 function StatusBadge({ status }) {
   const config = {
     PENDING: { label: 'Pending', icon: Clock, color: '#ea580c' },
@@ -37,7 +37,7 @@ function StatusBadge({ status }) {
   );
 }
 
-/* ─── Appointment Card ───────────────────────────────────────── */
+/* â”€â”€â”€ Appointment Card â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 function AppointmentCard({ appointment, onAction, isExpanded, onToggle, onRefresh }) {
   const [actionLoading, setActionLoading] = useState(null);
   const [declineReason, setDeclineReason] = useState('');
@@ -124,7 +124,8 @@ function AppointmentCard({ appointment, onAction, isExpanded, onToggle, onRefres
       
       await api.patch(`/appointments/${appointment.id}/time`, {
         startTime: startDateTime.toISOString(),
-        endTime: endDateTime.toISOString()
+        endTime: endDateTime.toISOString(),
+        reason: rescheduleReason
       });
       
       console.log('Reschedule notification sent:', { 
@@ -168,7 +169,8 @@ function AppointmentCard({ appointment, onAction, isExpanded, onToggle, onRefres
       
       await api.patch(`/appointments/${appointment.id}/time`, {
         startTime: newStart.toISOString(),
-        endTime: newEnd.toISOString()
+        endTime: newEnd.toISOString(),
+        reason: `Delayed by ${delayMinutes} minutes. ${delayReason}`
       });
       
       console.log('Delay notification sent:', { 
@@ -196,7 +198,7 @@ function AppointmentCard({ appointment, onAction, isExpanded, onToggle, onRefres
   };
 
   return (
-    <div className={`lsp-card${isHighPriority ? ' lsp-card--priority' : ''}`}>
+    <div className={`lsp-card${isHighPriority ? ' lsp-card--priority' : ''}${appointment.rescheduledAt ? ' lsp-card--rescheduled' : ''}`}>
       <div className="lsp-card__header" onClick={onToggle}>
         <div className="lsp-card__left">
           <div className="lsp-card__avatar">
@@ -206,6 +208,15 @@ function AppointmentCard({ appointment, onAction, isExpanded, onToggle, onRefres
             <div className="lsp-card__name">
               {student.name || 'Student'}
               <PriorityBadge isHighPriority={isHighPriority} />
+              {appointment.rescheduledAt && (
+                <span style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 3,
+                  background: '#fee2e2', color: '#dc2626', border: '1px solid #fca5a5',
+                  borderRadius: 4, padding: '1px 6px', fontSize: '0.68rem', fontWeight: 700
+                }}>
+                  <RefreshCw size={10} /> RESCHEDULED
+                </span>
+              )}
             </div>
             <div className="lsp-card__meta">
               <span><User size={12} /> {student.registrationNumber || 'N/A'}</span>
@@ -213,6 +224,14 @@ function AppointmentCard({ appointment, onAction, isExpanded, onToggle, onRefres
                 weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' 
               })}</span>
             </div>
+            {appointment.rescheduledAt && appointment.rescheduleReason && (
+              <div style={{
+                marginTop: 4, fontSize: '0.75rem', color: '#dc2626',
+                display: 'flex', alignItems: 'center', gap: 4
+              }}>
+                <span style={{ fontWeight: 600 }}>Reason:</span> {appointment.rescheduleReason}
+              </div>
+            )}
           </div>
         </div>
         <div className="lsp-card__right">
@@ -232,7 +251,46 @@ function AppointmentCard({ appointment, onAction, isExpanded, onToggle, onRefres
             {student.email && (
               <p className="lsp-card__detail"><strong>Email:</strong> {student.email}</p>
             )}
+            {appointment.phoneNumber && (
+              <p className="lsp-card__detail"><strong>Phone:</strong> {appointment.phoneNumber}</p>
+            )}
           </div>
+
+          {/* Display uploaded image if available */}
+          {appointment.imagePath && (
+            <div className="lsp-card__section">
+              <h4 className="lsp-card__section-title">Uploaded Image</h4>
+              <div className="lsp-card__image-container">
+                <img 
+                  src={`http://localhost:9090/uploads/${appointment.imagePath}`}
+                  alt="Student uploaded"
+                  className="lsp-card__image"
+                  onError={(e) => {
+                    e.target.style.display = 'none';
+                    e.target.nextElementSibling.style.display = 'block';
+                  }}
+                />
+                <div className="lsp-card__image-error" style={{ display: 'none' }}>
+                  <AlertCircle size={24} /> Image not available
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Display document link if available */}
+          {appointment.documentPath && (
+            <div className="lsp-card__section">
+              <h4 className="lsp-card__section-title">Attached Document</h4>
+              <a 
+                href={`http://localhost:9090/uploads/${appointment.documentPath}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="lsp-card__document-link"
+              >
+                📄 Download Document
+              </a>
+            </div>
+          )}
 
           {isPending && (
             <div className="lsp-card__actions">
@@ -473,7 +531,7 @@ function AppointmentCard({ appointment, onAction, isExpanded, onToggle, onRefres
   );
 }
 
-/* ─── Main LecturerSchedulePage ──────────────────────────────── */
+/* â”€â”€â”€ Main LecturerSchedulePage â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 export default function LecturerSchedulePage({ currentUser, onLogout }) {
   const navigate = useNavigate();
   const [appointments, setAppointments] = useState([]);
@@ -629,3 +687,4 @@ export default function LecturerSchedulePage({ currentUser, onLogout }) {
     </div>
   );
 }
+

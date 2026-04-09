@@ -76,6 +76,11 @@ public class ChatExportService {
                 String displayContent = msg.isMarkedAsAnswer()
                         ? "[ANSWER] " + msg.getContent()
                         : msg.getContent();
+                if (msg.getMessageType() == ChatMessage.MessageType.AUDIO) {
+                    displayContent = (displayContent == null || displayContent.isBlank())
+                        ? "Voice message"
+                        : displayContent;
+                }
 
                 String displayName = msg.getSender().getName()
                         + " [" + msg.getSender().getRole() + "]"
@@ -92,7 +97,8 @@ public class ChatExportService {
 
                 if (msg.getFileUrl() != null) {
                     Font fileFont = FontFactory.getFont(FontFactory.HELVETICA, 9, Font.ITALIC);
-                    doc.add(new Paragraph("[Attachment: " + msg.getFileName() + "]", fileFont));
+                    String label = msg.getMessageType() == ChatMessage.MessageType.AUDIO ? "Audio" : "Attachment";
+                    doc.add(new Paragraph("[" + label + ": " + msg.getFileName() + "]", fileFont));
                 }
                 doc.add(new Paragraph(" "));
             }
@@ -135,9 +141,14 @@ public class ChatExportService {
             if (msg.isDeleted()) continue;
             sb.append("[").append(msg.getSentAt() != null ? msg.getSentAt().format(FMT) : "").append("] ");
             sb.append(msg.getSender().getName()).append(": ");
-            sb.append(msg.getContent()).append("\n");
+            if (msg.getMessageType() == ChatMessage.MessageType.AUDIO) {
+                sb.append(msg.getContent() == null || msg.getContent().isBlank() ? "Voice message" : msg.getContent()).append("\n");
+            } else {
+                sb.append(msg.getContent()).append("\n");
+            }
             if (msg.getFileUrl() != null) {
-                sb.append("  [Attachment: ").append(msg.getFileName()).append("]\n");
+                String label = msg.getMessageType() == ChatMessage.MessageType.AUDIO ? "Audio" : "Attachment";
+                sb.append("  [").append(label).append(": ").append(msg.getFileName()).append("]\n");
             }
         }
         return sb.toString();

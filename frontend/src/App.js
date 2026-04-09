@@ -133,7 +133,7 @@ function AppRoutes({ activeUser, appointments, onLogin, onLogout, onUserUpdate }
         path="/book"
         element={
           isStudent
-              ? <BookingPage user={activeUser} onLogout={onLogout} />
+              ? <BookingPage currentUser={activeUser} onLogout={onLogout} />
               : <Navigate to={homeRedirect} replace />
         }
       />
