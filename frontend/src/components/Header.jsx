@@ -1,11 +1,16 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import {
   Bell, LogOut, MessageSquare, Menu, X,
-  Home, Calendar, User, GraduationCap, Bug,
+  Home, Calendar, User, Bug,
 } from 'lucide-react';
 import { chatApi } from '../api/chatApi';
+import {
+  getAllAppointments,
+  getLecturerAppointments,
+  getStudentAppointments,
+} from '../api';
 import './Header.css';
 
 /**
@@ -20,15 +25,24 @@ export default function Header({ currentUser, onLogout, unreadCount = 0 }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
   const [liveUnreadCount, setLiveUnreadCount] = useState(null);
-  const [notifications, setNotifications] = useState([]);
+  const [chatNotifications, setChatNotifications] = useState([]);
+  const [appointmentNotifications, setAppointmentNotifications] = useState([]);
   const prevUnreadRef = useRef(0);
+  const appointmentStatusRef = useRef(new Map());
+  const appointmentInitRef = useRef(false);
+  const upcomingNotifiedRef = useRef(new Set());
+  const dailySummaryDateRef = useRef('');
   const navigate = useNavigate();
 
   const isLecturer = currentUser?.role === 'LECTURER';
   const isAdmin = currentUser?.role === 'ADMIN';
   const homeRoute  = isAdmin ? '/admin/home' : (isLecturer ? '/lecturer/home' : '/student/home');
   const bugRoute = isAdmin ? '/admin/bug-reports' : '/reports';
+  const notificationsEnabled = currentUser?.role === 'STUDENT'
+    ? currentUser?.notificationEnabled !== false
+    : true;
   const effectiveUnreadCount = liveUnreadCount === null ? unreadCount : liveUnreadCount;
+  const hasAnyNotifications = (effectiveUnreadCount > 0 || appointmentNotifications.length > 0) && notificationsEnabled;
   const initials   = (currentUser?.name ?? 'U')
     .split(' ')
     .map((n) => n[0])
@@ -37,6 +51,47 @@ export default function Header({ currentUser, onLogout, unreadCount = 0 }) {
     .toUpperCase();
 
   function close() { setMenuOpen(false); }
+
+  function formatRelativeWhen(dateValue) {
+    if (!dateValue) return 'Now';
+    const date = new Date(dateValue);
+    if (Number.isNaN(date.getTime())) return 'Now';
+
+    const diffMs = Date.now() - date.getTime();
+    const diffMin = Math.floor(diffMs / 60000);
+    if (diffMin < 1) return 'Just now';
+    if (diffMin < 60) return `${diffMin}m ago`;
+    const diffHr = Math.floor(diffMin / 60);
+    if (diffHr < 24) return `${diffHr}h ago`;
+    return date.toLocaleDateString();
+  }
+
+  function parseAppointmentTime(appointment) {
+    if (!appointment?.startTime) return null;
+    const date = new Date(appointment.startTime);
+    return Number.isNaN(date.getTime()) ? null : date;
+  }
+
+  function createAppointmentNotification(id, title, meta, route = '/appointments') {
+    return {
+      id,
+      title,
+      meta,
+      route,
+      time: Date.now(),
+    };
+  }
+
+  const fetchAppointmentsForRole = useCallback(async () => {
+    if (!currentUser?.id) return [];
+    if (currentUser.role === 'STUDENT') {
+      return await getStudentAppointments(currentUser.id);
+    }
+    if (currentUser.role === 'LECTURER') {
+      return await getLecturerAppointments(currentUser.id);
+    }
+    return await getAllAppointments();
+  }, [currentUser?.id, currentUser?.role]);
 
   useEffect(() => {
     let timerId;
@@ -66,18 +121,18 @@ export default function Header({ currentUser, onLogout, unreadCount = 0 }) {
         const newNotifications = withUnread
           .filter((r) => (r.unread || 0) > 0)
           .map((r) => ({
-            roomId: r.roomId,
-            unread: r.unread,
-            name: isLecturer ? (r.studentName || 'Student') : (r.lecturerName || 'Lecturer'),
-            roomType: r.roomType,
-            label: r.roomType === 'DIRECT' ? 'Direct message' : `Session #${r.appointmentId}`,
+            id: `chat-${r.roomId}`,
+            title: isLecturer ? (r.studentName || 'Student') : (r.lecturerName || 'Lecturer'),
+            meta: `${r.roomType === 'DIRECT' ? 'Direct message' : `Session #${r.appointmentId}`} · ${r.unread} unread`,
+            route: '/chat',
+            time: Date.now(),
           }));
 
         if (!isMounted) return;
         setLiveUnreadCount(totalUnread);
-        setNotifications(newNotifications);
+        setChatNotifications(newNotifications);
 
-        if (totalUnread > prevUnreadRef.current) {
+        if (notificationsEnabled && totalUnread > prevUnreadRef.current) {
           const delta = totalUnread - prevUnreadRef.current;
           toast.info(`${delta} new message${delta > 1 ? 's' : ''} received`, {
             position: 'bottom-right',
@@ -96,7 +151,132 @@ export default function Header({ currentUser, onLogout, unreadCount = 0 }) {
       isMounted = false;
       clearInterval(timerId);
     };
-  }, [currentUser?.id, isLecturer]);
+  }, [currentUser?.id, isLecturer, notificationsEnabled]);
+
+  useEffect(() => {
+    let timerId;
+    let isMounted = true;
+
+    async function pollAppointmentNotifications() {
+      if (!currentUser?.id) return;
+      try {
+        const appointments = await fetchAppointmentsForRole();
+        if (!isMounted || !Array.isArray(appointments)) return;
+
+        const now = new Date();
+        const currentStatusMap = new Map();
+        const newEvents = [];
+
+        appointments.forEach((appointment) => {
+          currentStatusMap.set(appointment.id, appointment.status);
+        });
+
+        if (appointmentInitRef.current) {
+          appointments.forEach((appointment) => {
+            const prevStatus = appointmentStatusRef.current.get(appointment.id);
+            const slotLabel = parseAppointmentTime(appointment)?.toLocaleString() || 'Scheduled slot';
+            const studentName = appointment?.student?.name || 'Student';
+
+            if (!prevStatus && appointment.status === 'PENDING' && currentUser.role !== 'STUDENT') {
+              newEvents.push(
+                createAppointmentNotification(
+                  `booked-${appointment.id}-${appointment.status}`,
+                  'New Slot Booked',
+                  `${studentName} booked ${slotLabel}`
+                )
+              );
+            }
+
+            if (prevStatus && prevStatus !== appointment.status) {
+              if (appointment.status === 'CANCELLED') {
+                newEvents.push(
+                  createAppointmentNotification(
+                    `cancelled-${appointment.id}-${Date.now()}`,
+                    'Slot Cancelled',
+                    `${studentName} appointment on ${slotLabel} was cancelled`
+                  )
+                );
+              }
+              if (appointment.status === 'CONFIRMED') {
+                newEvents.push(
+                  createAppointmentNotification(
+                    `confirmed-${appointment.id}-${Date.now()}`,
+                    'Slot Confirmed',
+                    `Appointment confirmed for ${slotLabel}`
+                  )
+                );
+              }
+            }
+
+            const startTime = parseAppointmentTime(appointment);
+            const isConfirmed = appointment.status === 'CONFIRMED';
+            if (startTime && isConfirmed) {
+              const minutesToStart = Math.floor((startTime.getTime() - now.getTime()) / 60000);
+              if (minutesToStart >= 0 && minutesToStart <= 60 && !upcomingNotifiedRef.current.has(appointment.id)) {
+                upcomingNotifiedRef.current.add(appointment.id);
+                newEvents.push(
+                  createAppointmentNotification(
+                    `upcoming-${appointment.id}`,
+                    'Upcoming Appointment',
+                    `Starts in ${minutesToStart} minute${minutesToStart === 1 ? '' : 's'}`
+                  )
+                );
+              }
+            }
+          });
+        }
+
+        const todayKey = now.toISOString().slice(0, 10);
+        if (dailySummaryDateRef.current !== todayKey) {
+          const todayCount = appointments.filter((appointment) => {
+            const d = parseAppointmentTime(appointment);
+            return d && d.toISOString().slice(0, 10) === todayKey && appointment.status !== 'CANCELLED';
+          }).length;
+          newEvents.push(
+            createAppointmentNotification(
+              `daily-summary-${todayKey}`,
+              'Daily Schedule Summary',
+              `You have ${todayCount} appointment${todayCount === 1 ? '' : 's'} today`
+            )
+          );
+          dailySummaryDateRef.current = todayKey;
+        }
+
+        appointmentStatusRef.current = currentStatusMap;
+        appointmentInitRef.current = true;
+
+        if (newEvents.length > 0) {
+          setAppointmentNotifications((prev) => [...newEvents, ...prev]);
+          if (notificationsEnabled) {
+            toast.info(`${newEvents.length} appointment notification${newEvents.length > 1 ? 's' : ''} available.`, {
+              position: 'bottom-right',
+              autoClose: 2500,
+            });
+          }
+        }
+      } catch {
+        // Keep current notifications on polling failures.
+      }
+    }
+
+    if (notificationsEnabled) {
+      pollAppointmentNotifications();
+      timerId = setInterval(pollAppointmentNotifications, 60000);
+    } else {
+      setAppointmentNotifications([]);
+    }
+
+    return () => {
+      isMounted = false;
+      clearInterval(timerId);
+    };
+  }, [currentUser?.id, currentUser?.role, notificationsEnabled, fetchAppointmentsForRole]);
+
+  const allNotifications = useMemo(() => {
+    if (!notificationsEnabled) return [];
+    return [...appointmentNotifications, ...chatNotifications]
+      .sort((a, b) => (b.time || 0) - (a.time || 0));
+  }, [appointmentNotifications, chatNotifications, notificationsEnabled]);
 
   return (
     <header className={`header ${isLecturer ? 'header--lecturer' : 'header--student'}`}>
@@ -144,25 +324,27 @@ export default function Header({ currentUser, onLogout, unreadCount = 0 }) {
             onClick={() => setNotifOpen((v) => !v)}
           >
             <Bell size={19} />
-            {effectiveUnreadCount > 0 && <span className="header__notif-dot" />}
+            {hasAnyNotifications && <span className="header__notif-dot" />}
           </button>
           {notifOpen && (
             <div className="header__notif-panel">
-              <div className="header__notif-title">Notifications</div>
-              {notifications.length === 0 ? (
-                <div className="header__notif-empty">No new messages</div>
+              <div className="header__notif-title">Notifications ({allNotifications.length})</div>
+              {!notificationsEnabled ? (
+                <div className="header__notif-empty">Notifications are disabled in your profile settings.</div>
+              ) : allNotifications.length === 0 ? (
+                <div className="header__notif-empty">No new notifications</div>
               ) : (
-                notifications.map((n) => (
+                allNotifications.map((n) => (
                   <button
-                    key={n.roomId}
+                    key={n.id}
                     className="header__notif-item"
                     onClick={() => {
                       setNotifOpen(false);
-                      navigate('/chat');
+                      navigate(n.route || '/appointments');
                     }}
                   >
-                    <div className="header__notif-item-name">{n.name}</div>
-                    <div className="header__notif-item-meta">{n.label} · {n.unread} unread</div>
+                    <div className="header__notif-item-name">{n.title}</div>
+                    <div className="header__notif-item-meta">{n.meta} · {formatRelativeWhen(n.time)}</div>
                   </button>
                 ))
               )}

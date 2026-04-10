@@ -47,6 +47,11 @@ public class User {
     @Column(name = "auto_reply_message", length = 500)
     private String autoReplyMessage;
 
+    // Global in-app notification preference (especially used by students)
+    @Builder.Default
+    @Column(name = "notifications_enabled", nullable = false)
+    private boolean notificationEnabled = true;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 

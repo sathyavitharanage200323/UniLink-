@@ -186,6 +186,7 @@
   gap: 8px;
   margin-left: auto;
   flex-shrink: 0;
+  position: relative;
 }
 
 /* Icon-only button */
@@ -207,14 +208,14 @@
 
 .header__notif-panel {
   position: absolute;
-  top: 54px;
-  right: 180px;
-  width: 300px;
-  max-height: 340px;
+  top: 50px;
+  right: 0;
+  width: clamp(340px, 42vw, 640px);
+  max-height: 70vh;
   overflow: auto;
   background: #ffffff;
   border: 1px solid #dbeaf6;
-  border-radius: 12px;
+  border-radius: 14px;
   box-shadow: 0 18px 42px rgba(15, 40, 84, 0.22);
   z-index: 260;
 }
@@ -408,6 +409,11 @@
   }
   .header__nav-link { width: 100%; border-radius: 8px; }
   .header__hamburger { display: flex; }
+
+  .header__notif-panel {
+    width: min(92vw, 560px);
+    right: -8px;
+  }
 }
 
 @media (max-width: 480px) {

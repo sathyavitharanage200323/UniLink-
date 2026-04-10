@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { User, Wrench, ArrowLeft, Clock, BellOff, Bell, AlertCircle, CheckCircle } from 'lucide-react';
+import { User, ArrowLeft, BellOff, Bell, AlertCircle, CheckCircle } from 'lucide-react';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 import { userApi } from '../api/chatApi';
@@ -62,9 +62,11 @@ export default function ProfilePage({ currentUser, onLogout, onUserUpdate }) {
 	});
 
 	const [dndEnabled, setDndEnabled] = useState(currentUser?.doNotDisturb ?? false);
+	const [notificationEnabled, setNotificationEnabled] = useState(currentUser?.notificationEnabled !== false);
 	const [autoReplyMessage, setAutoReplyMessage] = useState(currentUser?.autoReplyMessage ?? '');
 	const [isSaving, setIsSaving] = useState(false);
 	const [saveStatus, setSaveStatus] = useState(null);
+	const [notificationStatus, setNotificationStatus] = useState(null);
 	const [profileStatus, setProfileStatus] = useState(null);
 	const [deleteConfirmText, setDeleteConfirmText] = useState('');
 	const [isDeleting, setIsDeleting] = useState(false);
@@ -92,8 +94,31 @@ export default function ProfilePage({ currentUser, onLogout, onUserUpdate }) {
 			confirmNewPassword: '',
 		});
 		setDndEnabled(currentUser?.doNotDisturb ?? false);
+		setNotificationEnabled(currentUser?.notificationEnabled !== false);
 		setAutoReplyMessage(currentUser?.autoReplyMessage ?? '');
 	}, [currentUser]);
+
+	const handleNotificationToggle = async () => {
+		if (!currentUser?.id) return;
+
+		const next = !notificationEnabled;
+		setIsSaving(true);
+		setNotificationStatus(null);
+
+		try {
+			await userApi.toggleNotifications(currentUser.id, next);
+			setNotificationEnabled(next);
+			setNotificationStatus({ type: 'success', message: `Notifications ${next ? 'enabled' : 'disabled'}` });
+			if (onUserUpdate) {
+			onUserUpdate({ ...currentUser, notificationEnabled: next });
+			}
+			setTimeout(() => setNotificationStatus(null), 3000);
+		} catch {
+			setNotificationStatus({ type: 'error', message: 'Failed to update notification preference.' });
+		} finally {
+			setIsSaving(false);
+		}
+	};
 
 	const handleFormChange = (e) => {
 		const { name, value } = e.target;
@@ -438,6 +463,52 @@ export default function ProfilePage({ currentUser, onLogout, onUserUpdate }) {
 						}}
 					>
 						{isDeleting ? 'Deleting...' : 'Delete My Account'}
+					</button>
+				</section>
+
+				<section style={{ marginTop: 20, background: 'white', border: '1px solid #e2e8f0', borderRadius: 16, padding: 20 }}>
+					<h2 style={{ margin: '0 0 16px 0', display: 'flex', alignItems: 'center', gap: 10, color: '#1e293b' }}>
+						{notificationEnabled ? <Bell size={20} style={{ color: '#16a34a' }} /> : <BellOff size={20} style={{ color: '#64748b' }} />}
+						Notification Preferences
+					</h2>
+
+					{notificationStatus && (
+						<div style={{
+							marginBottom: 16,
+							padding: 12,
+							borderRadius: 10,
+							display: 'flex',
+							alignItems: 'center',
+							gap: 8,
+							background: notificationStatus.type === 'success' ? '#f0fdf4' : '#fef2f2',
+							border: `1px solid ${notificationStatus.type === 'success' ? '#bbf7d0' : '#fecaca'}`,
+							color: notificationStatus.type === 'success' ? '#166534' : '#b91c1c',
+						}}>
+							{notificationStatus.type === 'success' ? <CheckCircle size={16} /> : <AlertCircle size={16} />}
+							<span>{notificationStatus.message}</span>
+						</div>
+					)}
+
+					<p style={{ margin: '0 0 12px 0', color: '#64748b', fontSize: 13 }}>
+						Controls in-app notifications for booking, cancellations, upcoming appointments, and daily schedule summaries.
+					</p>
+
+					<button
+						type="button"
+						onClick={handleNotificationToggle}
+						disabled={isSaving}
+						style={{
+							padding: '10px 16px',
+							borderRadius: 10,
+							border: '1px solid #cbd5e1',
+							background: notificationEnabled ? '#16a34a' : 'white',
+							color: notificationEnabled ? 'white' : '#1e293b',
+							fontWeight: 600,
+							cursor: isSaving ? 'not-allowed' : 'pointer',
+							opacity: isSaving ? 0.6 : 1,
+						}}
+					>
+						{isSaving ? 'Saving...' : (notificationEnabled ? 'Disable Notifications' : 'Enable Notifications')}
 					</button>
 				</section>
 

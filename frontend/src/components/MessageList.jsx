@@ -207,6 +207,18 @@ function AudioMessage({ msg }) {
   const [speed, setSpeed] = useState(1);
   const [duration, setDuration] = useState(null);
   const [playing, setPlaying] = useState(false);
+  const [playbackError, setPlaybackError] = useState(false);
+
+  const fileUrl = `${BACKEND_BASE_URL}${msg.fileUrl}`;
+
+  const guessAudioType = (nameOrUrl = '') => {
+    const value = String(nameOrUrl).toLowerCase();
+    if (value.endsWith('.ogg') || value.includes('.ogg?')) return 'audio/ogg';
+    if (value.endsWith('.mp3') || value.includes('.mp3?')) return 'audio/mpeg';
+    if (value.endsWith('.wav') || value.includes('.wav?')) return 'audio/wav';
+    if (value.endsWith('.m4a') || value.includes('.m4a?') || value.endsWith('.mp4') || value.includes('.mp4?')) return 'audio/mp4';
+    return 'audio/webm';
+  };
 
   const toggleSpeed = () => {
     const next = speed === 1 ? 1.5 : speed === 1.5 ? 2 : 1;
@@ -223,6 +235,7 @@ function AudioMessage({ msg }) {
   };
 
   const handlePlay = () => {
+    setPlaybackError(false);
     if (audioRef.current) {
       // Defensive defaults in case browser persisted muted/low volume state.
       audioRef.current.muted = false;
@@ -252,18 +265,25 @@ function AudioMessage({ msg }) {
           ref={audioRef}
           controls
           preload="metadata"
-          src={`${BACKEND_BASE_URL}${msg.fileUrl}`}
           onLoadedMetadata={handleLoaded}
           onPlay={handlePlay}
           onPause={() => setPlaying(false)}
           onEnded={() => setPlaying(false)}
-        />
+          onError={() => setPlaybackError(true)}
+        >
+          <source src={fileUrl} type={guessAudioType(msg.fileName || msg.fileUrl)} />
+        </audio>
         <div className="audio-meta">
           <button className="audio-speed" type="button" onClick={toggleSpeed}>
             {speed}x
           </button>
           <span className="audio-duration">{formatDuration(duration)}</span>
         </div>
+        {playbackError && (
+          <div style={{ marginTop: 6, fontSize: '0.72rem', color: '#b91c1c' }}>
+            Audio could not be played inline. <a href={fileUrl} target="_blank" rel="noreferrer">Open file</a>
+          </div>
+        )}
       </div>
       {msg.fileName && <div className="audio-filename">{msg.fileName}</div>}
     </div>

@@ -40,4 +40,25 @@ public class DatabaseMigrations {
             log.warn("Could not verify/update chat_messages.message_type enum: {}", ex.getMessage());
         }
     }
+
+    @PostConstruct
+    public void ensureUserNotificationPreferenceColumn() {
+        try {
+            Integer columnCount = jdbcTemplate.queryForObject(
+                    "SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS " +
+                            "WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'users' " +
+                            "AND COLUMN_NAME = 'notifications_enabled'",
+                    Integer.class
+            );
+
+            if (columnCount == null || columnCount == 0) {
+                jdbcTemplate.execute(
+                        "ALTER TABLE users ADD COLUMN notifications_enabled BOOLEAN NOT NULL DEFAULT TRUE"
+                );
+                log.info("Added users.notifications_enabled column.");
+            }
+        } catch (Exception ex) {
+            log.warn("Could not verify/create users.notifications_enabled column: {}", ex.getMessage());
+        }
+    }
 }

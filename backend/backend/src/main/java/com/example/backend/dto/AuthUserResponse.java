@@ -17,6 +17,7 @@ public class AuthUserResponse {
     private String phone;
     private String expertise;
     private boolean doNotDisturb;
+    private boolean notificationEnabled;
     private String autoReplyMessage;
 
     private String registrationNumber;
@@ -40,6 +41,7 @@ public class AuthUserResponse {
                 .phone(user.getPhone())
                 .expertise(user.getExpertise())
                 .doNotDisturb(user.isDoNotDisturb())
+                .notificationEnabled(user.isNotificationEnabled())
                 .autoReplyMessage(user.getAutoReplyMessage())
                 .registrationNumber(student != null ? student.getRegistrationNumber() : null)
                 .batch(student != null ? student.getBatch() : null)

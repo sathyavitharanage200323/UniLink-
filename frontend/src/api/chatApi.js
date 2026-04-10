@@ -57,9 +57,7 @@ export const chatApi = {
   uploadFile: (file) => {
     const form = new FormData();
     form.append('file', file);
-    return api.post('/chat/upload', form, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    });
+    return api.post('/chat/upload', form);
   },
 };
 
@@ -93,6 +91,8 @@ export const userApi = {
     api.get(`/users/lecturers/search?query=${encodeURIComponent(query)}&department=${encodeURIComponent(department)}&designation=${encodeURIComponent(designation)}`),
   toggleDnd: (id, dnd, autoReplyMessage) =>
     api.patch(`/users/${id}/dnd`, { dnd, autoReplyMessage }),
+  toggleNotifications: (id, enabled) =>
+    api.patch(`/users/${id}/notifications`, { enabled }),
   updateProfile: (id, payload) => api.put(`/users/${id}/profile`, payload),
   deleteAccount: (id) => api.delete(`/users/${id}`),
 };
