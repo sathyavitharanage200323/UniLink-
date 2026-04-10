@@ -1,6 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Copy } from 'lucide-react';
+import Header from '../components/Header';
+import Footer from '../components/Footer';
 import {
   getLecturerAvailability,
   createSlot,
@@ -614,6 +616,8 @@ export default function SlotCalendarPage({ currentUser, onLogout }) {
 
   return (
     <div className="sc-layout">
+      <Header currentUser={currentUser} onLogout={onLogout} />
+
       <div className="sc-main">
         <section className="sc-hero">
           <div className="sc-hero__content">
@@ -1173,6 +1177,8 @@ export default function SlotCalendarPage({ currentUser, onLogout }) {
           </div>
         </div>
       )}
+
+      <Footer />
     </div>
   );
 }

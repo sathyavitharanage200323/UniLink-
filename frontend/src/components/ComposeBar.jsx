@@ -60,6 +60,7 @@ export default function ComposeBar({
   const [uploading, setUploading] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [recordSeconds, setRecordSeconds] = useState(0);
+  const recordSecondsRef = useRef(0);
   const [audioPreview, setAudioPreview] = useState(null);
   const [audioDuration, setAudioDuration] = useState(0);
   const textareaRef = useRef(null);
@@ -67,7 +68,13 @@ export default function ComposeBar({
   const isTypingRef = useRef(false);
   const fileInputRef = useRef(null);
   const recorderRef = useRef(null);
+  const streamRef = useRef(null);
   const recordTimerRef = useRef(null);
+  const monitorRafRef = useRef(null);
+  const audioContextRef = useRef(null);
+  const analyserRef = useRef(null);
+  const sourceNodeRef = useRef(null);
+  const inputDetectedRef = useRef(false);
   const recordWarnedRef = useRef(false);
   const discardOnStopRef = useRef(false);
   const sendOnStopRef = useRef(false);
@@ -85,10 +92,81 @@ export default function ComposeBar({
     if (recordTimerRef.current) {
       clearInterval(recordTimerRef.current);
     }
+    if (monitorRafRef.current) {
+      cancelAnimationFrame(monitorRafRef.current);
+    }
+    if (sourceNodeRef.current) {
+      sourceNodeRef.current.disconnect();
+      sourceNodeRef.current = null;
+    }
+    if (audioContextRef.current) {
+      audioContextRef.current.close();
+      audioContextRef.current = null;
+    }
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((t) => t.stop());
+      streamRef.current = null;
+    }
     if (audioPreview?.url) {
       URL.revokeObjectURL(audioPreview.url);
     }
   }, [audioPreview]);
+
+  function cleanupAudioMonitoring() {
+    if (monitorRafRef.current) {
+      cancelAnimationFrame(monitorRafRef.current);
+      monitorRafRef.current = null;
+    }
+    if (sourceNodeRef.current) {
+      sourceNodeRef.current.disconnect();
+      sourceNodeRef.current = null;
+    }
+    analyserRef.current = null;
+    if (audioContextRef.current) {
+      audioContextRef.current.close();
+      audioContextRef.current = null;
+    }
+  }
+
+  function startInputMonitor(stream) {
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    if (!AudioCtx) return;
+
+    const audioContext = new AudioCtx();
+    if (audioContext.state === 'suspended') {
+      audioContext.resume().catch(() => {});
+    }
+    const analyser = audioContext.createAnalyser();
+    analyser.fftSize = 2048;
+    const sourceNode = audioContext.createMediaStreamSource(stream);
+    sourceNode.connect(analyser);
+
+    audioContextRef.current = audioContext;
+    analyserRef.current = analyser;
+    sourceNodeRef.current = sourceNode;
+    inputDetectedRef.current = false;
+
+    const dataArray = new Uint8Array(analyser.fftSize);
+    const threshold = 2; // lower threshold to avoid false negatives on quiet mics
+
+    const tick = () => {
+      if (!analyserRef.current) return;
+      analyserRef.current.getByteTimeDomainData(dataArray);
+
+      let avg = 0;
+      for (let i = 0; i < dataArray.length; i += 1) {
+        avg += Math.abs(dataArray[i] - 128);
+      }
+      avg /= dataArray.length;
+
+      if (avg > threshold) {
+        inputDetectedRef.current = true;
+      }
+      monitorRafRef.current = requestAnimationFrame(tick);
+    };
+
+    monitorRafRef.current = requestAnimationFrame(tick);
+  }
 
   function clearAudioPreview() {
     if (audioPreview?.url) {
@@ -255,19 +333,38 @@ export default function ComposeBar({
       if (audioPreview) {
         clearAudioPreview();
       }
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+        },
+      });
+      streamRef.current = stream;
+      const liveTracks = stream.getAudioTracks();
+      if (!liveTracks.length || liveTracks.every((t) => t.readyState !== 'live')) {
+        throw new Error('No live microphone track available');
+      }
+
+      startInputMonitor(stream);
       const preferredMime = pickRecordingMimeType();
       const recorder = preferredMime
         ? new MediaRecorder(stream, { mimeType: preferredMime })
         : new MediaRecorder(stream);
       const chunks = [];
 
+      recorder.onerror = () => {
+        toast.error('Microphone recording failed. Please check mic device and browser permissions.');
+      };
+
       recorder.ondataavailable = (event) => {
         if (event.data?.size > 0) chunks.push(event.data);
       };
 
       recorder.onstop = async () => {
+        cleanupAudioMonitoring();
         stream.getTracks().forEach((t) => t.stop());
+        streamRef.current = null;
         if (recordTimerRef.current) {
           clearInterval(recordTimerRef.current);
           recordTimerRef.current = null;
@@ -289,10 +386,12 @@ export default function ComposeBar({
           recorderRef.current = null;
           return;
         }
+        // Keep the recording even if input monitor looks quiet; some devices report very low levels.
         const fileSizeMB = blob.size / (1024 * 1024);
         if (fileSizeMB > MAX_AUDIO_MB) {
           toast.error(`Audio is too large! Max ${MAX_AUDIO_MB}MB.`);
           setRecordSeconds(0);
+          recordSecondsRef.current = 0;
           recorderRef.current = null;
           return;
         }
@@ -303,24 +402,28 @@ export default function ComposeBar({
             setAudioPreview({ blob, url: URL.createObjectURL(blob), type: resolvedMime });
           }
           setRecordSeconds(0);
+          recordSecondsRef.current = 0;
           recorderRef.current = null;
           return;
         }
 
         setAudioPreview({ blob, url: URL.createObjectURL(blob), type: resolvedMime });
         setRecordSeconds(0);
+        recordSecondsRef.current = 0;
         recorderRef.current = null;
       };
 
       recorderRef.current = recorder;
-      recorder.start();
+      recorder.start(250);
       setIsRecording(true);
       setRecordSeconds(0);
+      recordSecondsRef.current = 0;
       recordWarnedRef.current = false;
       discardOnStopRef.current = false;
       recordTimerRef.current = setInterval(() => {
         setRecordSeconds((prev) => {
           const next = prev + 1;
+          recordSecondsRef.current = next;
           if (!recordWarnedRef.current && next >= MAX_RECORD_SECONDS - 10) {
             recordWarnedRef.current = true;
             toast.warning('Max recording length is 2 minutes. 10 seconds left.');
@@ -333,8 +436,15 @@ export default function ComposeBar({
           return next;
         });
       }, 1000);
-    } catch {
-      toast.error('Microphone permission denied.');
+    } catch (err) {
+      const errorName = err?.name || '';
+      if (errorName === 'NotAllowedError' || errorName === 'SecurityError') {
+        toast.error('Microphone permission is blocked. Please allow microphone access in the browser site settings.');
+      } else if (errorName === 'NotFoundError' || errorName === 'DevicesNotFoundError') {
+        toast.error('No microphone device found. Connect a microphone and try again.');
+      } else {
+        toast.error('Microphone access failed. Allow microphone permission and select a working input device.');
+      }
     }
   }
 
@@ -346,6 +456,11 @@ export default function ComposeBar({
     if (recorderRef.current && recorderRef.current.state !== 'inactive') {
       recorderRef.current.stop();
     } else {
+      cleanupAudioMonitoring();
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((t) => t.stop());
+        streamRef.current = null;
+      }
       setIsRecording(false);
     }
   }
