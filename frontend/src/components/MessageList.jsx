@@ -222,6 +222,17 @@ function AudioMessage({ msg }) {
     }
   };
 
+  const handlePlay = () => {
+    if (audioRef.current) {
+      // Defensive defaults in case browser persisted muted/low volume state.
+      audioRef.current.muted = false;
+      if (audioRef.current.volume === 0) {
+        audioRef.current.volume = 1;
+      }
+    }
+    setPlaying(true);
+  };
+
   const formatDuration = (value) => {
     if (!value) return '0:00';
     const minutes = Math.floor(value / 60);
@@ -243,7 +254,7 @@ function AudioMessage({ msg }) {
           preload="metadata"
           src={`${BACKEND_BASE_URL}${msg.fileUrl}`}
           onLoadedMetadata={handleLoaded}
-          onPlay={() => setPlaying(true)}
+          onPlay={handlePlay}
           onPause={() => setPlaying(false)}
           onEnded={() => setPlaying(false)}
         />

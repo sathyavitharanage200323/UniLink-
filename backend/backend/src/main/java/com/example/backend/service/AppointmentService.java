@@ -13,6 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 
 @Service
@@ -23,6 +24,7 @@ public class AppointmentService {
     private final AvailabilitySlotRepository availabilitySlotRepository;
     private final UserService userService;
     private final DisciplineService disciplineService;
+    private final EmailService emailService;
 
     public List<Appointment> getAll() {
         return appointmentRepository.findAll();
@@ -83,8 +85,10 @@ public class AppointmentService {
     }
 
     @Transactional
-    public Appointment updateStatus(Long id, Appointment.Status status) {
+    public Appointment updateStatus(Long id, Appointment.Status status, String reason) {
         Appointment appt = getById(id);
+        DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+        DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern("HH:mm");
 
         if (!isValidTransition(appt.getStatus(), status)) {
             throw new IllegalArgumentException("Invalid appointment status transition.");
@@ -94,6 +98,23 @@ public class AppointmentService {
 
         if (status == Appointment.Status.CANCELLED) {
             releaseSlotForAppointment(appt);
+            emailService.sendBookingDeclinedEmail(
+                    appt.getStudent().getEmail(),
+                    appt.getStudent().getName(),
+                    appt.getLecturer().getName(),
+                    appt.getLecturer().getDepartment(),
+                    reason
+            );
+        } else if (status == Appointment.Status.CONFIRMED) {
+            emailService.sendBookingAcceptedEmail(
+                    appt.getStudent().getEmail(),
+                    appt.getStudent().getName(),
+                    appt.getLecturer().getName(),
+                    appt.getLecturer().getDepartment(),
+                    appt.getStartTime().format(dateFormatter),
+                    appt.getStartTime().format(timeFormatter) + " - " + appt.getEndTime().format(timeFormatter),
+                    appt.getNotes() != null && !appt.getNotes().isBlank() ? appt.getNotes() : "N/A"
+            );
         }
 
         return appointmentRepository.save(appt);

@@ -60,7 +60,8 @@ public class AppointmentController {
     public ResponseEntity<Appointment> updateStatus(@PathVariable Long id,
                                                      @RequestBody Map<String, String> body) {
         Appointment.Status status = Appointment.Status.valueOf(body.get("status"));
-        return ResponseEntity.ok(appointmentService.updateStatus(id, status));
+        String reason = body.get("reason");
+        return ResponseEntity.ok(appointmentService.updateStatus(id, status, reason));
     }
 
     /** Update appointment time (for reschedule/delay) */

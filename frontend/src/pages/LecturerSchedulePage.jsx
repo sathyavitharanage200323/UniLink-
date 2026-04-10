@@ -552,11 +552,8 @@ export default function LecturerSchedulePage({ currentUser, onLogout }) {
   }, [currentUser]);
 
   const handleAction = async (appointmentId, newStatus, metadata = {}) => {
-    await api.patch(`/appointments/${appointmentId}/status`, { status: newStatus });
+    await api.patch(`/appointments/${appointmentId}/status`, { status: newStatus, ...metadata });
     
-    // Simulate email notification (in real app, backend would handle this)
-    console.log('Email notification sent:', { appointmentId, newStatus, metadata });
-
     // Refresh appointments
     await refreshAppointments();
   };

@@ -9,6 +9,29 @@ const DEBOUNCE_MS = 800;
 const MAX_AUDIO_MB = 12;
 const MAX_RECORD_SECONDS = 120;
 
+function getAudioExtensionFromMime(mime = '') {
+  const normalized = String(mime).toLowerCase();
+  if (normalized.includes('webm')) return 'webm';
+  if (normalized.includes('ogg')) return 'ogg';
+  if (normalized.includes('mp4') || normalized.includes('aac') || normalized.includes('m4a')) return 'm4a';
+  if (normalized.includes('mpeg') || normalized.includes('mp3')) return 'mp3';
+  if (normalized.includes('wav')) return 'wav';
+  return 'webm';
+}
+
+function pickRecordingMimeType() {
+  if (typeof MediaRecorder === 'undefined' || typeof MediaRecorder.isTypeSupported !== 'function') {
+    return '';
+  }
+  const candidates = [
+    'audio/webm;codecs=opus',
+    'audio/webm',
+    'audio/ogg;codecs=opus',
+    'audio/mp4',
+  ];
+  return candidates.find((m) => MediaRecorder.isTypeSupported(m)) || '';
+}
+
 /**
  * The message compose bar.
  * Supports: text, code mode, file / image upload, canned responses.
@@ -155,7 +178,7 @@ export default function ComposeBar({
     setUploading(true);
     try {
       const safeMime = mime || 'audio/webm';
-      const extension = safeMime.includes('mpeg') ? 'mp3' : 'webm';
+      const extension = getAudioExtensionFromMime(safeMime);
       const file = new File([blob], `voice-${Date.now()}.${extension}`, { type: safeMime });
       const res = await chatApi.uploadFile(file);
       const { fileUrl, fileName } = res.data;
@@ -233,7 +256,10 @@ export default function ComposeBar({
         clearAudioPreview();
       }
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const recorder = new MediaRecorder(stream);
+      const preferredMime = pickRecordingMimeType();
+      const recorder = preferredMime
+        ? new MediaRecorder(stream, { mimeType: preferredMime })
+        : new MediaRecorder(stream);
       const chunks = [];
 
       recorder.ondataavailable = (event) => {
@@ -255,7 +281,8 @@ export default function ComposeBar({
           return;
         }
 
-        const blob = new Blob(chunks, { type: chunks[0]?.type || 'audio/webm' });
+        const resolvedMime = recorder.mimeType || chunks[0]?.type || preferredMime || 'audio/webm';
+        const blob = new Blob(chunks, { type: resolvedMime });
         if (blob.size === 0) {
           toast.info('No audio captured.');
           setRecordSeconds(0);
@@ -271,16 +298,16 @@ export default function ComposeBar({
         }
         if (sendOnStopRef.current) {
           sendOnStopRef.current = false;
-          const ok = await uploadAndSendAudio(blob, blob.type || 'audio/webm');
+          const ok = await uploadAndSendAudio(blob, resolvedMime);
           if (!ok) {
-            setAudioPreview({ blob, url: URL.createObjectURL(blob), type: blob.type || 'audio/webm' });
+            setAudioPreview({ blob, url: URL.createObjectURL(blob), type: resolvedMime });
           }
           setRecordSeconds(0);
           recorderRef.current = null;
           return;
         }
 
-        setAudioPreview({ blob, url: URL.createObjectURL(blob), type: blob.type || 'audio/webm' });
+        setAudioPreview({ blob, url: URL.createObjectURL(blob), type: resolvedMime });
         setRecordSeconds(0);
         recorderRef.current = null;
       };

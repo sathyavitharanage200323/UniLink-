@@ -70,8 +70,10 @@ export default function LecturerHome({ currentUser, appointments = [], onLogout,
   }
 
   async function handleDecline(apptId) {
+    const reason = window.prompt('Reason for declining this appointment (optional):');
+    if (reason === null) return; // User cancelled the prompt
     try {
-      await api.patch(`/appointments/${apptId}/status`, { status: 'CANCELLED' });
+      await api.patch(`/appointments/${apptId}/status`, { status: 'CANCELLED', reason: reason });
       toast.success('Appointment declined.');
       const res = await api.get(`/appointments/lecturer/${currentUser.id}`);
       setLiveAppointments(res.data || []);
