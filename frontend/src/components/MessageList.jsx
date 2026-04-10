@@ -213,7 +213,9 @@ function AudioMessage({ msg }) {
 
   const guessAudioType = (nameOrUrl = '') => {
     const value = String(nameOrUrl).toLowerCase();
+    if (value.endsWith('.weba') || value.includes('.weba?')) return 'audio/webm';
     if (value.endsWith('.ogg') || value.includes('.ogg?')) return 'audio/ogg';
+    if (value.endsWith('.oga') || value.includes('.oga?')) return 'audio/ogg';
     if (value.endsWith('.mp3') || value.includes('.mp3?')) return 'audio/mpeg';
     if (value.endsWith('.wav') || value.includes('.wav?')) return 'audio/wav';
     if (value.endsWith('.m4a') || value.includes('.m4a?') || value.endsWith('.mp4') || value.includes('.mp4?')) return 'audio/mp4';

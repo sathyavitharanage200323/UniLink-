@@ -15,6 +15,7 @@ import ProfilePage from './pages/ProfilePage.jsx';
 import BookingPage from './pages/BookingPage.jsx';
 import LecturerSchedulePage from './pages/LecturerSchedulePage.jsx';
 import SlotCalendarPage from './pages/SlotCalendarPage.jsx';
+import NotificationsPage from './pages/NotificationsPage.jsx';
 import {
   getAllAppointments,
   getStudentAppointments,
@@ -95,6 +96,11 @@ function AppRoutes({ activeUser, appointments, onLogin, onLogout, onUserUpdate }
       <Route
         path="/profile"
         element={<ProfilePage currentUser={activeUser} onLogout={onLogout} onUserUpdate={onUserUpdate} />}
+      />
+
+      <Route
+        path="/notifications"
+        element={<NotificationsPage currentUser={activeUser} onLogout={onLogout} />}
       />
 
       <Route

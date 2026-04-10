@@ -23,7 +23,6 @@ import './Header.css';
  */
 export default function Header({ currentUser, onLogout, unreadCount = 0 }) {
   const [menuOpen, setMenuOpen] = useState(false);
-  const [notifOpen, setNotifOpen] = useState(false);
   const [liveUnreadCount, setLiveUnreadCount] = useState(null);
   const [chatNotifications, setChatNotifications] = useState([]);
   const [appointmentNotifications, setAppointmentNotifications] = useState([]);
@@ -52,20 +51,6 @@ export default function Header({ currentUser, onLogout, unreadCount = 0 }) {
 
   function close() { setMenuOpen(false); }
 
-  function formatRelativeWhen(dateValue) {
-    if (!dateValue) return 'Now';
-    const date = new Date(dateValue);
-    if (Number.isNaN(date.getTime())) return 'Now';
-
-    const diffMs = Date.now() - date.getTime();
-    const diffMin = Math.floor(diffMs / 60000);
-    if (diffMin < 1) return 'Just now';
-    if (diffMin < 60) return `${diffMin}m ago`;
-    const diffHr = Math.floor(diffMin / 60);
-    if (diffHr < 24) return `${diffHr}h ago`;
-    return date.toLocaleDateString();
-  }
-
   function parseAppointmentTime(appointment) {
     if (!appointment?.startTime) return null;
     const date = new Date(appointment.startTime);
@@ -78,6 +63,7 @@ export default function Header({ currentUser, onLogout, unreadCount = 0 }) {
       title,
       meta,
       route,
+      type: 'appointment',
       time: Date.now(),
     };
   }
@@ -125,6 +111,7 @@ export default function Header({ currentUser, onLogout, unreadCount = 0 }) {
             title: isLecturer ? (r.studentName || 'Student') : (r.lecturerName || 'Lecturer'),
             meta: `${r.roomType === 'DIRECT' ? 'Direct message' : `Session #${r.appointmentId}`} · ${r.unread} unread`,
             route: '/chat',
+            type: 'chat',
             time: Date.now(),
           }));
 
@@ -278,6 +265,9 @@ export default function Header({ currentUser, onLogout, unreadCount = 0 }) {
       .sort((a, b) => (b.time || 0) - (a.time || 0));
   }, [appointmentNotifications, chatNotifications, notificationsEnabled]);
 
+  const notificationTotal = notificationsEnabled ? allNotifications.length : 0;
+  const notificationBadge = notificationTotal > 99 ? '99+' : String(notificationTotal);
+
   return (
     <header className={`header ${isLecturer ? 'header--lecturer' : 'header--student'}`}>
       <div className="header__inner">
@@ -306,6 +296,12 @@ export default function Header({ currentUser, onLogout, unreadCount = 0 }) {
               <span className="header__nav-badge">{effectiveUnreadCount}</span>
             )}
           </Link>
+          <Link to="/notifications" className="header__nav-link" onClick={close}>
+            <Bell size={15} /><span>Notifications</span>
+            {notificationTotal > 0 && (
+              <span className="header__nav-badge">{notificationBadge}</span>
+            )}
+          </Link>
           <Link to={bugRoute} className="header__nav-link" onClick={close}>
             <Bug size={15} /><span>Reports</span>
           </Link>
@@ -318,38 +314,17 @@ export default function Header({ currentUser, onLogout, unreadCount = 0 }) {
         <div className="header__right">
           {/* Notifications */}
           <button
-            className="header__icon-btn"
+            className={`header__icon-btn ${hasAnyNotifications ? 'header__icon-btn--active' : ''}`}
             title="Notifications"
             aria-label="Notifications"
-            onClick={() => setNotifOpen((v) => !v)}
+            onClick={() => navigate('/notifications')}
           >
             <Bell size={19} />
             {hasAnyNotifications && <span className="header__notif-dot" />}
+            {notificationTotal > 0 && (
+              <span className="header__notif-count">{notificationBadge}</span>
+            )}
           </button>
-          {notifOpen && (
-            <div className="header__notif-panel">
-              <div className="header__notif-title">Notifications ({allNotifications.length})</div>
-              {!notificationsEnabled ? (
-                <div className="header__notif-empty">Notifications are disabled in your profile settings.</div>
-              ) : allNotifications.length === 0 ? (
-                <div className="header__notif-empty">No new notifications</div>
-              ) : (
-                allNotifications.map((n) => (
-                  <button
-                    key={n.id}
-                    className="header__notif-item"
-                    onClick={() => {
-                      setNotifOpen(false);
-                      navigate(n.route || '/appointments');
-                    }}
-                  >
-                    <div className="header__notif-item-name">{n.title}</div>
-                    <div className="header__notif-item-meta">{n.meta} · {formatRelativeWhen(n.time)}</div>
-                  </button>
-                ))
-              )}
-            </div>
-          )}
 
           {/* User chip */}
           <button className="header__user-chip" onClick={() => navigate('/profile')} title="Profile">
