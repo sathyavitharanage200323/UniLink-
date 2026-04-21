@@ -9,12 +9,19 @@ import com.example.backend.repository.AvailabilitySlotRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -153,6 +160,35 @@ public class AppointmentService {
         Appointment appt = getById(id);
         releaseSlotForAppointment(appt);
         appointmentRepository.delete(appt);
+    }
+
+    @Transactional
+    public Appointment uploadAttachments(Long id, MultipartFile image, MultipartFile document) {
+        Appointment appt = getById(id);
+        String uploadDir = "uploads/";
+        try {
+            Path uploadPath = Paths.get(uploadDir);
+            if (!Files.exists(uploadPath)) Files.createDirectories(uploadPath);
+
+            if (image != null && !image.isEmpty()) {
+                String safeName = Paths.get(image.getOriginalFilename() != null ? image.getOriginalFilename() : "image")
+                        .getFileName().toString().replaceAll("[^a-zA-Z0-9._-]", "_");
+                String uniqueName = UUID.randomUUID() + "_" + safeName;
+                Files.copy(image.getInputStream(), uploadPath.resolve(uniqueName), StandardCopyOption.REPLACE_EXISTING);
+                appt.setImagePath(uniqueName);
+            }
+
+            if (document != null && !document.isEmpty()) {
+                String safeName = Paths.get(document.getOriginalFilename() != null ? document.getOriginalFilename() : "document")
+                        .getFileName().toString().replaceAll("[^a-zA-Z0-9._-]", "_");
+                String uniqueName = UUID.randomUUID() + "_" + safeName;
+                Files.copy(document.getInputStream(), uploadPath.resolve(uniqueName), StandardCopyOption.REPLACE_EXISTING);
+                appt.setDocumentPath(uniqueName);
+            }
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to upload attachment: " + e.getMessage());
+        }
+        return appointmentRepository.save(appt);
     }
 
     private void validateTimeRange(LocalDateTime startTime, LocalDateTime endTime) {

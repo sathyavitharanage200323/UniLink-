@@ -130,7 +130,7 @@ export function ProfilePage({ currentUser, onLogout, onUserUpdate }) {
 	const isLecturer = currentUser?.role === 'LECTURER';
 	const isStudent = currentUser?.role === 'STUDENT';
 	const [profileImagePreview, setProfileImagePreview] = useState(
-		currentUser?.profileImage ? `http://localhost:9090/uploads/${currentUser.profileImage}` : null
+		currentUser?.profileImage ? `http://localhost:8082/uploads/${currentUser.profileImage}` : null
 	);
 	const [uploadingImage, setUploadingImage] = useState(false);
 

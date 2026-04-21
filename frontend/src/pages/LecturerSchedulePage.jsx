@@ -262,7 +262,7 @@ function AppointmentCard({ appointment, onAction, isExpanded, onToggle, onRefres
               <h4 className="lsp-card__section-title">Uploaded Image</h4>
               <div className="lsp-card__image-container">
                 <img 
-                  src={`http://localhost:9090/uploads/${appointment.imagePath}`}
+                  src={`http://localhost:8082/uploads/${appointment.imagePath}`}
                   alt="Student uploaded"
                   className="lsp-card__image"
                   onError={(e) => {
@@ -282,7 +282,7 @@ function AppointmentCard({ appointment, onAction, isExpanded, onToggle, onRefres
             <div className="lsp-card__section">
               <h4 className="lsp-card__section-title">Attached Document</h4>
               <a 
-                href={`http://localhost:9090/uploads/${appointment.documentPath}`}
+                href={`http://localhost:8082/uploads/${appointment.documentPath}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="lsp-card__document-link"

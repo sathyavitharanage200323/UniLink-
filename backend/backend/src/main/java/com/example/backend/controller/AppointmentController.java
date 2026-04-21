@@ -85,4 +85,13 @@ public class AppointmentController {
         appointmentService.delete(id);
         return ResponseEntity.noContent().build();
     }
+
+    /** Upload image/document attachments for an appointment */
+    @PatchMapping("/{id}/attachments")
+    public ResponseEntity<Appointment> uploadAttachments(
+            @PathVariable Long id,
+            @RequestParam(value = "image", required = false) org.springframework.web.multipart.MultipartFile image,
+            @RequestParam(value = "document", required = false) org.springframework.web.multipart.MultipartFile document) {
+        return ResponseEntity.ok(appointmentService.uploadAttachments(id, image, document));
+    }
 }

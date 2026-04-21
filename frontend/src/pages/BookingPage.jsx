@@ -385,6 +385,21 @@ export default function BookingPage({ currentUser, onLogout }) {
         notes: `[${formData.academicYear} ${formData.semester}${formData.isHighPriority ? ' | HIGH PRIORITY' : ''}] ${formData.reason}`,
       });
 
+      // Upload attachments if any were selected
+      if (formData.image || formData.document) {
+        setLoadingMsg('Uploading attachments...');
+        const newAppts = await api.get(`/appointments/student/${user.id}`);
+        const latest = newAppts.data?.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))[0];
+        if (latest?.id) {
+          const fd = new FormData();
+          if (formData.image) fd.append('image', formData.image);
+          if (formData.document) fd.append('document', formData.document);
+          await api.patch(`/appointments/${latest.id}/attachments`, fd, {
+            headers: { 'Content-Type': 'multipart/form-data' },
+          });
+        }
+      }
+
       // Optimistic: mark slot as taken locally
       setSlots(prev => prev.map(s => String(s.id) === String(selectedSlot.id) ? { ...s, status: 'PENDING' } : s));
       setSelectedSlotId('');
@@ -425,15 +440,7 @@ export default function BookingPage({ currentUser, onLogout }) {
                 onClick={() => setSelectedLecturer(lec)}
               >
                 <div className="bp-lecturer-avatar">
-                  {lec.profileImage ? (
-                    <img
-                      src={`http://localhost:9090/uploads/${lec.profileImage}`}
-                      alt={lec.name}
-                      style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }}
-                      onError={e => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }}
-                    />
-                  ) : null}
-                  <span style={{ display: lec.profileImage ? 'none' : 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%' }}>
+                  <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%' }}>
                     {lec.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
                   </span>
                 </div>

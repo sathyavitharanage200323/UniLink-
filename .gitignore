@@ -1,0 +1,58 @@
+# ── OS & Editor ──────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+
+# ── IDE ──────────────────────────────────────────────────────
+.idea/
+.vscode/
+*.iml
+*.iws
+*.ipr
+
+# ── Logs ─────────────────────────────────────────────────────
+*.log
+*.log.*
+
+# ── Patch / temp / scratch files ─────────────────────────────
+*.patch
+*.rej
+*.old
+*.bak
+*.tmp
+*.temp
+temp*.js
+temp*.jsx
+temp*.txt
+patch_*.js
+clean_*.js
+update_*.js
+rewrite_*.js
+test_*.js
+test*.js
+*.old.jsx
+
+# ── Archives ─────────────────────────────────────────────────
+*.zip
+*.tar.gz
+*.rar
+
+# ── Backend (Maven / Spring Boot) ────────────────────────────
+backend/backend/target/
+backend/backend/uploads/
+backend/backend/.mvn/wrapper/maven-wrapper.jar
+!backend/backend/**/src/main/**/target/
+!backend/backend/**/src/test/**/target/
+
+# ── Frontend (Node / React) ──────────────────────────────────
+frontend/node_modules/
+frontend/build/
+frontend/coverage/
+frontend/.env.local
+frontend/.env.development.local
+frontend/.env.test.local
+frontend/.env.production.local
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*

@@ -40,6 +40,22 @@ public class Appointment {
     @Column(length = 500)
     private String notes;
 
+    // Extended fields present in DB from previous version
+    @Column(name = "document_path", length = 255)
+    private String documentPath;
+
+    @Column(name = "image_path", length = 255)
+    private String imagePath;
+
+    @Column(name = "phone_number", length = 20)
+    private String phoneNumber;
+
+    @Column(name = "rescheduled_at")
+    private LocalDateTime rescheduledAt;
+
+    @Column(name = "reschedule_reason", length = 500)
+    private String rescheduleReason;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 

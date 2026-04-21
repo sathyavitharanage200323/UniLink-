@@ -52,6 +52,13 @@ public class User {
     @Column(name = "notifications_enabled", nullable = false)
     private boolean notificationEnabled = true;
 
+    // Profile image fields present in DB from previous version
+    @Column(name = "profile_image_url", length = 500)
+    private String profileImageUrl;
+
+    @Column(name = "profile_image", length = 255)
+    private String profileImage;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
