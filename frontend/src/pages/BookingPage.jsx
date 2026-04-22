@@ -2,286 +2,458 @@
 import { useNavigate } from 'react-router-dom';
 import api from '../api/axiosInstance';
 import { createAppointment } from '../api';
-import { ArrowLeft, Zap, Clock, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
+import {
+  ArrowLeft, ArrowRight, Zap, Clock, CheckCircle, AlertCircle,
+  Loader2, User, MapPin, Calendar
+} from 'lucide-react';
 import Header from '../components/Header';
 import './BookingPage.css';
 
-const IT_REGEX = /^IT\d{8}$/;
+const IT_REGEX = /^IT\d{8}$/i;
+const IT_EMAIL_REGEX = /^it\d{8}@my\.sliit\.lk$/i;
+const PHONE_REGEX = /^(\+94|0)[0-9]{9}$/;
 const MAX_REASON = 300;
+const BACKEND = 'http://localhost:8082';
 
-/* â”€â”€â”€ AvailabilityGrid â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
-function AvailabilityGrid({ slots, selectedSlot, onSelect }) {
-  const grouped = slots.reduce((acc, slot) => {
-    if (!slot.slotDate) return acc;
-    const dateValue = new Date(slot.slotDate);
-    if (Number.isNaN(dateValue.getTime())) return acc;
-    const key = slot.slotDate;
-    if (!acc[key]) acc[key] = [];
-    acc[key].push(slot);
-    return acc;
-  }, {});
+/* ── helpers ─────────────────────────────────────────────────────────── */
+function fmtTime(t = '00:00') {
+  const [h, m] = t.substring(0, 5).split(':');
+  const hr = parseInt(h);
+  return `${hr > 12 ? hr - 12 : hr || 12}:${m} ${hr >= 12 ? 'PM' : 'AM'}`;
+}
+function fmtRange(s, e) { return `${fmtTime(s)} – ${fmtTime(e)}`; }
+function fmtDate(d) {
+  return new Date(d).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+}
+function initials(name = '') {
+  return name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
+}
 
-  const orderedDates = Object.keys(grouped).sort();
-
+/* ── Step indicator ──────────────────────────────────────────────────── */
+function StepBar({ step }) {
+  const steps = ['Select Lecturer', 'Choose Slot', 'Book'];
   return (
-    <div className="bp-sidebar">
-      <div className="bp-sidebar__header">
-        <h2 className="bp-sidebar__title">Availability</h2>
-        <p className="bp-sidebar__sub">Select a time slot</p>
-      </div>
-      <div className="bp-sidebar__scroll">
-        {orderedDates.map((dateKey) => {
-          const daySlots = grouped[dateKey]
-            .slice()
-            .sort((a, b) => a.startTime.localeCompare(b.startTime));
-
-          const label = new Date(dateKey).toLocaleDateString('en-US', {
-            weekday: 'long',
-            month: 'short',
-            day: 'numeric',
-          });
-
-          return (
-            <div key={dateKey} className="bp-day-group">
-              <div className="bp-day-label">{label}</div>
-              {daySlots.map((slot) => {
-                const isTaken = slot.status !== 'AVAILABLE';
-                const isSelected = String(selectedSlot?.id) === String(slot.id);
-                return (
-                  <div
-                    key={slot.id}
-                    className={`bp-slot${isSelected ? ' bp-slot--selected' : ''}${isTaken ? ' bp-slot--taken' : ''}`}
-                    onClick={() => !isTaken && onSelect(slot.id)}
-                    title={isTaken ? 'This slot is already taken' : slot.time}
-                  >
-                    <div className="bp-slot__row">
-                      <span className="bp-slot__time">
-                        <Clock size={13} style={{ marginRight: 5, flexShrink: 0 }} />
-                        {slot.time}
-                      </span>
-                      {isTaken
-                        ? <span className="bp-slot__badge bp-slot__badge--taken">Taken</span>
-                        : isSelected
-                          ? <span className="bp-slot__badge bp-slot__badge--selected"><CheckCircle size={11} /> Selected</span>
-                          : <span className="bp-slot__badge bp-slot__badge--open">Open</span>
-                      }
-                    </div>
-                  </div>
-                );
-              })}
+    <div className="bp-stepbar">
+      {steps.map((label, i) => (
+        <React.Fragment key={i}>
+          <div className={`bp-step ${step === i + 1 ? 'bp-step--active' : step > i + 1 ? 'bp-step--done' : ''}`}>
+            <div className="bp-step__circle">
+              {step > i + 1 ? <CheckCircle size={14} /> : i + 1}
             </div>
+            <span className="bp-step__label">{label}</span>
+          </div>
+          {i < steps.length - 1 && <div className={`bp-step__line ${step > i + 1 ? 'bp-step__line--done' : ''}`} />}
+        </React.Fragment>
+      ))}
+    </div>
+  );
+}
+
+/* ── Lecturer avatar ─────────────────────────────────────────────────── */
+function LecturerAvatar({ lec, size = 48 }) {
+  const [imgErr, setImgErr] = useState(false);
+  const src = lec.profileImage
+    ? `${BACKEND}/uploads/${lec.profileImage}`
+    : lec.profileImageUrl || null;
+
+  if (src && !imgErr) {
+    return (
+      <img
+        src={src}
+        alt={lec.name}
+        onError={() => setImgErr(true)}
+        style={{ width: size, height: size, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }}
+      />
+    );
+  }
+  return (
+    <div className="bp-avatar" style={{ width: size, height: size, fontSize: size * 0.32 }}>
+      {initials(lec.name)}
+    </div>
+  );
+}
+
+/* ── Step 1 — Select Lecturer ────────────────────────────────────────── */
+function StepLecturer({ lecturers, selected, onSelect, onNext }) {
+  return (
+    <div className="bp-step-panel">
+      <h2 className="bp-panel-title">Choose a Lecturer</h2>
+      <p className="bp-panel-sub">Select the lecturer you want to book a consultation with</p>
+
+      <div className="bp-lec-grid">
+        {lecturers.map(lec => {
+          const active = selected?.id === lec.id;
+          return (
+            <button
+              key={lec.id}
+              className={`bp-lec-card ${active ? 'bp-lec-card--active' : ''}`}
+              onClick={() => onSelect(lec)}
+            >
+              <LecturerAvatar lec={lec} size={64} />
+              <div className="bp-lec-card__body">
+                <div className="bp-lec-card__name">{lec.name}</div>
+                <div className="bp-lec-card__dept">{lec.department}</div>
+                {lec.expertise && (
+                  <div className="bp-lec-card__exp">{lec.expertise}</div>
+                )}
+                {lec.officeLocation && (
+                  <div className="bp-lec-card__meta">
+                    <MapPin size={11} /> {lec.officeLocation}
+                  </div>
+                )}
+                {lec.officeHours && (
+                  <div className="bp-lec-card__meta">
+                    <Clock size={11} /> {lec.officeHours}
+                  </div>
+                )}
+              </div>
+              {active && <CheckCircle size={20} className="bp-lec-card__check" />}
+            </button>
           );
         })}
-        {slots.length === 0 && (
-          <div className="bp-empty-slots">No slots available for this lecturer.</div>
+        {lecturers.length === 0 && (
+          <p style={{ color: '#94a3b8', gridColumn: '1/-1', textAlign: 'center', padding: 32 }}>
+            No lecturers found.
+          </p>
         )}
+      </div>
+
+      <div className="bp-step-footer">
+        <button className="bp-btn-next" disabled={!selected} onClick={onNext}>
+          Continue <ArrowRight size={16} />
+        </button>
       </div>
     </div>
   );
 }
 
-/* â”€â”€â”€ BookingForm â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
-function BookingForm({ formData, onChange, onConfirm, isValid, loading, loadingMsg, selectedSlot }) {
-  const itValid = IT_REGEX.test(formData.itNumber);
-  const reasonLen = formData.reason.length;
+/* ── Step 2 — Select Slot ────────────────────────────────────────────── */
+function StepSlot({ lecturer, slots, slotsLoading, selectedSlotId, onSelect, onBack, onNext }) {
+  const grouped = slots.reduce((acc, slot) => {
+    const key = slot.slotDate;
+    if (!acc[key]) acc[key] = [];
+    acc[key].push(slot);
+    return acc;
+  }, {});
+  const dates = Object.keys(grouped).sort();
+  const selectedSlot = slots.find(s => String(s.id) === String(selectedSlotId));
 
   return (
-    <div className="bp-form-card">
-      <div className="bp-form-card__top">
-        <h1 className="bp-form-card__title">Log Consultation Request</h1>
-        {formData.isHighPriority && (
-          <span className="bp-priority-badge">
-            <Zap size={13} /> HIGH PRIORITY â€” Final Year Student
-          </span>
-        )}
-        {selectedSlot && (
-          <div className="bp-selected-slot-info">
-            <CheckCircle size={14} style={{ color: '#16a34a' }} />
-            <span>Slot selected: <strong>{selectedSlot.time}</strong> ({selectedSlot.day})</span>
-          </div>
-        )}
-      </div>
-
-      {/* Name */}
-      <div className="bp-field">
-        <label className="bp-label">Full Name</label>
-        <input
-          className="bp-input"
-          value={formData.studentName}
-          onChange={e => onChange('studentName', e.target.value)}
-          placeholder="e.g. John Doe"
-        />
-      </div>
-
-      {/* IT Number */}
-      <div className="bp-field">
-        <label className="bp-label">IT Number</label>
-        <div style={{ position: 'relative' }}>
-          <input
-            className={`bp-input${formData.itNumber && !itValid ? ' bp-input--error' : ''}`}
-            value={formData.itNumber}
-            onChange={e => onChange('itNumber', e.target.value)}
-            placeholder="IT21000000"
-          />
-          {formData.itNumber && (
-            <span className="bp-input-icon">
-              {itValid
-                ? <CheckCircle size={16} style={{ color: '#16a34a' }} />
-                : <AlertCircle size={16} style={{ color: '#ef4444' }} />}
-            </span>
-          )}
+    <div className="bp-step-panel">
+      {/* Lecturer banner */}
+      <div className="bp-lec-banner">
+        <LecturerAvatar lec={lecturer} size={52} />
+        <div>
+          <div className="bp-lec-banner__name">{lecturer.name}</div>
+          <div className="bp-lec-banner__dept">{lecturer.department}</div>
         </div>
-        {formData.itNumber && !itValid && (
-          <p className="bp-field-hint bp-field-hint--error">Format: IT + 8 digits (e.g. IT21000000)</p>
+      </div>
+
+      <h2 className="bp-panel-title" style={{ marginTop: 20 }}>Pick a Time Slot</h2>
+      <p className="bp-panel-sub">All times are in local time. Green = available.</p>
+
+      {slotsLoading ? (
+        <div className="bp-slots-loading"><Loader2 size={28} className="bp-spin" /> Loading slots…</div>
+      ) : dates.length === 0 ? (
+        <div className="bp-slots-empty">
+          <Calendar size={40} style={{ color: '#cbd5e1', marginBottom: 8 }} />
+          <p>No available slots for this lecturer right now.</p>
+        </div>
+      ) : (
+        <div className="bp-slots-scroll">
+          {dates.map(dateKey => {
+            const daySlots = grouped[dateKey].slice().sort((a, b) => a.startTime.localeCompare(b.startTime));
+            return (
+              <div key={dateKey} className="bp-date-group">
+                <div className="bp-date-label">
+                  <Calendar size={13} /> {fmtDate(dateKey)}
+                </div>
+                <div className="bp-slots-row">
+                  {daySlots.map(slot => {
+                    const taken = slot.status !== 'AVAILABLE';
+                    const sel = String(selectedSlotId) === String(slot.id);
+                    return (
+                      <button
+                        key={slot.id}
+                        className={`bp-slot-pill ${sel ? 'bp-slot-pill--sel' : ''} ${taken ? 'bp-slot-pill--taken' : ''}`}
+                        onClick={() => !taken && onSelect(String(slot.id))}
+                        disabled={taken}
+                      >
+                        <Clock size={12} />
+                        {slot.time}
+                        {slot.mode && <span className="bp-slot-mode">{slot.mode}</span>}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      <div className="bp-step-footer">
+        <button className="bp-btn-back" onClick={onBack}><ArrowLeft size={15} /> Back</button>
+        <button className="bp-btn-next" disabled={!selectedSlot} onClick={onNext}>
+          Continue <ArrowRight size={16} />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/* ── Step 3 — Booking Form ───────────────────────────────────────────── */
+function StepForm({ lecturer, selectedSlot, formData, onChange, onConfirm, onBack, loading, loadingMsg }) {
+  const itNum       = formData.itNumber.trim().toUpperCase();
+  const itValid     = IT_REGEX.test(itNum);
+  const itEmail     = formData.itEmail.trim().toLowerCase();
+  const itEmailAuto = itValid ? `${itNum.toLowerCase()}@my.sliit.lk` : '';
+  const itEmailValid = IT_EMAIL_REGEX.test(itEmail);
+  const itEmailMatch = itEmail === itEmailAuto;
+  const phoneValid  = PHONE_REGEX.test(formData.phoneNumber.trim());
+  const nameValid   = formData.studentName.trim().length > 2;
+  const reasonLen   = formData.reason.length;
+  const reasonValid = reasonLen > 10 && reasonLen <= MAX_REASON;
+
+  const isValid = nameValid && itValid && itEmailValid && itEmailMatch &&
+    formData.academicYear && formData.semester && phoneValid && reasonValid;
+
+  // Auto-fill IT email when IT number becomes valid
+  const handleItChange = (val) => {
+    onChange('itNumber', val);
+    const upper = val.trim().toUpperCase();
+    if (IT_REGEX.test(upper)) {
+      onChange('itEmail', `${upper.toLowerCase()}@my.sliit.lk`);
+    }
+  };
+
+  const Field = ({ label, hint, children, error }) => (
+    <div className="apf-field">
+      <label className="apf-label">{label}</label>
+      {children}
+      {hint && !error && <p className="apf-hint">{hint}</p>}
+      {error && <p className="apf-hint apf-hint--err">{error}</p>}
+    </div>
+  );
+
+  return (
+    <div className="apf-wrap">
+      {/* Lecturer + slot summary */}
+      <div className="apf-summary">
+        <div className="apf-summary__lec">
+          <LecturerAvatar lec={lecturer} size={42} />
+          <div>
+            <div className="apf-summary__name">{lecturer.name}</div>
+            <div className="apf-summary__dept">{lecturer.department}</div>
+          </div>
+        </div>
+        <div className="apf-summary__divider" />
+        <div className="apf-summary__slot">
+          <Clock size={14} className="apf-summary__slot-icon" />
+          <div>
+            <div className="apf-summary__time">{selectedSlot.time}</div>
+            <div className="apf-summary__date">{fmtDate(selectedSlot.slotDate)}</div>
+            {selectedSlot.mode && (
+              <div className="apf-summary__mode">
+                {selectedSlot.mode === 'Online'
+                  ? <><span className="apf-mode-dot apf-mode-dot--online" />Online</>
+                  : <><span className="apf-mode-dot apf-mode-dot--physical" />Physical</>}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <div className="apf-title-row">
+        <h2 className="apf-title">Consultation Request</h2>
+        {formData.isHighPriority && (
+          <span className="apf-priority"><Zap size={12} /> Final Year · High Priority</span>
         )}
       </div>
 
-      {/* Year + Semester */}
-      <div className="bp-row-2">
-        <div className="bp-field">
-          <label className="bp-label">Academic Year</label>
-          <select
-            className="bp-select"
-            value={formData.academicYear}
-            onChange={e => onChange('academicYear', e.target.value)}
-          >
+      <div className="apf-grid">
+        {/* Full Name */}
+        <Field label="Full Name" error={formData.studentName && !nameValid ? 'Name must be at least 3 characters' : ''}>
+          <div className="apf-input-wrap">
+            <User size={15} className="apf-input-icon" />
+            <input className="apf-input apf-input--icon"
+              value={formData.studentName}
+              onChange={e => onChange('studentName', e.target.value)}
+              placeholder="e.g. Sathya Kumari" />
+            {nameValid && <CheckCircle size={15} className="apf-input-check" />}
+          </div>
+        </Field>
+
+        {/* IT Number */}
+        <Field label="IT Number"
+          hint="Format: IT + 8 digits (e.g. IT23761650)"
+          error={formData.itNumber && !itValid ? 'Invalid format — use IT + 8 digits' : ''}>
+          <div className="apf-input-wrap">
+            <span className="apf-input-prefix">IT</span>
+            <input className="apf-input apf-input--prefix"
+              value={formData.itNumber.replace(/^IT/i, '')}
+              onChange={e => handleItChange('IT' + e.target.value.replace(/\D/g, '').slice(0, 8))}
+              placeholder="23761650"
+              maxLength={8} />
+            {formData.itNumber && (
+              itValid
+                ? <CheckCircle size={15} className="apf-input-check" />
+                : <AlertCircle size={15} className="apf-input-err-icon" />
+            )}
+          </div>
+        </Field>
+
+        {/* IT Email */}
+        <Field label="IT Email Address"
+          hint={itEmailAuto ? `Expected: ${itEmailAuto}` : 'Enter your SLIIT IT email'}
+          error={itEmail && !itEmailValid ? 'Must be format: itXXXXXXXX@my.sliit.lk'
+               : itEmail && itEmailValid && !itEmailMatch ? `Must match your IT number: ${itEmailAuto}`
+               : ''}>
+          <div className="apf-input-wrap">
+            <span className="apf-input-prefix" style={{ fontSize: '0.7rem', letterSpacing: 0 }}>@</span>
+            <input className={`apf-input apf-input--prefix${itEmail && (!itEmailValid || !itEmailMatch) ? ' apf-input--error' : ''}`}
+              value={formData.itEmail}
+              onChange={e => onChange('itEmail', e.target.value.toLowerCase())}
+              placeholder="it23761650@my.sliit.lk"
+              type="email" />
+            {itEmail && itEmailValid && itEmailMatch && <CheckCircle size={15} className="apf-input-check" />}
+            {itEmail && (!itEmailValid || !itEmailMatch) && <AlertCircle size={15} className="apf-input-err-icon" />}
+          </div>
+        </Field>
+
+        {/* Phone */}
+        <Field label="Phone Number"
+          hint="Sri Lanka format: 07X XXXXXXX or +94 7X XXXXXXX"
+          error={formData.phoneNumber && !phoneValid ? 'Enter a valid Sri Lanka phone number' : ''}>
+          <div className="apf-input-wrap">
+            <span className="apf-input-prefix">📞</span>
+            <input className="apf-input apf-input--prefix"
+              type="tel" value={formData.phoneNumber}
+              onChange={e => onChange('phoneNumber', e.target.value)}
+              placeholder="0771234567" />
+            {formData.phoneNumber && phoneValid && <CheckCircle size={15} className="apf-input-check" />}
+          </div>
+        </Field>
+
+        {/* Academic Year */}
+        <Field label="Academic Year">
+          <select className="apf-select" value={formData.academicYear}
+            onChange={e => onChange('academicYear', e.target.value)}>
             <option value="">Select Year</option>
             <option value="Year 1">1st Year</option>
             <option value="Year 2">2nd Year</option>
             <option value="Year 3">3rd Year</option>
             <option value="Year 4">4th Year</option>
           </select>
-        </div>
-        <div className="bp-field">
-          <label className="bp-label">Semester</label>
-          <select
-            className="bp-select"
-            value={formData.semester}
-            onChange={e => onChange('semester', e.target.value)}
-          >
+        </Field>
+
+        {/* Semester */}
+        <Field label="Semester">
+          <select className="apf-select" value={formData.semester}
+            onChange={e => onChange('semester', e.target.value)}>
             <option value="">Select Semester</option>
             <option value="Semester 1">Semester 1</option>
             <option value="Semester 2">Semester 2</option>
           </select>
-        </div>
-      </div>
+        </Field>
 
-      {/* Reason */}
-      <div className="bp-field">
-        <div className="bp-label-row">
-          <label className="bp-label">Reason for Meeting</label>
-          <span className={`bp-char-count${reasonLen > MAX_REASON ? ' bp-char-count--over' : ''}`}>
-            {reasonLen}/{MAX_REASON}
-          </span>
-        </div>
-        <textarea
-          className="bp-textarea"
-          rows={4}
-          maxLength={MAX_REASON}
-          value={formData.reason}
-          onChange={e => onChange('reason', e.target.value)}
-          placeholder="Describe your query in detail..."
-        />
-      </div>
-
-      {/* Phone Number */}
-      <div className="bp-field">
-        <label className="bp-label">Phone Number</label>
-        <input
-          className="bp-input"
-          type="tel"
-          value={formData.phoneNumber}
-          onChange={e => onChange('phoneNumber', e.target.value)}
-          placeholder="e.g. +94771234567"
-        />
-      </div>
-
-      {/* Image Upload */}
-      <div className="bp-field">
-        <label className="bp-label">Upload Image (Optional)</label>
-        <div className="bp-file-input-wrapper">
-          <input
-            type="file"
-            accept="image/*"
-            onChange={e => onChange('image', e.target.files?.[0] || null)}
-            className="bp-file-input"
-            id="image-upload"
-          />
-          <label htmlFor="image-upload" className="bp-file-label">
-            {formData.image ? `✓ ${formData.image.name}` : 'Choose image (JPEG, PNG, GIF, WebP)'}
-          </label>
-          {formData.image && (
-            <p className="bp-file-hint">Size: {(formData.image.size / 1024 / 1024).toFixed(2)} MB</p>
+        {/* Reason */}
+        <div className="apf-field apf-field--full">
+          <div className="apf-label-row">
+            <label className="apf-label">Reason for Meeting</label>
+            <span className={`apf-count${reasonLen > MAX_REASON ? ' apf-count--over' : ''}`}>{reasonLen}/{MAX_REASON}</span>
+          </div>
+          <textarea className="apf-textarea" rows={4} maxLength={MAX_REASON}
+            value={formData.reason} onChange={e => onChange('reason', e.target.value)}
+            placeholder="Describe your query in detail…" />
+          {formData.reason && !reasonValid && reasonLen <= 10 && (
+            <p className="apf-hint apf-hint--err">Please provide more detail (min 10 characters)</p>
           )}
         </div>
-      </div>
 
-      {/* Document Upload */}
-      <div className="bp-field">
-        <label className="bp-label">Upload Document (Optional)</label>
-        <div className="bp-file-input-wrapper">
-          <input
-            type="file"
-            accept=".pdf,.doc,.docx,.xls,.xlsx"
-            onChange={e => onChange('document', e.target.files?.[0] || null)}
-            className="bp-file-input"
-            id="document-upload"
-          />
-          <label htmlFor="document-upload" className="bp-file-label">
-            {formData.document ? `✓ ${formData.document.name}` : 'Choose document (PDF, DOC, XLS - Max 15MB)'}
+        {/* Image upload */}
+        <div className="apf-field">
+          <label className="apf-label">Upload Image <span className="apf-optional">Optional</span></label>
+          <input type="file" accept="image/*" id="apf-img" className="apf-file-hidden"
+            onChange={e => onChange('image', e.target.files?.[0] || null)} />
+          <label htmlFor="apf-img" className={`apf-file-btn${formData.image ? ' apf-file-btn--filled' : ''}`}>
+            {formData.image ? <>✓ {formData.image.name} <span className="apf-file-size">({(formData.image.size/1024/1024).toFixed(1)}MB)</span></> : '📷  Choose image (JPEG, PNG, WebP)'}
           </label>
-          {formData.document && (
-            <p className="bp-file-hint">Size: {(formData.document.size / 1024 / 1024).toFixed(2)} MB</p>
-          )}
+        </div>
+
+        {/* Document upload */}
+        <div className="apf-field">
+          <label className="apf-label">Upload Document <span className="apf-optional">Optional</span></label>
+          <input type="file" accept=".pdf,.doc,.docx,.xls,.xlsx" id="apf-doc" className="apf-file-hidden"
+            onChange={e => onChange('document', e.target.files?.[0] || null)} />
+          <label htmlFor="apf-doc" className={`apf-file-btn${formData.document ? ' apf-file-btn--filled' : ''}`}>
+            {formData.document ? <>✓ {formData.document.name} <span className="apf-file-size">({(formData.document.size/1024/1024).toFixed(1)}MB)</span></> : '📄  Choose document (PDF, DOC, XLS)'}
+          </label>
         </div>
       </div>
 
-      <button
-        className="bp-confirm-btn"
-        disabled={!isValid || loading}
-        onClick={onConfirm}
-      >
-        {loading
-          ? <><Loader2 size={16} className="bp-spin" /> {loadingMsg}</>
-          : 'Confirm Appointment'}
-      </button>
+      {/* Validation summary */}
+      {!isValid && (formData.studentName || formData.itNumber) && (
+        <div className="apf-validation-summary">
+          {!nameValid && formData.studentName && <span>• Full name required</span>}
+          {!itValid && formData.itNumber && <span>• Valid IT number required</span>}
+          {itValid && (!itEmailValid || !itEmailMatch) && itEmail && <span>• IT email must match your IT number</span>}
+          {!phoneValid && formData.phoneNumber && <span>• Valid phone number required</span>}
+          {!formData.academicYear && <span>• Select academic year</span>}
+          {!formData.semester && <span>• Select semester</span>}
+          {!reasonValid && formData.reason && <span>• Reason must be 10–300 characters</span>}
+        </div>
+      )}
+
+      <div className="apf-footer">
+        <button className="apf-btn-back" onClick={onBack} disabled={loading}>
+          <ArrowLeft size={15} /> Back
+        </button>
+        <button className="apf-btn-confirm" disabled={!isValid || loading} onClick={onConfirm}>
+          {loading
+            ? <><Loader2 size={15} className="bp-spin" /> {loadingMsg}</>
+            : <><CheckCircle size={15} /> Confirm Appointment</>}
+        </button>
+      </div>
     </div>
   );
 }
 
-/* â”€â”€â”€ StatusToast â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* ── Toast ───────────────────────────────────────────────────────────── */
 function StatusToast({ show, success, message }) {
   if (!show) return null;
   return (
-    <div className={`bp-toast${success ? ' bp-toast--success' : ' bp-toast--error'}`}>
+    <div className={`bp-toast ${success ? 'bp-toast--success' : 'bp-toast--error'}`}>
       <div className="bp-toast__dot" />
       <div>
-        <div className="bp-toast__title">{success ? 'Request Logged' : 'Booking Failed'}</div>
+        <div className="bp-toast__title">{success ? 'Request Submitted' : 'Booking Failed'}</div>
         <div className="bp-toast__msg">{message}</div>
       </div>
     </div>
   );
 }
 
-/* â”€â”€â”€ Main BookingPage â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* ── Main BookingPage ────────────────────────────────────────────────── */
 export default function BookingPage({ currentUser, onLogout }) {
   const navigate = useNavigate();
-  const user = currentUser || JSON.parse(localStorage.getItem('user') || 'null');
+  const user = currentUser || JSON.parse(localStorage.getItem('unilink_user') || 'null');
 
+  const [step, setStep] = useState(1);
   const [lecturers, setLecturers] = useState([]);
   const [selectedLecturer, setSelectedLecturer] = useState(null);
   const [slots, setSlots] = useState([]);
   const [selectedSlotId, setSelectedSlotId] = useState('');
+  const [slotsLoading, setSlotsLoading] = useState(false);
   const [loading, setLoading] = useState(false);
   const [loadingMsg, setLoadingMsg] = useState('');
   const [toast, setToast] = useState({ show: false, success: false, message: '' });
-  const [slotsLoading, setSlotsLoading] = useState(false);
 
   const [formData, setFormData] = useState({
-    studentName: user?.name || '',
-    itNumber: user?.registrationNumber || '',
-    academicYear: user?.academicYear || '',
-    semester: user?.semester || '',
+    studentName: '',
+    itNumber: '',
+    itEmail: '',
+    academicYear: '',
+    semester: '',
     reason: '',
     phoneNumber: '',
     image: null,
@@ -289,51 +461,40 @@ export default function BookingPage({ currentUser, onLogout }) {
     isHighPriority: false,
   });
 
-  // Fetch all lecturers on mount
+  // Load lecturers
   useEffect(() => {
     api.get('/users/role/LECTURER')
       .then(r => setLecturers(r.data))
       .catch(err => console.error('Failed to load lecturers', err));
   }, []);
 
-  // Fetch slots when lecturer changes
+  // Load slots when lecturer selected
   useEffect(() => {
     if (!selectedLecturer) { setSlots([]); return; }
     setSlotsLoading(true);
     setSelectedSlotId('');
     api.get(`/availability/lecturer/${selectedLecturer.id}/available`)
-      .then((r) => {
-        const availableSlots = (r.data || [])
-          .filter((slot) => slot?.slotDate && !Number.isNaN(new Date(slot.slotDate).getTime()))
-          .map((slot) => {
-          const st = slot.startTime ? slot.startTime.substring(0, 5) : '00:00';
-          const et = slot.endTime ? slot.endTime.substring(0, 5) : '00:30';
-          return {
-            id: slot.id,
-            slotDate: slot.slotDate,
-            time: formatTimeRange(st, et),
-            startTime: `${slot.slotDate}T${st}:00`,
-            endTime: `${slot.slotDate}T${et}:00`,
-            status: slot.status || 'AVAILABLE',
-          };
-        });
-        setSlots(availableSlots);
+      .then(r => {
+        const mapped = (r.data || [])
+          .filter(s => s?.slotDate && !isNaN(new Date(s.slotDate)))
+          .map(s => {
+            const st = (s.startTime || '00:00').substring(0, 5);
+            const et = (s.endTime || '00:30').substring(0, 5);
+            return {
+              id: s.id,
+              slotDate: s.slotDate,
+              time: fmtRange(st, et),
+              startTime: `${s.slotDate}T${st}:00`,
+              endTime: `${s.slotDate}T${et}:00`,
+              status: s.status || 'AVAILABLE',
+              mode: s.mode || '',
+            };
+          });
+        setSlots(mapped);
       })
       .catch(err => console.error('Failed to load slots', err))
       .finally(() => setSlotsLoading(false));
   }, [selectedLecturer]);
-
-  const formatTimeRange = (start, end) => {
-    const formatTime = (time) => {
-      const t = (time || '00:00').substring(0, 5);
-      const [h, m] = t.split(':');
-      const hour = parseInt(h);
-      const ampm = hour >= 12 ? 'PM' : 'AM';
-      const displayHour = hour > 12 ? hour - 12 : hour === 0 ? 12 : hour;
-      return `${displayHour}:${m} ${ampm}`;
-    };
-    return `${formatTime(start)} - ${formatTime(end)}`;
-  };
 
   const handleChange = useCallback((field, value) => {
     setFormData(prev => ({
@@ -343,53 +504,33 @@ export default function BookingPage({ currentUser, onLogout }) {
     }));
   }, []);
 
-  // Validation
-  const selectedSlot = slots.find((slot) => String(slot.id) === String(selectedSlotId)) || null;
+  const selectedSlot = slots.find(s => String(s.id) === String(selectedSlotId)) || null;
 
-  const isValid =
-    selectedSlot &&
-    formData.studentName.trim().length > 2 &&
-    IT_REGEX.test(formData.itNumber) &&
-    formData.academicYear &&
-    formData.semester &&
-    formData.reason.trim().length > 10 &&
-    formData.reason.length <= MAX_REASON;
+  const showToast = (success, message) => {
+    setToast({ show: true, success, message });
+    setTimeout(() => setToast(t => ({ ...t, show: false })), 5000);
+  };
 
   const handleConfirm = async () => {
-    if (!isValid) return;
+    if (!selectedSlot || !user?.id || !selectedLecturer?.id) return;
     setLoading(true);
-
     try {
-      if (!user?.id || !selectedLecturer?.id || !selectedSlot?.startTime || !selectedSlot?.endTime) {
-        throw new Error('Missing booking details. Please reselect lecturer and slot.');
-      }
-      setLoadingMsg('Connecting to server...');
-      await new Promise(r => setTimeout(r, 800));
+      if (formData.image?.size > 15 * 1024 * 1024) throw new Error('Image exceeds 15 MB');
+      if (formData.document?.size > 15 * 1024 * 1024) throw new Error('Document exceeds 15 MB');
 
-      setLoadingMsg('Submitting booking...');
-      await new Promise(r => setTimeout(r, 800));
-
-      // Validate file sizes
-      if (formData.image && formData.image.size > 15 * 1024 * 1024) {
-        throw new Error('Image file exceeds 15MB limit');
-      }
-      if (formData.document && formData.document.size > 15 * 1024 * 1024) {
-        throw new Error('Document file exceeds 15MB limit');
-      }
-
+      setLoadingMsg('Submitting booking…');
       await createAppointment({
         studentId: user.id,
         lecturerId: selectedLecturer.id,
         startTime: selectedSlot.startTime,
         endTime: selectedSlot.endTime,
-        notes: `[${formData.academicYear} ${formData.semester}${formData.isHighPriority ? ' | HIGH PRIORITY' : ''}] ${formData.reason}`,
+        notes: `[${formData.academicYear} ${formData.semester}${formData.isHighPriority ? ' | HIGH PRIORITY' : ''}] [NAME:${formData.studentName.trim()}] [IT:${formData.itNumber.trim()}] [ITEMAIL:${formData.itEmail.trim()}] [PHONE:${formData.phoneNumber.trim()}]${selectedSlot.mode ? ` [MODE:${selectedSlot.mode}]` : ''} ${formData.reason}`,
       });
 
-      // Upload attachments if any were selected
       if (formData.image || formData.document) {
-        setLoadingMsg('Uploading attachments...');
-        const newAppts = await api.get(`/appointments/student/${user.id}`);
-        const latest = newAppts.data?.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))[0];
+        setLoadingMsg('Uploading attachments…');
+        const res = await api.get(`/appointments/student/${user.id}`);
+        const latest = res.data?.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))[0];
         if (latest?.id) {
           const fd = new FormData();
           if (formData.image) fd.append('image', formData.image);
@@ -400,19 +541,14 @@ export default function BookingPage({ currentUser, onLogout }) {
         }
       }
 
-      // Optimistic: mark slot as taken locally
+      showToast(true, 'Appointment request submitted. Awaiting lecturer confirmation.');
       setSlots(prev => prev.map(s => String(s.id) === String(selectedSlot.id) ? { ...s, status: 'PENDING' } : s));
       setSelectedSlotId('');
-
-      setToast({ show: true, success: true, message: 'Appointment request submitted. Awaiting lecturer confirmation.' });
-      setTimeout(() => setToast(t => ({ ...t, show: false })), 5000);
-
-      // Reset form reason
-      setFormData(prev => ({ ...prev, reason: '', phoneNumber: '', image: null, document: null }));
+      setFormData(prev => ({ ...prev, reason: '', phoneNumber: '', itEmail: '', image: null, document: null }));
+      setStep(1);
+      setSelectedLecturer(null);
     } catch (err) {
-      const msg = err?.response?.data?.message || err?.message || 'Failed to book. Please try again.';
-      setToast({ show: true, success: false, message: msg });
-      setTimeout(() => setToast(t => ({ ...t, show: false })), 5000);
+      showToast(false, err?.response?.data?.message || err?.message || 'Failed to book. Please try again.');
     } finally {
       setLoading(false);
       setLoadingMsg('');
@@ -422,64 +558,50 @@ export default function BookingPage({ currentUser, onLogout }) {
   return (
     <div className="bp-page">
       {user && <Header currentUser={user} onLogout={onLogout} unreadCount={0} />}
-
       <div className="bp-container">
-        {/* Back button */}
         <button className="bp-back-btn" onClick={() => navigate('/student/home')}>
           <ArrowLeft size={15} /> Back to Dashboard
         </button>
 
-        {/* Lecturer selector */}
-        <div className="bp-lecturer-bar">
-          <label className="bp-label" style={{ marginBottom: 8 }}>Select Lecturer</label>
-          <div className="bp-lecturer-grid">
-            {lecturers.map(lec => (
-              <button
-                key={lec.id}
-                className={`bp-lecturer-card${selectedLecturer?.id === lec.id ? ' bp-lecturer-card--active' : ''}`}
-                onClick={() => setSelectedLecturer(lec)}
-              >
-                <div className="bp-lecturer-avatar">
-                  <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%' }}>
-                    {lec.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
-                  </span>
-                </div>
-                <div className="bp-lecturer-info">
-                  <span className="bp-lecturer-name">{lec.name}</span>
-                  <span className="bp-lecturer-dept">{lec.department || 'Lecturer'}</span>
-                </div>
-                {selectedLecturer?.id === lec.id && <CheckCircle size={16} style={{ color: '#2563eb', flexShrink: 0 }} />}
-              </button>
-            ))}
-            {lecturers.length === 0 && (
-              <p style={{ color: '#64748b', fontSize: '0.875rem' }}>No lecturers found.</p>
-            )}
-          </div>
-        </div>
+        <div className="bp-wizard">
+          <StepBar step={step} />
 
-        {/* Main grid */}
-        <div className="bp-grid">
-          <div>
-            {slotsLoading
-              ? <div className="bp-sidebar bp-sidebar--loading"><Loader2 size={24} className="bp-spin" /> Loading slots...</div>
-              : <AvailabilityGrid slots={slots} selectedSlot={selectedSlot} onSelect={(slotId) => setSelectedSlotId(String(slotId))} />
-            }
-          </div>
+          {step === 1 && (
+            <StepLecturer
+              lecturers={lecturers}
+              selected={selectedLecturer}
+              onSelect={setSelectedLecturer}
+              onNext={() => setStep(2)}
+            />
+          )}
 
-          <BookingForm
-            formData={formData}
-            onChange={handleChange}
-            onConfirm={handleConfirm}
-            isValid={isValid}
-            loading={loading}
-            loadingMsg={loadingMsg}
-            selectedSlot={selectedSlot}
-          />
+          {step === 2 && selectedLecturer && (
+            <StepSlot
+              lecturer={selectedLecturer}
+              slots={slots}
+              slotsLoading={slotsLoading}
+              selectedSlotId={selectedSlotId}
+              onSelect={setSelectedSlotId}
+              onBack={() => setStep(1)}
+              onNext={() => setStep(3)}
+            />
+          )}
+
+          {step === 3 && selectedLecturer && selectedSlot && (
+            <StepForm
+              lecturer={selectedLecturer}
+              selectedSlot={selectedSlot}
+              formData={formData}
+              onChange={handleChange}
+              onConfirm={handleConfirm}
+              onBack={() => setStep(2)}
+              loading={loading}
+              loadingMsg={loadingMsg}
+            />
+          )}
         </div>
       </div>
-
       <StatusToast show={toast.show} success={toast.success} message={toast.message} />
     </div>
   );
 }
-

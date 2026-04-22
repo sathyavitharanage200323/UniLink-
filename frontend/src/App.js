@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
@@ -178,23 +178,49 @@ function AppRoutes({ activeUser, appointments, onLogin, onLogout, onUserUpdate }
 
 /* ── Root App ── */
 export default function App() {
-  const [activeUser,    setActiveUser]    = useState(null);
-  const [appointments,  setAppointments]  = useState([]);
+  // ── Restore session from localStorage on mount ──────────────────────
+  const [activeUser, setActiveUser] = useState(() => {
+    try {
+      const saved = localStorage.getItem('unilink_user');
+      return saved ? JSON.parse(saved) : null;
+    } catch { return null; }
+  });
+
+  const [appointments, setAppointments] = useState(() => {
+    try {
+      const saved = localStorage.getItem('unilink_appointments');
+      return saved ? JSON.parse(saved) : [];
+    } catch { return []; }
+  });
+
+  // ── Refresh appointments in background after restoring session ───────
+  useEffect(() => {
+    if (!activeUser) return;
+    const fetchAppts = async () => {
+      try {
+        let appts = [];
+        if (activeUser.role === 'STUDENT')        appts = await getStudentAppointments(activeUser.id);
+        else if (activeUser.role === 'LECTURER')  appts = await getLecturerAppointments(activeUser.id);
+        else if (activeUser.role === 'ADMIN')     appts = await getAllAppointments();
+        setAppointments(appts);
+        localStorage.setItem('unilink_appointments', JSON.stringify(appts));
+      } catch { /* keep cached appointments */ }
+    };
+    fetchAppts();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeUser?.id]);
 
   const handleLogin = async (user) => {
     setActiveUser(user);
+    localStorage.setItem('unilink_user', JSON.stringify(user));
     try {
       let appts = [];
-      if (user.role === 'STUDENT') {
-        appts = await getStudentAppointments(user.id);
-      } else if (user.role === 'LECTURER') {
-        appts = await getLecturerAppointments(user.id);
-      } else if (user.role === 'ADMIN') {
-        appts = await getAllAppointments();
-      }
+      if (user.role === 'STUDENT')        appts = await getStudentAppointments(user.id);
+      else if (user.role === 'LECTURER')  appts = await getLecturerAppointments(user.id);
+      else if (user.role === 'ADMIN')     appts = await getAllAppointments();
       setAppointments(appts);
+      localStorage.setItem('unilink_appointments', JSON.stringify(appts));
     } catch {
-      // Backend offline or no appointments yet.
       setAppointments([]);
     }
   };
@@ -202,10 +228,13 @@ export default function App() {
   const handleLogout = () => {
     setActiveUser(null);
     setAppointments([]);
+    localStorage.removeItem('unilink_user');
+    localStorage.removeItem('unilink_appointments');
   };
 
   const handleUserUpdate = (updatedUser) => {
     setActiveUser(updatedUser);
+    localStorage.setItem('unilink_user', JSON.stringify(updatedUser));
   };
 
   return (
