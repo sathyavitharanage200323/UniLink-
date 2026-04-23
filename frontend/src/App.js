@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+
 import ChatPage from './components/ChatPage';
 import StudentHome from './pages/StudentHome';
 import LecturerHome from './pages/LecturerHome';
@@ -15,16 +16,19 @@ import ProfilePage from './pages/ProfilePage.jsx';
 import BookingPage from './pages/BookingPage.jsx';
 import LecturerSchedulePage from './pages/LecturerSchedulePage.jsx';
 import SlotCalendarPage from './pages/SlotCalendarPage.jsx';
+import LecturerSlotsPage from './pages/LecturerSlotsPage.jsx';
+import LecturerPreferencesPage from './pages/LecturerPreferencesPage.jsx';
+
 import {
   getAllAppointments,
   getStudentAppointments,
   getLecturerAppointments,
 } from './api';
+
 import './App.css';
 
 import LoginPage from './pages/LoginPage.jsx';
 import AdminLoginPage from './pages/AdminLoginPage.jsx';
-
 
 function AppRoutes({ activeUser, appointments, onLogin, onLogout, onUserUpdate }) {
   if (!activeUser) {
@@ -133,8 +137,8 @@ function AppRoutes({ activeUser, appointments, onLogin, onLogout, onUserUpdate }
         path="/book"
         element={
           isStudent
-              ? <BookingPage currentUser={activeUser} onLogout={onLogout} />
-              : <Navigate to={homeRedirect} replace />
+            ? <BookingPage currentUser={activeUser} onLogout={onLogout} />
+            : <Navigate to={homeRedirect} replace />
         }
       />
 
@@ -143,6 +147,15 @@ function AppRoutes({ activeUser, appointments, onLogin, onLogout, onUserUpdate }
         element={
           isLecturer
             ? <LecturerSchedulePage currentUser={activeUser} onLogout={onLogout} />
+            : <Navigate to={homeRedirect} replace />
+        }
+      />
+
+      <Route
+        path="/lecturer/slots"
+        element={
+          isLecturer
+            ? <LecturerSlotsPage currentUser={activeUser} onLogout={onLogout} />
             : <Navigate to={homeRedirect} replace />
         }
       />
@@ -165,15 +178,23 @@ function AppRoutes({ activeUser, appointments, onLogin, onLogout, onUserUpdate }
         }
       />
 
+      <Route
+        path="/lecturer/preferences"
+        element={
+          isLecturer
+            ? <LecturerPreferencesPage currentUser={activeUser} />
+            : <Navigate to={homeRedirect} replace />
+        }
+      />
+
       <Route path="*" element={<Navigate to={homeRedirect} replace />} />
-      </Routes>
+    </Routes>
   );
 }
 
-/* ── Root App ── */
 export default function App() {
-  const [activeUser,    setActiveUser]    = useState(null);
-  const [appointments,  setAppointments]  = useState([]);
+  const [activeUser, setActiveUser] = useState(null);
+  const [appointments, setAppointments] = useState([]);
 
   const handleLogin = async (user) => {
     setActiveUser(user);
@@ -188,7 +209,6 @@ export default function App() {
       }
       setAppointments(appts);
     } catch {
-      // Backend offline or no appointments yet.
       setAppointments([]);
     }
   };
@@ -215,7 +235,3 @@ export default function App() {
     </BrowserRouter>
   );
 }
-
-
-
-

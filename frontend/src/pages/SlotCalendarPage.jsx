@@ -10,6 +10,7 @@ import {
   deleteSlot,
   copyTodaySlots,
 } from '../api';
+import { getLecturerPreferences } from '../api/lecturerPreferencesApi';
 import './SlotCalendarPage.css';
 
 const monthNames = [
@@ -19,11 +20,14 @@ const monthNames = [
 
 const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-const SLOT_DURATION_MINUTES = 30;
-const BREAK_MINUTES = 15;
-const DAY_START = '09:00';
-const DAY_END = '21:00';
-const MAX_SLOTS_PER_DAY = 12;
+const DEFAULT_PREFS = {
+  slotDuration: 30,
+  breakTime: 15,
+  workStartTime: '09:00',
+  workEndTime: '21:00',
+  maxSlotsPerDay: 12,
+  preferredMode: 'BOTH',
+};
 
 function formatTimeDisplay(time) {
   if (!time) return '--';
@@ -32,7 +36,8 @@ function formatTimeDisplay(time) {
 
 function timeToMinutes(time) {
   if (!time) return 0;
-  const [h, m] = time.slice(0, 5).split(':').map(Number);
+  const clean = time.slice(0, 5);
+  const [h, m] = clean.split(':').map(Number);
   return h * 60 + m;
 }
 
@@ -46,12 +51,6 @@ function normalizeTime(value) {
   if (!value) return '';
   if (value.length === 5) return `${value}:00`;
   return value;
-}
-
-function addMinutesToTime(timeValue, minutesToAdd = SLOT_DURATION_MINUTES) {
-  if (!timeValue) return '';
-  const total = timeToMinutes(timeValue) + minutesToAdd;
-  return minutesToTime(total);
 }
 
 function getDurationMinutes(startTime, endTime) {
@@ -74,7 +73,6 @@ function dateToKey(date) {
 }
 
 function formatLongDate(date) {
-  
   return new Date(date).toLocaleDateString('en-US', {
     weekday: 'short',
     month: 'short',
@@ -136,6 +134,15 @@ function getSlotBadgeClass(slot) {
   return 'past';
 }
 
+function getSlotAccentClass(slot) {
+  const liveState = getSlotLiveState(slot);
+
+  if (liveState === 'Ongoing') return 'ongoing';
+  if (liveState === 'Today') return 'today';
+  if (liveState === 'Upcoming') return 'upcoming';
+  return 'past';
+}
+
 function hasOngoingSlotForDate(dateKey, allSlotsByDate) {
   const sameDaySlots = allSlotsByDate[dateKey] || [];
   return sameDaySlots.some((slot) => getSlotLiveState(slot) === 'Ongoing');
@@ -155,80 +162,23 @@ function hasSlotConflict(existingSlots, newStart, newEnd, ignoreId = null) {
   });
 }
 
-function generateAllStartTimes() {
-  const times = [];
-  const start = timeToMinutes(DAY_START);
-  const lastAllowedStart = timeToMinutes(DAY_END) - SLOT_DURATION_MINUTES;
-
-  for (let mins = start; mins <= lastAllowedStart; mins += BREAK_MINUTES) {
-    times.push(minutesToTime(mins));
-  }
-
-  return times;
-}
-
-function getNowRoundedMinutes() {
+function getNowRoundedMinutes(breakMinutes) {
   const now = new Date();
   const raw = now.getHours() * 60 + now.getMinutes();
-  return Math.ceil(raw / BREAK_MINUTES) * BREAK_MINUTES;
+  return Math.ceil(raw / breakMinutes) * breakMinutes;
 }
 
 function isTodayKey(dateKey) {
   return dateKey === dateToKey(new Date());
 }
 
-function getValidStartTimesForDate(dateKey, allSlotsByDate, editingSlot = null) {
-  if (!dateKey) return [];
-
-  const allTimes = generateAllStartTimes();
-  const sameDaySlots = (allSlotsByDate[dateKey] || []).filter((slot) =>
-    editingSlot ? slot.id !== editingSlot.id : true
-  );
-
-  return allTimes.filter((time) => {
-    const start = timeToMinutes(time);
-    const end = start + SLOT_DURATION_MINUTES;
-
-    if (start < timeToMinutes(DAY_START)) return false;
-    if (end > timeToMinutes(DAY_END)) return false;
-
-    if (isTodayKey(dateKey)) {
-      const roundedNow = getNowRoundedMinutes();
-      if (start < roundedNow) return false;
-    }
-
-    for (const slot of sameDaySlots) {
-      const existingStart = timeToMinutes(slot.startTime);
-      const existingEnd = timeToMinutes(slot.endTime);
-
-      const gapAfterExisting = start - existingEnd;
-      const gapBeforeExisting = existingStart - end;
-
-      const enoughGapAfter = gapAfterExisting >= BREAK_MINUTES;
-      const enoughGapBefore = gapBeforeExisting >= BREAK_MINUTES;
-
-      if (!(enoughGapAfter || enoughGapBefore)) {
-        return false;
-      }
-    }
-
-    return true;
-  });
-}
-
-function getSlotAccentClass(slot) {
-  const liveState = getSlotLiveState(slot);
-
-  if (liveState === 'Ongoing') return 'ongoing';
-  if (liveState === 'Today') return 'today';
-  if (liveState === 'Upcoming') return 'upcoming';
-  return 'past';
-}
-
 export default function SlotCalendarPage({ currentUser, onLogout }) {
   const navigate = useNavigate();
 
   const [slots, setSlots] = useState([]);
+  const [preferences, setPreferences] = useState(DEFAULT_PREFS);
+  const [loadingPreferences, setLoadingPreferences] = useState(true);
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [banner, setBanner] = useState({ type: '', text: '' });
@@ -254,6 +204,7 @@ export default function SlotCalendarPage({ currentUser, onLogout }) {
   useEffect(() => {
     if (currentUser?.id) {
       loadSlots();
+      loadPreferences();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentUser?.id]);
@@ -278,6 +229,27 @@ export default function SlotCalendarPage({ currentUser, onLogout }) {
       setSlots([]);
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function loadPreferences() {
+    try {
+      setLoadingPreferences(true);
+      const data = await getLecturerPreferences(currentUser.id);
+
+      setPreferences({
+        slotDuration: Number(data.slotDuration ?? 30),
+        breakTime: Number(data.breakTime ?? 15),
+        workStartTime: data.workStartTime?.slice(0, 5) ?? '09:00',
+        workEndTime: data.workEndTime?.slice(0, 5) ?? '21:00',
+        maxSlotsPerDay: Number(data.maxSlotsPerDay ?? 12),
+        preferredMode: data.preferredMode ?? 'BOTH',
+      });
+    } catch (err) {
+      console.error(err);
+      setPreferences(DEFAULT_PREFS);
+    } finally {
+      setLoadingPreferences(false);
     }
   }
 
@@ -321,13 +293,70 @@ export default function SlotCalendarPage({ currentUser, onLogout }) {
     return grouped;
   }, [slots]);
 
+  function getDefaultEndFromStart(startValue) {
+    if (!startValue) return '';
+    const total = timeToMinutes(startValue) + Number(preferences.slotDuration);
+    return minutesToTime(total);
+  }
+
+  function generateAllStartTimes() {
+    const times = [];
+    const start = timeToMinutes(preferences.workStartTime);
+    const lastAllowedStart = timeToMinutes(preferences.workEndTime) - Number(preferences.slotDuration);
+
+    for (let mins = start; mins <= lastAllowedStart; mins += Number(preferences.breakTime)) {
+      times.push(minutesToTime(mins));
+    }
+
+    return times;
+  }
+
+  function getValidStartTimesForDate(dateKey, editingSlotParam = null) {
+    if (!dateKey) return [];
+
+    const allTimes = generateAllStartTimes();
+    const sameDaySlots = (allSlotsByDate[dateKey] || []).filter((slot) =>
+      editingSlotParam ? slot.id !== editingSlotParam.id : true
+    );
+
+    return allTimes.filter((time) => {
+      const start = timeToMinutes(time);
+      const end = start + Number(preferences.slotDuration);
+
+      if (start < timeToMinutes(preferences.workStartTime)) return false;
+      if (end > timeToMinutes(preferences.workEndTime)) return false;
+
+      if (isTodayKey(dateKey)) {
+        const roundedNow = getNowRoundedMinutes(Number(preferences.breakTime));
+        if (start < roundedNow) return false;
+      }
+
+      for (const slot of sameDaySlots) {
+        const existingStart = timeToMinutes(slot.startTime);
+        const existingEnd = timeToMinutes(slot.endTime);
+
+        const gapAfterExisting = start - existingEnd;
+        const gapBeforeExisting = existingStart - end;
+
+        const enoughGapAfter = gapAfterExisting >= Number(preferences.breakTime);
+        const enoughGapBefore = gapBeforeExisting >= Number(preferences.breakTime);
+
+        if (!(enoughGapAfter || enoughGapBefore)) {
+          return false;
+        }
+      }
+
+      return true;
+    });
+  }
+
   const selectedDateKey = dateToKey(selectedDate);
   const selectedDateSlots = allSlotsByDate[selectedDateKey] || [];
   const selectedDateHasOngoing = hasOngoingSlotForDate(selectedDateKey, allSlotsByDate);
 
-  const validQuickAddStartTimes = getValidStartTimesForDate(selectedDateKey, allSlotsByDate);
+  const validQuickAddStartTimes = getValidStartTimesForDate(selectedDateKey);
   const validEditStartTimes = editingSlot
-    ? getValidStartTimesForDate(editingSlot.slotDate, allSlotsByDate, editingSlot)
+    ? getValidStartTimesForDate(editingSlot.slotDate, editingSlot)
     : [];
 
   const totalSlots = slots.length;
@@ -375,10 +404,16 @@ export default function SlotCalendarPage({ currentUser, onLogout }) {
       return;
     }
 
-    setEditingSlot(slot);
+    setEditingSlot({
+      ...slot,
+      useDefault: slot.useDefault ?? true,
+      customMode: slot.customMode || '',
+      customNote: slot.customNote || '',
+    });
+
     const start = slot.startTime.slice(0, 5);
     setEditStartTime(start);
-    setEditEndTime(addMinutesToTime(start, SLOT_DURATION_MINUTES).slice(0, 5));
+    setEditEndTime(slot.endTime ? slot.endTime.slice(0, 5) : getDefaultEndFromStart(start));
     setEditModalOpen(true);
   }
 
@@ -402,7 +437,7 @@ export default function SlotCalendarPage({ currentUser, onLogout }) {
   function handleQuickAddStartTimeChange(value) {
     setQuickAddStartTime(value);
     if (value) {
-      setQuickAddEndTime(addMinutesToTime(value, SLOT_DURATION_MINUTES));
+      setQuickAddEndTime(getDefaultEndFromStart(value));
     } else {
       setQuickAddEndTime('');
     }
@@ -411,7 +446,7 @@ export default function SlotCalendarPage({ currentUser, onLogout }) {
   function handleEditStartTimeChange(value) {
     setEditStartTime(value);
     if (value) {
-      setEditEndTime(addMinutesToTime(value, SLOT_DURATION_MINUTES));
+      setEditEndTime(getDefaultEndFromStart(value));
     } else {
       setEditEndTime('');
     }
@@ -419,7 +454,7 @@ export default function SlotCalendarPage({ currentUser, onLogout }) {
 
   function validateTodayTime(dateKey, start) {
     if (!isTodayKey(dateKey)) return '';
-    const roundedNow = getNowRoundedMinutes();
+    const roundedNow = getNowRoundedMinutes(Number(preferences.breakTime));
     const startMinutes = timeToMinutes(start);
     if (startMinutes < roundedNow) {
       return 'You cannot add or update a slot for a time that has already passed today.';
@@ -430,54 +465,61 @@ export default function SlotCalendarPage({ currentUser, onLogout }) {
   async function handleSaveEdit() {
     if (!editingSlot) return;
 
-    if (!editStartTime || !editEndTime) {
-      setBanner({ type: 'error', text: 'Please select a valid start time.' });
-      return;
-    }
-
     const start = normalizeTime(editStartTime);
     const end = normalizeTime(editEndTime);
 
-    if (getDurationMinutes(start, end) !== SLOT_DURATION_MINUTES) {
-      setBanner({ type: 'error', text: `Each slot must be exactly ${SLOT_DURATION_MINUTES} minutes.` });
-      return;
-    }
+    if (!editingSlot.useDefault) {
+      if (!editStartTime || !editEndTime) {
+        setBanner({ type: 'error', text: 'Please select a valid custom time.' });
+        return;
+      }
 
-    if (timeToMinutes(start) < timeToMinutes(DAY_START)) {
-      setBanner({ type: 'error', text: `Slots can start only from ${DAY_START}.` });
-      return;
-    }
+      if (getDurationMinutes(start, end) !== Number(preferences.slotDuration)) {
+        setBanner({ type: 'error', text: `Each slot must be exactly ${preferences.slotDuration} minutes.` });
+        return;
+      }
 
-    if (timeToMinutes(end) > timeToMinutes(DAY_END)) {
-      setBanner({ type: 'error', text: `Slots cannot go beyond ${DAY_END}.` });
-      return;
-    }
+      if (timeToMinutes(start) < timeToMinutes(preferences.workStartTime)) {
+        setBanner({ type: 'error', text: `Slots can start only from ${preferences.workStartTime}.` });
+        return;
+      }
 
-    const todayTimeMessage = validateTodayTime(editingSlot.slotDate, start);
-    if (todayTimeMessage) {
-      setBanner({ type: 'error', text: todayTimeMessage });
-      return;
-    }
+      if (timeToMinutes(end) > timeToMinutes(preferences.workEndTime)) {
+        setBanner({ type: 'error', text: `Slots cannot go beyond ${preferences.workEndTime}.` });
+        return;
+      }
 
-    const sameDateSlots = allSlotsByDate[editingSlot.slotDate] || [];
-    if (hasSlotConflict(sameDateSlots, start, end, editingSlot.id)) {
-      setBanner({ type: 'error', text: 'This time overlaps with another slot on the same date.' });
-      return;
-    }
+      const todayTimeMessage = validateTodayTime(editingSlot.slotDate, start);
+      if (todayTimeMessage) {
+        setBanner({ type: 'error', text: todayTimeMessage });
+        return;
+      }
 
-    const validTimes = getValidStartTimesForDate(editingSlot.slotDate, allSlotsByDate, editingSlot);
-    if (!validTimes.includes(start.slice(0, 5))) {
-      setBanner({ type: 'error', text: `Invalid time. Keep a ${BREAK_MINUTES}-minute break between slots.` });
-      return;
+      const sameDateSlots = allSlotsByDate[editingSlot.slotDate] || [];
+      if (hasSlotConflict(sameDateSlots, start, end, editingSlot.id)) {
+        setBanner({ type: 'error', text: 'This time overlaps with another slot on the same date.' });
+        return;
+      }
+
+      const validTimes = getValidStartTimesForDate(editingSlot.slotDate, editingSlot);
+      if (!validTimes.includes(start.slice(0, 5))) {
+        setBanner({ type: 'error', text: `Invalid time. Keep a ${preferences.breakTime}-minute break between slots.` });
+        return;
+      }
     }
 
     try {
       setSavingEdit(true);
+
       await updateSlot(editingSlot.id, {
         ...editingSlot,
         startTime: start,
         endTime: end,
+        useDefault: editingSlot.useDefault,
+        customMode: editingSlot.customMode,
+        customNote: editingSlot.customNote,
       });
+
       await loadSlots();
       closeEditModal();
       setBanner({ type: 'success', text: 'Slot updated successfully.' });
@@ -516,8 +558,8 @@ export default function SlotCalendarPage({ currentUser, onLogout }) {
       return;
     }
 
-    if (selectedDateSlots.length >= MAX_SLOTS_PER_DAY) {
-      setBanner({ type: 'error', text: `Maximum ${MAX_SLOTS_PER_DAY} slots allowed per day.` });
+    if (selectedDateSlots.length >= Number(preferences.maxSlotsPerDay)) {
+      setBanner({ type: 'error', text: `Maximum ${preferences.maxSlotsPerDay} slots allowed per day.` });
       return;
     }
 
@@ -529,18 +571,18 @@ export default function SlotCalendarPage({ currentUser, onLogout }) {
     const start = normalizeTime(quickAddStartTime);
     const end = normalizeTime(quickAddEndTime);
 
-    if (getDurationMinutes(start, end) !== SLOT_DURATION_MINUTES) {
-      setBanner({ type: 'error', text: `Each slot must be exactly ${SLOT_DURATION_MINUTES} minutes.` });
+    if (getDurationMinutes(start, end) !== Number(preferences.slotDuration)) {
+      setBanner({ type: 'error', text: `Each slot must be exactly ${preferences.slotDuration} minutes.` });
       return;
     }
 
-    if (timeToMinutes(start) < timeToMinutes(DAY_START)) {
-      setBanner({ type: 'error', text: `Slots can start only from ${DAY_START}.` });
+    if (timeToMinutes(start) < timeToMinutes(preferences.workStartTime)) {
+      setBanner({ type: 'error', text: `Slots can start only from ${preferences.workStartTime}.` });
       return;
     }
 
-    if (timeToMinutes(end) > timeToMinutes(DAY_END)) {
-      setBanner({ type: 'error', text: `Slots cannot go beyond ${DAY_END}.` });
+    if (timeToMinutes(end) > timeToMinutes(preferences.workEndTime)) {
+      setBanner({ type: 'error', text: `Slots cannot go beyond ${preferences.workEndTime}.` });
       return;
     }
 
@@ -564,10 +606,11 @@ export default function SlotCalendarPage({ currentUser, onLogout }) {
       return;
     }
 
-    if (!validQuickAddStartTimes.includes(start.slice(0, 5))) {
+    const validTimes = getValidStartTimesForDate(selectedDateKey);
+    if (!validTimes.includes(start.slice(0, 5))) {
       setBanner({
         type: 'error',
-        text: `Invalid time. There must be a ${BREAK_MINUTES}-minute break between slots.`,
+        text: `Invalid time. There must be a ${preferences.breakTime}-minute break between slots.`,
       });
       return;
     }
@@ -578,6 +621,9 @@ export default function SlotCalendarPage({ currentUser, onLogout }) {
         slotDate: selectedDateKey,
         startTime: start,
         endTime: end,
+        useDefault: true,
+        customMode: '',
+        customNote: '',
       });
       setQuickAddStartTime('');
       setQuickAddEndTime('');
@@ -612,7 +658,7 @@ export default function SlotCalendarPage({ currentUser, onLogout }) {
 
   const selectedDateStatus = getStatus(selectedDateKey);
   const usedSlotsForDay = selectedDateSlots.length;
-  const remainingSlotsForDay = Math.max(MAX_SLOTS_PER_DAY - usedSlotsForDay, 0);
+  const remainingSlotsForDay = Math.max(Number(preferences.maxSlotsPerDay) - usedSlotsForDay, 0);
 
   return (
     <div className="sc-layout">
@@ -636,6 +682,14 @@ export default function SlotCalendarPage({ currentUser, onLogout }) {
                   onClick={() => navigate('/lecturer/slots')}
                 >
                   ← Back to Slots
+                </button>
+
+                <button
+                  type="button"
+                  className="sc-btn sc-btn--outline"
+                  onClick={() => navigate('/lecturer/preferences')}
+                >
+                  ⚙ Preferences
                 </button>
 
                 <button
@@ -798,7 +852,7 @@ export default function SlotCalendarPage({ currentUser, onLogout }) {
 
                               return (
                                 <div key={slot.id} className={`sc-slot-chip ${getSlotAccentClass(slot)}`}>
-                                  <div className="sc-slot-chip__top-line" />
+                                  <div className={`sc-slot-chip__top-line ${getSlotAccentClass(slot)}`} />
 
                                   <div className="sc-slot-chip__header">
                                     <div className="sc-slot-chip__time">
@@ -866,7 +920,7 @@ export default function SlotCalendarPage({ currentUser, onLogout }) {
                 <div className="sc-capacity-grid">
                   <div className="sc-capacity-card purple">
                     <div className="sc-capacity-label">Daily Limit</div>
-                    <div className="sc-capacity-number">{MAX_SLOTS_PER_DAY}</div>
+                    <div className="sc-capacity-number">{preferences.maxSlotsPerDay}</div>
                   </div>
 
                   <div className="sc-capacity-card blue">
@@ -885,11 +939,28 @@ export default function SlotCalendarPage({ currentUser, onLogout }) {
                 <div className="sc-panel-title">Quick Add Slot</div>
 
                 <div className="sc-quick-add__rules">
-                  <div><strong>Allowed hours:</strong> {DAY_START} - {DAY_END}</div>
-                  <div><strong>Slot duration:</strong> {SLOT_DURATION_MINUTES} mins</div>
-                  <div><strong>Minimum break:</strong> {BREAK_MINUTES} mins</div>
+                  <div><strong>Allowed hours:</strong> {preferences.workStartTime} - {preferences.workEndTime}</div>
+                  <div><strong>Slot duration:</strong> {preferences.slotDuration} mins</div>
+                  <div><strong>Minimum break:</strong> {preferences.breakTime} mins</div>
+                  <div><strong>Preferred mode:</strong> {preferences.preferredMode}</div>
                   <div><strong>Selected date:</strong> {selectedDateKey}</div>
+                  <div>
+                    <strong>Need to change these?</strong>{' '}
+                    <button
+                      type="button"
+                      className="sc-link-btn"
+                      onClick={() => navigate('/lecturer/preferences')}
+                    >
+                      Open Preferences
+                    </button>
+                  </div>
                 </div>
+
+                {loadingPreferences && (
+                  <div className="sc-alert info">
+                    Loading lecturer preferences...
+                  </div>
+                )}
 
                 {isPastDate(selectedDateKey) && (
                   <div className="sc-alert warning">
@@ -897,7 +968,7 @@ export default function SlotCalendarPage({ currentUser, onLogout }) {
                   </div>
                 )}
 
-                {selectedDateSlots.length >= MAX_SLOTS_PER_DAY && !isPastDate(selectedDateKey) && (
+                {selectedDateSlots.length >= Number(preferences.maxSlotsPerDay) && !isPastDate(selectedDateKey) && (
                   <div className="sc-alert danger">
                     Maximum slots reached for this date.
                   </div>
@@ -915,7 +986,11 @@ export default function SlotCalendarPage({ currentUser, onLogout }) {
                     className="sc-input"
                     value={quickAddStartTime}
                     onChange={(e) => handleQuickAddStartTimeChange(e.target.value)}
-                    disabled={isPastDate(selectedDateKey) || selectedDateSlots.length >= MAX_SLOTS_PER_DAY}
+                    disabled={
+                      loadingPreferences ||
+                      isPastDate(selectedDateKey) ||
+                      selectedDateSlots.length >= Number(preferences.maxSlotsPerDay)
+                    }
                   >
                     <option value="">Select valid time</option>
                     {validQuickAddStartTimes.map((time) => (
@@ -954,8 +1029,9 @@ export default function SlotCalendarPage({ currentUser, onLogout }) {
                   onClick={handleQuickAddSlot}
                   disabled={
                     addingSlot ||
+                    loadingPreferences ||
                     isPastDate(selectedDateKey) ||
-                    selectedDateSlots.length >= MAX_SLOTS_PER_DAY
+                    selectedDateSlots.length >= Number(preferences.maxSlotsPerDay)
                   }
                   className="sc-btn sc-btn--primary sc-btn--full"
                 >
@@ -998,6 +1074,12 @@ export default function SlotCalendarPage({ currentUser, onLogout }) {
                             <div className="sc-selected-slot-duration">
                               Duration: {duration} mins
                             </div>
+
+                            {!slot.useDefault && (
+                              <div className="sc-slot-override-tag">
+                                Custom Override Enabled
+                              </div>
+                            )}
 
                             <span className={`sc-status-badge ${visualClass}`}>
                               {liveState}
@@ -1057,42 +1139,84 @@ export default function SlotCalendarPage({ currentUser, onLogout }) {
 
             <div className="sc-modal__body">
               <div className="sc-field">
-                <label>Start Time</label>
+                <label>Use Lecturer Default Settings</label>
                 <select
                   className="sc-input"
-                  value={editStartTime}
-                  onChange={(e) => handleEditStartTimeChange(e.target.value)}
+                  value={editingSlot?.useDefault ? 'yes' : 'no'}
+                  onChange={(e) => {
+                    const useDefault = e.target.value === 'yes';
+                    const newStart = editingSlot.startTime.slice(0, 5);
+                    setEditingSlot({ ...editingSlot, useDefault });
+                    setEditStartTime(newStart);
+                    setEditEndTime(getDefaultEndFromStart(newStart));
+                  }}
                 >
-                  <option value="">Select valid time</option>
-                  {validEditStartTimes.map((time) => (
-                    <option key={time} value={time}>
-                      {time}
-                    </option>
-                  ))}
+                  <option value="yes">Yes (Use Default)</option>
+                  <option value="no">No (Override This Slot)</option>
                 </select>
               </div>
 
-              <div className="sc-field">
-                <label>End Time</label>
-                <input
-                  className="sc-input readonly"
-                  type="time"
-                  value={editEndTime}
-                  readOnly
-                />
-              </div>
-
-              {editStartTime && editEndTime && (
-                <div className="sc-duration-box">
-                  Duration:{' '}
-                  <strong>
-                    {getDurationMinutes(
-                      normalizeTime(editStartTime),
-                      normalizeTime(editEndTime)
-                    )}{' '}
-                    mins
-                  </strong>
+              {editingSlot?.useDefault ? (
+                <div className="sc-info-box">
+                  This slot follows lecturer default preferences:
+                  {' '}
+                  {preferences.slotDuration} mins, {preferences.preferredMode}, {preferences.workStartTime} - {preferences.workEndTime}.
                 </div>
+              ) : (
+                <>
+                  <div className="sc-field">
+                    <label>Custom Start Time</label>
+                    <select
+                      className="sc-input"
+                      value={editStartTime}
+                      onChange={(e) => handleEditStartTimeChange(e.target.value)}
+                    >
+                      <option value="">Select time</option>
+                      {validEditStartTimes.map((time) => (
+                        <option key={time} value={time}>{time}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="sc-field">
+                    <label>Custom End Time</label>
+                    <input
+                      className="sc-input"
+                      type="time"
+                      value={editEndTime}
+                      readOnly
+                    />
+                  </div>
+
+                  <div className="sc-field">
+                    <label>Custom Mode</label>
+                    <select
+                      className="sc-input"
+                      value={editingSlot?.customMode || ''}
+                      onChange={(e) =>
+                        setEditingSlot({ ...editingSlot, customMode: e.target.value })
+                      }
+                    >
+                      <option value="">Select mode</option>
+                      <option value="ONLINE">Online</option>
+                      <option value="PHYSICAL">Physical</option>
+                      <option value="BOTH">Both</option>
+                    </select>
+                  </div>
+
+                  <div className="sc-field">
+                    <label>Custom Note</label>
+                    <input
+                      className="sc-input"
+                      type="text"
+                      placeholder="e.g. Extended discussion / urgent meeting"
+                      value={editingSlot?.customNote || ''}
+                      onChange={(e) =>
+                        setEditingSlot({ ...editingSlot, customNote: e.target.value })
+                      }
+                    />
+                  </div>
+                </>
               )}
 
               <div className="sc-modal-actions">
@@ -1165,6 +1289,21 @@ export default function SlotCalendarPage({ currentUser, onLogout }) {
                       {getSlotLiveState(viewingSlot)}
                     </span>
                   </span>
+                </div>
+
+                <div className="sc-detail-card">
+                  <span className="sc-detail-label">Uses Default</span>
+                  <span className="sc-detail-value">{viewingSlot.useDefault ? 'Yes' : 'No'}</span>
+                </div>
+
+                <div className="sc-detail-card">
+                  <span className="sc-detail-label">Custom Mode</span>
+                  <span className="sc-detail-value">{viewingSlot.customMode || '--'}</span>
+                </div>
+
+                <div className="sc-detail-card">
+                  <span className="sc-detail-label">Custom Note</span>
+                  <span className="sc-detail-value">{viewingSlot.customNote || '--'}</span>
                 </div>
               </div>
 

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { BookOpenCheck, Copy } from 'lucide-react';
 import {
@@ -77,6 +77,10 @@ function getSlotStatus(slot) {
     return { label: 'Blocked', className: 'blocked' };
   }
 
+  if (slot.isBooked) {
+    return { label: 'Booked', className: 'booked' };
+  }
+
   if (slotEnd < now || slotDate < today) {
     return { label: 'Expired', className: 'expired' };
   }
@@ -113,6 +117,60 @@ function formatDateDisplay(dateString) {
   });
 }
 
+function ConfirmModal({
+  open,
+  title,
+  message,
+  confirmText = 'Confirm',
+  cancelText = 'Cancel',
+  onConfirm,
+  onCancel,
+  danger = false,
+}) {
+  if (!open) return null;
+
+  return (
+    <div className="ls-modal-overlay" onClick={onCancel}>
+      <div
+        className="ls-modal ls-modal--small"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="ls-modal__header">
+          <h3>{title}</h3>
+          <button
+            type="button"
+            className="ls-modal__close"
+            onClick={onCancel}
+          >
+            ✕
+          </button>
+        </div>
+
+        <div className="ls-modal__body">
+          <p style={{ margin: 0 }}>{message}</p>
+        </div>
+
+        <div className="ls-modal__actions">
+          <button
+            type="button"
+            className="ls-btn ls-btn--ghost"
+            onClick={onCancel}
+          >
+            {cancelText}
+          </button>
+          <button
+            type="button"
+            className={`ls-btn ${danger ? 'ls-btn--danger' : 'ls-btn--primary'}`}
+            onClick={onConfirm}
+          >
+            {confirmText}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function LecturerSlotsPage({ currentUser, onLogout }) {
   const navigate = useNavigate();
 
@@ -131,18 +189,20 @@ export default function LecturerSlotsPage({ currentUser, onLogout }) {
   const [filter, setFilter] = useState('ALL');
   const [search, setSearch] = useState('');
 
+  const [confirmState, setConfirmState] = useState({
+    open: false,
+    title: '',
+    message: '',
+    onConfirm: null,
+    danger: false,
+    confirmText: 'Confirm',
+  });
+
   const todayDateString = useMemo(() => toDateInputValue(new Date()), []);
   const startTimeOptions = useMemo(() => generateStartTimes(), []);
   const lecturerInitial = currentUser?.name ? currentUser.name.charAt(0).toUpperCase() : 'L';
 
-  useEffect(() => {
-    if (currentUser?.id) {
-      loadSlots();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentUser?.id]);
-
-  async function loadSlots() {
+  const loadSlots = useCallback(async () => {
     try {
       setLoading(true);
       setBanner({ type: '', text: '' });
@@ -154,6 +214,68 @@ export default function LecturerSlotsPage({ currentUser, onLogout }) {
     } finally {
       setLoading(false);
     }
+  }, [currentUser?.id]);
+
+  useEffect(() => {
+    if (currentUser?.id) {
+      loadSlots();
+    }
+  }, [currentUser?.id, loadSlots]);
+
+  useEffect(() => {
+    if (!banner.text) return undefined;
+
+    const timer = setTimeout(() => {
+      setBanner({ type: '', text: '' });
+    }, 4000);
+
+    return () => clearTimeout(timer);
+  }, [banner]);
+
+  useEffect(() => {
+    function handleEscape(event) {
+      if (event.key === 'Escape') {
+        if (confirmState.open) {
+          closeConfirmModal();
+          return;
+        }
+
+        if (selectedSlot) {
+          setSelectedSlot(null);
+        }
+      }
+    }
+
+    window.addEventListener('keydown', handleEscape);
+    return () => window.removeEventListener('keydown', handleEscape);
+  }, [confirmState.open, selectedSlot]);
+
+  function openConfirmModal({
+    title,
+    message,
+    onConfirm,
+    danger = false,
+    confirmText = 'Confirm',
+  }) {
+    setConfirmState({
+      open: true,
+      title,
+      message,
+      onConfirm,
+      danger,
+      confirmText,
+    });
+  }
+
+  function closeConfirmModal() {
+    setConfirmState({
+      open: false,
+      title: '',
+      message: '',
+      onConfirm: null,
+      danger: false,
+      confirmText: 'Confirm',
+    });
   }
 
   function clearForm() {
@@ -232,6 +354,7 @@ export default function LecturerSlotsPage({ currentUser, onLogout }) {
       startTime: normalizeTime(startTime),
       endTime: normalizeTime(endTime),
       isBlocked: false,
+      isBooked: false,
     };
 
     try {
@@ -241,6 +364,7 @@ export default function LecturerSlotsPage({ currentUser, onLogout }) {
         await updateSlot(editingId, {
           ...payload,
           isBlocked: existingSlot?.isBlocked || false,
+          isBooked: existingSlot?.isBooked || false,
         });
 
         setBanner({ type: 'success', text: 'Slot updated successfully.' });
@@ -256,13 +380,10 @@ export default function LecturerSlotsPage({ currentUser, onLogout }) {
     }
   }
 
-  async function handleCopyToday() {
-    if (!currentUser?.id) return;
-    const confirmed = window.confirm('Copy today\'s available slots to tomorrow?');
-    if (!confirmed) return;
-
+  async function handleCopyTodayConfirmed() {
     try {
       setCopyingSlots(true);
+      closeConfirmModal();
       const res = await copyTodaySlots(currentUser.id);
       const created = res?.created ?? 0;
       const skipped = res?.skipped ?? 0;
@@ -274,6 +395,17 @@ export default function LecturerSlotsPage({ currentUser, onLogout }) {
     } finally {
       setCopyingSlots(false);
     }
+  }
+
+  function handleCopyToday() {
+    if (!currentUser?.id) return;
+
+    openConfirmModal({
+      title: 'Copy Today Slots',
+      message: "Are you sure you want to copy today's available slots to tomorrow?",
+      onConfirm: handleCopyTodayConfirmed,
+      confirmText: 'Copy Slots',
+    });
   }
 
   function handleEdit(slot) {
@@ -297,11 +429,9 @@ export default function LecturerSlotsPage({ currentUser, onLogout }) {
     setSelectedSlot(slot);
   }
 
-  async function handleDelete(id) {
-    const confirmed = window.confirm('Are you sure you want to delete this slot?');
-    if (!confirmed) return;
-
+  async function confirmDelete(id) {
     try {
+      closeConfirmModal();
       await deleteSlot(id);
 
       if (editingId === id) {
@@ -319,6 +449,16 @@ export default function LecturerSlotsPage({ currentUser, onLogout }) {
     }
   }
 
+  function handleDelete(id) {
+    openConfirmModal({
+      title: 'Delete Slot',
+      message: 'Are you sure you want to delete this slot?',
+      onConfirm: () => confirmDelete(id),
+      danger: true,
+      confirmText: 'Delete',
+    });
+  }
+
   async function handleToggleBlock(slot) {
     const slotStatus = getSlotStatus(slot);
 
@@ -334,6 +474,7 @@ export default function LecturerSlotsPage({ currentUser, onLogout }) {
         startTime: normalizeTime(slot.startTime),
         endTime: normalizeTime(slot.endTime),
         isBlocked: !slot.isBlocked,
+        isBooked: slot.isBooked || false,
       };
 
       await updateSlot(slot.id, updatedSlot);
@@ -366,6 +507,7 @@ export default function LecturerSlotsPage({ currentUser, onLogout }) {
   const totalSlots = slots.length;
   const todaySlots = slots.filter((slot) => getSlotStatus(slot).className === 'today').length;
   const availableSlots = slots.filter((slot) => getSlotStatus(slot).className === 'available').length;
+  const bookedSlots = slots.filter((slot) => getSlotStatus(slot).className === 'booked').length;
   const blockedSlots = slots.filter((slot) => getSlotStatus(slot).className === 'blocked').length;
   const expiredSlots = slots.filter((slot) => getSlotStatus(slot).className === 'expired').length;
 
@@ -382,6 +524,8 @@ export default function LecturerSlotsPage({ currentUser, onLogout }) {
       data = data.filter((slot) => getSlotStatus(slot).className === 'today');
     } else if (filter === 'UPCOMING') {
       data = data.filter((slot) => getSlotStatus(slot).className === 'available');
+    } else if (filter === 'BOOKED') {
+      data = data.filter((slot) => getSlotStatus(slot).className === 'booked');
     } else if (filter === 'BLOCKED') {
       data = data.filter((slot) => getSlotStatus(slot).className === 'blocked');
     } else if (filter === 'EXPIRED') {
@@ -435,7 +579,7 @@ export default function LecturerSlotsPage({ currentUser, onLogout }) {
                 <button
                   type="button"
                   className="ls-btn ls-btn--soft"
-                  onClick={() => navigate('/lecturer/slots/calendar')}
+                  onClick={() => navigate('/lecturer/calendar')}
                 >
                   📅 Calendar View
                 </button>
@@ -460,6 +604,14 @@ export default function LecturerSlotsPage({ currentUser, onLogout }) {
 
                 <button
                   type="button"
+                  className="ls-btn ls-btn--outline"
+                  onClick={() => navigate('/lecturer/preferences')}
+                >
+                  ⚙ Preferences
+                </button>
+
+                <button
+                  type="button"
                   className="ls-btn ls-btn--soft"
                   onClick={onLogout}
                 >
@@ -474,7 +626,7 @@ export default function LecturerSlotsPage({ currentUser, onLogout }) {
           </div>
         </section>
 
-        <section className="ls-stats ls-stats--five">
+        <section className="ls-stats ls-stats--six">
           <div className="ls-stat-card">
             <div className="ls-stat-icon purple">📊</div>
             <div>
@@ -496,6 +648,14 @@ export default function LecturerSlotsPage({ currentUser, onLogout }) {
             <div>
               <h3>{availableSlots}</h3>
               <p>Available Slots</p>
+            </div>
+          </div>
+
+          <div className="ls-stat-card">
+            <div className="ls-stat-icon pink">📌</div>
+            <div>
+              <h3>{bookedSlots}</h3>
+              <p>Booked Slots</p>
             </div>
           </div>
 
@@ -524,8 +684,16 @@ export default function LecturerSlotsPage({ currentUser, onLogout }) {
 
             <div className="ls-form">
               <div className="ls-note">
-                <strong>Scheduling Note:</strong> Slots are available only between 09:00 AM and
-                09:00 PM. Each slot is 30 minutes long with a 15-minute interval pattern.
+                <strong>Scheduling Note:</strong> Current default rules are 09:00 AM to
+                09:00 PM, 30-minute slots, and a 15-minute interval pattern.
+                {' '}
+                <button
+                  type="button"
+                  className="ls-inline-link"
+                  onClick={() => navigate('/lecturer/preferences')}
+                >
+                  Change in Preferences
+                </button>
               </div>
 
               <form onSubmit={handleSubmit}>
@@ -580,7 +748,15 @@ export default function LecturerSlotsPage({ currentUser, onLogout }) {
                     {startTime && endTime ? `${minutesBetween(startTime, endTime)} mins` : '--'}
                   </div>
                   <div className="ls-helper-item">
-                    <strong>Rules:</strong> 09:00 - 21:00 | 30 min slot | 15 min gap pattern
+                    <strong>Rules:</strong> 09:00 - 21:00 | 30 min slot | 15 min gap pattern |
+                    {' '}
+                    <button
+                      type="button"
+                      className="ls-inline-link"
+                      onClick={() => navigate('/lecturer/preferences')}
+                    >
+                      Edit Preferences
+                    </button>
                   </div>
                 </div>
 
@@ -632,6 +808,7 @@ export default function LecturerSlotsPage({ currentUser, onLogout }) {
                   { key: 'ALL', label: 'All' },
                   { key: 'TODAY', label: 'Today' },
                   { key: 'UPCOMING', label: 'Available' },
+                  { key: 'BOOKED', label: 'Booked' },
                   { key: 'BLOCKED', label: 'Blocked' },
                   { key: 'EXPIRED', label: 'Expired' },
                 ].map((item) => (
@@ -693,6 +870,7 @@ export default function LecturerSlotsPage({ currentUser, onLogout }) {
                           type="button"
                           className="ls-action-btn edit"
                           onClick={() => handleEdit(slot)}
+                          disabled={slot.isBooked}
                         >
                           Edit
                         </button>
@@ -701,6 +879,7 @@ export default function LecturerSlotsPage({ currentUser, onLogout }) {
                           type="button"
                           className="ls-action-btn block"
                           onClick={() => handleToggleBlock(slot)}
+                          disabled={slot.isBooked}
                         >
                           {slot.isBlocked ? 'Unblock' : 'Block'}
                         </button>
@@ -709,6 +888,7 @@ export default function LecturerSlotsPage({ currentUser, onLogout }) {
                           type="button"
                           className="ls-action-btn delete"
                           onClick={() => handleDelete(slot.id)}
+                          disabled={slot.isBooked}
                         >
                           Delete
                         </button>
@@ -783,31 +963,39 @@ export default function LecturerSlotsPage({ currentUser, onLogout }) {
                 </div>
 
                 <div className="ls-detail-card">
-                  <span className="ls-detail-label">Blocked State</span>
-                  <span className="ls-detail-value">
-                    {selectedSlot.isBlocked ? 'Yes' : 'No'}
-                  </span>
+                  <span className="ls-detail-label">Blocked</span>
+                  <span className="ls-detail-value">{selectedSlot.isBlocked ? 'Yes' : 'No'}</span>
                 </div>
 
-                <div className="ls-detail-card ls-detail-card--full">
-                  <span className="ls-detail-label">Time Rule</span>
-                  <span className="ls-detail-value">30 minute slot</span>
+                <div className="ls-detail-card">
+                  <span className="ls-detail-label">Booked</span>
+                  <span className="ls-detail-value">{selectedSlot.isBooked ? 'Yes' : 'No'}</span>
                 </div>
               </div>
-            </div>
 
-            <div className="ls-modal__actions">
-              <button
-                type="button"
-                className="ls-btn ls-btn--ghost"
-                onClick={closeModal}
-              >
-                Close
-              </button>
+              <div className="ls-modal__actions">
+                <button
+                  type="button"
+                  className="ls-btn ls-btn--ghost"
+                  onClick={closeModal}
+                >
+                  Close
+                </button>
+              </div>
             </div>
           </div>
         </div>
       ) : null}
+
+      <ConfirmModal
+        open={confirmState.open}
+        title={confirmState.title}
+        message={confirmState.message}
+        confirmText={confirmState.confirmText}
+        onConfirm={confirmState.onConfirm}
+        onCancel={closeConfirmModal}
+        danger={confirmState.danger}
+      />
     </div>
   );
 }
