@@ -202,6 +202,18 @@ function StepSlot({ lecturer, slots, slotsLoading, selectedSlotId, onSelect, onB
   );
 }
 
+/* ── Field wrapper (must be at module level to avoid remount on re-render) ── */
+function Field({ label, hint, children, error }) {
+  return (
+    <div className="apf-field">
+      <label className="apf-label">{label}</label>
+      {children}
+      {hint && !error && <p className="apf-hint">{hint}</p>}
+      {error && <p className="apf-hint apf-hint--err">{error}</p>}
+    </div>
+  );
+}
+
 /* ── Step 3 — Booking Form ───────────────────────────────────────────── */
 function StepForm({ lecturer, selectedSlot, formData, onChange, onConfirm, onBack, loading, loadingMsg }) {
   const itNum       = formData.itNumber.trim().toUpperCase();
@@ -226,15 +238,6 @@ function StepForm({ lecturer, selectedSlot, formData, onChange, onConfirm, onBac
       onChange('itEmail', `${upper.toLowerCase()}@my.sliit.lk`);
     }
   };
-
-  const Field = ({ label, hint, children, error }) => (
-    <div className="apf-field">
-      <label className="apf-label">{label}</label>
-      {children}
-      {hint && !error && <p className="apf-hint">{hint}</p>}
-      {error && <p className="apf-hint apf-hint--err">{error}</p>}
-    </div>
-  );
 
   return (
     <div className="apf-wrap">

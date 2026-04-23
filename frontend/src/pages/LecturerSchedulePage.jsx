@@ -64,6 +64,7 @@ function AppointmentCard({ appointment, onAction, isExpanded, onToggle, onRefres
   const [showDelayForm, setShowDelayForm]           = useState(false);
   const [meetingLink, setMeetingLink]               = useState('');
   const [meetingLocation, setMeetingLocation]       = useState('');
+  const [confirmMsg, setConfirmMsg]                 = useState('');
   const [declineReason, setDeclineReason]           = useState('');
   const [rescheduleDate, setRescheduleDate]         = useState('');
   const [rescheduleTime, setRescheduleTime]         = useState('');
@@ -85,9 +86,9 @@ function AppointmentCard({ appointment, onAction, isExpanded, onToggle, onRefres
     if (!meetingLink && !meetingLocation) { toast.error('Provide a meeting link or location'); return; }
     setActionLoading('accept');
     try {
-      await onAction(appointment.id, 'CONFIRMED', { meetingLink, meetingLocation });
+      await onAction(appointment.id, 'CONFIRMED', { meetingLink, meetingLocation, confirmMsg });
       toast.success('Confirmed! Student notified by email.');
-      setShowAcceptForm(false); setMeetingLink(''); setMeetingLocation('');
+      setShowAcceptForm(false); setMeetingLink(''); setMeetingLocation(''); setConfirmMsg('');
     } catch { toast.error('Failed to confirm'); } finally { setActionLoading(null); }
   };
   const handleDecline = async () => {
@@ -264,10 +265,12 @@ function AppointmentCard({ appointment, onAction, isExpanded, onToggle, onRefres
             {showAcceptForm && (
               <div className="lsc-form-panel">
                 <div className="lsc-form-panel__title">Confirm Appointment</div>
-                <div className="lsc-form-row"><label className="lsc-form-label"><Video size={13} /> Meeting Link</label>
+                <div className="lsc-form-row"><label className="lsc-form-label"><Video size={13} /> Meeting Link (Teams/Zoom)</label>
                   <input className="lsc-form-input" value={meetingLink} onChange={e => setMeetingLink(e.target.value)} placeholder="https://teams.microsoft.com/..." /></div>
                 <div className="lsc-form-row"><label className="lsc-form-label"><MapPin size={13} /> Or Physical Location</label>
                   <input className="lsc-form-input" value={meetingLocation} onChange={e => setMeetingLocation(e.target.value)} placeholder="e.g. Room 301, Block A" /></div>
+                <div className="lsc-form-row"><label className="lsc-form-label">💬 Message to Student (Optional)</label>
+                  <textarea className="lsc-form-textarea" rows={2} value={confirmMsg} onChange={e => setConfirmMsg(e.target.value)} placeholder="e.g. Please bring your project files. See you then!" /></div>
                 <div className="lsc-form-btns">
                   <button className="lsc-btn lsc-btn--green" onClick={handleAccept} disabled={actionLoading === 'accept'}>
                     {actionLoading === 'accept' ? <><Loader2 size={13} className="lsc-spin" /> Confirming…</> : 'Confirm & Email Student'}</button>

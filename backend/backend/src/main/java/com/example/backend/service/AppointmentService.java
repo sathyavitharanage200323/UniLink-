@@ -37,6 +37,10 @@ public class AppointmentService {
         return appointmentRepository.findAll();
     }
 
+    public Appointment save(Appointment appt) {
+        return appointmentRepository.save(appt);
+    }
+
     public List<Appointment> getByStudent(Long studentId) {
         User student = userService.getUser(studentId);
         return appointmentRepository.findByStudent(student);

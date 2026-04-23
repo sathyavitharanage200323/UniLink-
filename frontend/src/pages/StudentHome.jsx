@@ -3,13 +3,35 @@ import { useNavigate } from 'react-router-dom';
 import {
   Calendar, MessageSquare, Clock, CheckCircle,
   BookOpen, PlusCircle, ChevronRight, User,
-  TrendingUp, ArrowRight, Bell, Star,
+  TrendingUp, ArrowRight, Bell, Star, MapPin, Video,
+  Hash, GraduationCap, Zap, RefreshCw
 } from 'lucide-react';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 import { chatApi } from '../api/chatApi';
 import api from '../api/axiosInstance';
 import './StudentHome.css';
+
+/* ── Parse all fields from notes ─────────────────────────────────────── */
+function parseApptNotes(notes = '') {
+  const extract = (key) => {
+    const m = notes.match(new RegExp(`\\[${key}:([^\\]]+)\\]`));
+    return m ? m[1].trim() : '';
+  };
+  const metaMatch = notes.match(/^\[([^\]]+)\]/);
+  const meta = metaMatch ? metaMatch[1].replace('| HIGH PRIORITY', '').trim() : '';
+  const reason = notes.replace(/\[[^\]]+\]/g, '').trim();
+  return {
+    meta,
+    name:     extract('NAME'),
+    it:       extract('IT'),
+    itEmail:  extract('ITEMAIL'),
+    phone:    extract('PHONE'),
+    mode:     extract('MODE'),
+    reason,
+    isHighPriority: notes.includes('HIGH PRIORITY'),
+  };
+}
 
 /**
  * StudentHome – dashboard for students.
@@ -30,10 +52,9 @@ export default function StudentHome({ currentUser, appointments = [], onLogout }
   const pendingAppts   = liveAppointments.filter((a) => a.status === 'PENDING');
   const completedCount = liveAppointments.filter((a) => a.status === 'COMPLETED').length;
 
-  // Show CONFIRMED + PENDING (all active appointments), sorted by date
-  const displayAppts = liveAppointments
-    .filter((a) => a.status === 'CONFIRMED' || a.status === 'PENDING')
-    .sort((a, b) => new Date(a.startTime) - new Date(b.startTime));
+  // Show ALL appointments sorted by startTime descending (newest first)
+  const displayAppts = [...liveAppointments]
+    .sort((a, b) => new Date(b.startTime) - new Date(a.startTime));
 
   // Update live appointments when prop changes
   useEffect(() => {
@@ -209,54 +230,81 @@ export default function StudentHome({ currentUser, appointments = [], onLogout }
             <div className="sh-card__body">
               {displayAppts.slice(0, 4).map((a) => {
                 const isRescheduled = a.rescheduledAt;
+                const parsed = parseApptNotes(a.notes || '');
                 const statusColor = isRescheduled ? '#dc2626' : (a.status === 'PENDING' ? '#d97706' : '#0f766e');
                 const statusBg    = isRescheduled ? '#fee2e2' : (a.status === 'PENDING' ? '#fef9c3' : '#dcfce7');
                 const statusLabel = isRescheduled ? 'RESCHEDULED' : (a.status ?? 'CONFIRMED');
-                
+
                 return (
-                  <div
-                    className="sh-appt-item"
-                    key={a.id}
-                    style={isRescheduled ? { borderLeft: '3px solid #dc2626', background: '#fff8f8' } : {}}
-                  >
-                    <div className="sh-appt-avatar">
-                      {getInitials(a.lecturer?.name ?? 'L')}
-                    </div>
-                    <div className="sh-appt-info">
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <strong>{a.lecturer?.name ?? 'Lecturer'}</strong>
+                  <div className="sh-appt-card" key={a.id}
+                    style={isRescheduled ? { borderLeft: '3px solid #dc2626' } : {}}>
+
+                    {/* Header row */}
+                    <div className="sh-appt-card__header">
+                      <div className="sh-appt-avatar">{getInitials(a.lecturer?.name ?? 'L')}</div>
+                      <div className="sh-appt-card__lec">
+                        <div className="sh-appt-card__lec-name">{a.lecturer?.name ?? 'Lecturer'}</div>
+                        <div className="sh-appt-card__lec-dept">{a.lecturer?.department}</div>
                       </div>
-                      <span>{a.notes ?? 'Appointment'}</span>
-                      <span className="sh-appt-time">
-                        <Clock size={11} /> {fmtDate(a.startTime)}
+                      <span className="sh-status" style={{ background: statusBg, color: statusColor, border: `1px solid ${statusColor}` }}>
+                        {parsed.isHighPriority && <Zap size={10} />} {statusLabel}
                       </span>
-                      {isRescheduled && a.rescheduleReason && (
-                        <span style={{
-                          fontSize: '0.72rem', color: '#dc2626', fontWeight: 600,
-                          display: 'flex', alignItems: 'center', gap: 3, marginTop: 2
-                        }}>
-                          Reason: {a.rescheduleReason}
+                    </div>
+
+                    {/* Time + mode */}
+                    <div className="sh-appt-card__time">
+                      <Clock size={13} style={{ color: '#2563eb', flexShrink: 0 }} />
+                      <span>{fmtDate(a.startTime)}</span>
+                      {parsed.mode && (
+                        <span className={`sh-mode-pill sh-mode-pill--${parsed.mode.toLowerCase()}`}>
+                          {parsed.mode === 'Online' ? <Video size={11} /> : <MapPin size={11} />}
+                          {parsed.mode}
                         </span>
                       )}
                     </div>
-                    <span 
-                      className="sh-status"
-                      style={{ 
-                        background: statusBg, 
-                        color: statusColor,
-                        border: `1px solid ${statusColor}`,
-                        fontSize: '0.70rem',
-                        fontWeight: 700,
-                        padding: '3px 9px',
-                        borderRadius: '999px',
-                        textTransform: 'uppercase',
-                        letterSpacing: '0.4px',
-                        flexShrink: 0,
-                        transition: 'transform 0.14s'
-                      }}
-                    >
-                      {statusLabel}
-                    </span>
+
+                    {/* Academic info */}
+                    {parsed.meta && (
+                      <div className="sh-appt-card__meta">
+                        <GraduationCap size={12} style={{ color: '#64748b' }} />
+                        {parsed.meta}
+                      </div>
+                    )}
+
+                    {/* Reason — only show when PENDING, hide after confirmed */}
+                    {a.status === 'PENDING' && parsed.reason && (
+                      <div className="sh-appt-card__reason">"{parsed.reason}"</div>
+                    )}
+
+                    {/* Confirmed details — meeting link / location / message */}
+                    {a.status === 'CONFIRMED' && (a.meetingLink || a.meetingLocation || a.confirmationMessage) && (
+                      <div className="sh-appt-card__confirmed">
+                        {a.confirmationMessage && (
+                          <div className="sh-appt-card__confirm-msg">
+                            💬 {a.confirmationMessage}
+                          </div>
+                        )}
+                        <div style={{ display:'flex', gap:10, flexWrap:'wrap' }}>
+                          {a.meetingLink && (
+                            <a href={a.meetingLink} target="_blank" rel="noopener noreferrer" className="sh-appt-card__link">
+                              <Video size={13} /> Join Meeting
+                            </a>
+                          )}
+                          {a.meetingLocation && (
+                            <span className="sh-appt-card__location">
+                              <MapPin size={13} /> {a.meetingLocation}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Reschedule reason */}
+                    {isRescheduled && a.rescheduleReason && (
+                      <div className="sh-appt-card__reschedule">
+                        <RefreshCw size={11} /> Rescheduled: {a.rescheduleReason}
+                      </div>
+                    )}
                   </div>
                 );
               })}
