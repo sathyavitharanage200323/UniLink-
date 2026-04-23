@@ -96,7 +96,8 @@ public class AppointmentService {
     }
 
     @Transactional
-    public Appointment updateStatus(Long id, Appointment.Status status, String reason) {
+    public Appointment updateStatus(Long id, Appointment.Status status, String reason,
+                                    String meetingLink, String meetingLocation, String confirmMsg) {
         Appointment appt = getById(id);
         DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
         DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern("HH:mm");
@@ -109,6 +110,7 @@ public class AppointmentService {
 
         if (status == Appointment.Status.CANCELLED) {
             releaseSlotForAppointment(appt);
+            appt.setRescheduleReason(reason != null && !reason.isBlank() ? reason : null);
             emailService.sendBookingDeclinedEmail(
                     appt.getStudent().getEmail(),
                     appt.getStudent().getName(),
@@ -117,27 +119,39 @@ public class AppointmentService {
                     reason
             );
         } else if (status == Appointment.Status.CONFIRMED) {
-            emailService.sendBookingAcceptedEmail(
-                    appt.getStudent().getEmail(),
-                    appt.getStudent().getName(),
-                    appt.getLecturer().getName(),
-                    appt.getLecturer().getDepartment(),
-                    appt.getStartTime().format(dateFormatter),
-                    appt.getStartTime().format(timeFormatter) + " - " + appt.getEndTime().format(timeFormatter),
-                    appt.getNotes() != null && !appt.getNotes().isBlank() ? appt.getNotes() : "N/A"
-            );
+            // Save meeting details on the appointment
+            if (meetingLink != null && !meetingLink.isBlank()) appt.setMeetingLink(meetingLink);
+            if (meetingLocation != null && !meetingLocation.isBlank()) appt.setMeetingLocation(meetingLocation);
+            if (confirmMsg != null && !confirmMsg.isBlank()) appt.setConfirmationMessage(confirmMsg);
+
+            try {
+                emailService.sendBookingAcceptedEmail(
+                        appt.getStudent().getEmail(),
+                        appt.getStudent().getName(),
+                        appt.getLecturer().getName(),
+                        appt.getLecturer().getDepartment(),
+                        appt.getStartTime().format(dateFormatter),
+                        appt.getStartTime().format(timeFormatter) + " – " + appt.getEndTime().format(timeFormatter),
+                        meetingLink,
+                        meetingLocation,
+                        confirmMsg
+                );
+            } catch (Exception ignored) { /* email failure should not block confirmation */ }
         }
 
         return appointmentRepository.save(appt);
     }
 
     @Transactional
-    public Appointment updateTime(Long id, LocalDateTime newStartTime, LocalDateTime newEndTime) {
+    public Appointment updateTime(Long id, LocalDateTime newStartTime, LocalDateTime newEndTime, String reason) {
         Appointment appt = getById(id);
         validateTimeRange(newStartTime, newEndTime);
         if (newStartTime.isBefore(LocalDateTime.now())) {
             throw new IllegalArgumentException("Cannot reschedule an appointment to a past time.");
         }
+
+        DateTimeFormatter dateFmt = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+        DateTimeFormatter timeFmt = DateTimeFormatter.ofPattern("HH:mm");
 
         AvailabilitySlot currentSlot = findMatchingSlotForUpdate(appt.getLecturer(), appt.getStartTime(), appt.getEndTime());
         AvailabilitySlot newSlot = findMatchingSlotForUpdate(appt.getLecturer(), newStartTime, newEndTime);
@@ -146,6 +160,7 @@ public class AppointmentService {
             throw new IllegalArgumentException("Target slot is not available for rescheduling.");
         }
 
+        // Release old slot, book new slot
         currentSlot.setStatus(AvailabilitySlot.SlotStatus.AVAILABLE);
         currentSlot.setBlockReason(null);
         availabilitySlotRepository.save(currentSlot);
@@ -154,9 +169,33 @@ public class AppointmentService {
         newSlot.setBlockReason(null);
         availabilitySlotRepository.save(newSlot);
 
+        // Update appointment: new time, back to PENDING, save reason & timestamp
         appt.setStartTime(newStartTime);
         appt.setEndTime(newEndTime);
-        return appointmentRepository.save(appt);
+        appt.setStatus(Appointment.Status.PENDING);
+        appt.setRescheduledAt(LocalDateTime.now());
+        appt.setRescheduleReason(reason != null && !reason.isBlank() ? reason : null);
+        // Clear previous confirmation details
+        appt.setMeetingLink(null);
+        appt.setMeetingLocation(null);
+        appt.setConfirmationMessage(null);
+
+        Appointment saved = appointmentRepository.save(appt);
+
+        // Notify student by email
+        try {
+            emailService.sendRescheduleEmail(
+                    appt.getStudent().getEmail(),
+                    appt.getStudent().getName(),
+                    appt.getLecturer().getName(),
+                    appt.getLecturer().getDepartment(),
+                    newStartTime.format(dateFmt),
+                    newStartTime.format(timeFmt) + " – " + newEndTime.format(timeFmt),
+                    reason
+            );
+        } catch (Exception ignored) { /* email failure should not block the reschedule */ }
+
+        return saved;
     }
 
     @Transactional

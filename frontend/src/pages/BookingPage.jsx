@@ -1,19 +1,21 @@
 ﻿import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import api from '../api/axiosInstance';
-import { createAppointment } from '../api';
+import { toast } from 'react-toastify';
 import {
   ArrowLeft, ArrowRight, Zap, Clock, CheckCircle, AlertCircle,
   Loader2, User, MapPin, Calendar
 } from 'lucide-react';
+import api from '../api/axiosInstance';
+import { createAppointment } from '../api';
+import { BACKEND_BASE_URL } from '../config';
 import Header from '../components/Header';
 import './BookingPage.css';
 
+const BACKEND = BACKEND_BASE_URL;
 const IT_REGEX = /^IT\d{8}$/i;
 const IT_EMAIL_REGEX = /^it\d{8}@my\.sliit\.lk$/i;
 const PHONE_REGEX = /^(\+94|0)[0-9]{9}$/;
 const MAX_REASON = 300;
-const BACKEND = 'http://localhost:8082';
 
 /* ── helpers ─────────────────────────────────────────────────────────── */
 function fmtTime(t = '00:00') {
@@ -467,8 +469,8 @@ export default function BookingPage({ currentUser, onLogout }) {
   // Load lecturers
   useEffect(() => {
     api.get('/users/role/LECTURER')
-      .then(r => setLecturers(r.data))
-      .catch(err => console.error('Failed to load lecturers', err));
+      .then(r => setLecturers(r.data || []))
+      .catch(err => { console.error('Failed to load lecturers', err); toast.error('Failed to load lecturers'); });
   }, []);
 
   // Load slots when lecturer selected
@@ -495,7 +497,7 @@ export default function BookingPage({ currentUser, onLogout }) {
           });
         setSlots(mapped);
       })
-      .catch(err => console.error('Failed to load slots', err))
+      .catch(err => { console.error('Failed to load slots', err); toast.error('Failed to load available slots'); })
       .finally(() => setSlotsLoading(false));
   }, [selectedLecturer]);
 

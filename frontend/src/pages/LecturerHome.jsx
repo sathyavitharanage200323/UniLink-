@@ -24,19 +24,19 @@ export default function LecturerHome({ currentUser, appointments = [], onLogout,
   useEffect(() => { setDnd(currentUser?.doNotDisturb ?? false); }, [currentUser?.doNotDisturb]);
   useEffect(() => { setLiveAppointments(appointments); }, [appointments]);
 
-  // Poll appointments every 5 seconds for real-time updates
+  // Poll appointments every 10 seconds
   useEffect(() => {
     if (!currentUser?.id) return;
     const poll = async () => {
       try {
         const res = await api.get(`/appointments/lecturer/${currentUser.id}`);
         setLiveAppointments(res.data || []);
-      } catch (err) {
-        console.error('Error polling appointments:', err);
+      } catch {
+        // silently keep existing data on poll failure
       }
     };
     poll();
-    const interval = setInterval(poll, 5000);
+    const interval = setInterval(poll, 10000);
     return () => clearInterval(interval);
   }, [currentUser?.id]);
 
@@ -293,7 +293,9 @@ export default function LecturerHome({ currentUser, appointments = [], onLogout,
                     <div className="lh-request-avatar">{getInitials(student)}</div>
                     <div className="lh-request-info">
                       <strong>{student}</strong>
-                      <span>{r.notes ?? 'Appointment request'}</span>
+                      <span style={{ fontSize:'0.78rem', color:'#64748b' }}>
+                        {new Date(r.startTime).toLocaleString('en-GB', { weekday:'short', day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' })}
+                      </span>
                       <span style={{ fontSize: '0.72rem', color: '#7c3aed', marginTop: 2, display: 'block' }}>
                         {fmtDate(r.startTime)}
                       </span>
@@ -301,15 +303,9 @@ export default function LecturerHome({ currentUser, appointments = [], onLogout,
                     <div className="lh-request-actions">
                       <button
                         className="lh-btn lh-btn--sm lh-btn--success"
-                        onClick={() => handleAccept(r.id)}
+                        onClick={() => navigate('/lecturer/schedule')}
                       >
-                        <CheckCircle size={12} /> Accept
-                      </button>
-                      <button
-                        className="lh-btn lh-btn--sm lh-btn--danger"
-                        onClick={() => handleDecline(r.id)}
-                      >
-                        Decline
+                        <CheckCircle size={12} /> Review
                       </button>
                     </div>
                   </div>

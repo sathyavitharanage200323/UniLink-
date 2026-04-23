@@ -870,3 +870,73 @@
   margin-bottom: 6px;
   line-height: 1.4;
 }
+
+/* ── Rescheduled alert section ──────────────────────────────────────── */
+.sh-reschedule-alert {
+  background: linear-gradient(135deg, rgba(220,38,38,0.06), rgba(234,88,12,0.04));
+  border: 1.5px solid #fca5a5;
+  border-radius: 14px;
+  padding: 12px 14px;
+  margin-bottom: 14px;
+  animation: sh-pulse-border 2s ease-in-out infinite;
+}
+@keyframes sh-pulse-border {
+  0%, 100% { border-color: #fca5a5; box-shadow: 0 0 0 0 rgba(220,38,38,0.1); }
+  50%       { border-color: #ef4444; box-shadow: 0 0 0 4px rgba(220,38,38,0.08); }
+}
+.sh-reschedule-alert__header {
+  display: flex; align-items: center; gap: 7px;
+  font-size: 0.82rem; font-weight: 800; color: #dc2626;
+  text-transform: uppercase; letter-spacing: 0.04em;
+  margin-bottom: 10px;
+}
+
+/* ── Rescheduled card ────────────────────────────────────────────────── */
+.sh-reschedule-card {
+  background: rgba(255,255,255,0.85);
+  backdrop-filter: blur(12px);
+  border: 1px solid #fecaca;
+  border-left: 4px solid #dc2626;
+  border-radius: 12px;
+  padding: 12px 14px;
+  margin-top: 8px;
+  display: flex; flex-direction: column; gap: 7px;
+}
+.sh-reschedule-card__top {
+  display: flex; align-items: center; gap: 10px;
+}
+.sh-reschedule-badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  background: #dc2626; color: white;
+  border-radius: 20px; padding: 3px 10px;
+  font-size: 0.68rem; font-weight: 800;
+  text-transform: uppercase; letter-spacing: 0.04em;
+  flex-shrink: 0;
+  animation: sh-badge-pulse 1.5s ease-in-out infinite;
+}
+@keyframes sh-badge-pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.75; }
+}
+.sh-reschedule-card__new-time {
+  display: flex; align-items: center; gap: 7px;
+  font-size: 0.82rem; font-weight: 600; color: #1c1c1e;
+  flex-wrap: wrap;
+}
+.sh-reschedule-card__reason {
+  font-size: 0.78rem; color: #dc2626;
+  background: rgba(220,38,38,0.06);
+  border-radius: 8px; padding: 6px 10px;
+  line-height: 1.4;
+}
+
+/* Global pulse for rescheduled cards in UtilityPages */
+@keyframes pulse-red {
+  0%, 100% { box-shadow: 0 4px 20px rgba(220,38,38,0.15); }
+  50%       { box-shadow: 0 4px 28px rgba(220,38,38,0.3); }
+}
+
+@keyframes sh-pulse-dot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%       { opacity: 0.5; transform: scale(1.3); }
+}

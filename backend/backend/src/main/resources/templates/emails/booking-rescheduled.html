@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><title>Appointment Rescheduled</title></head>
+<body style="margin:0;padding:24px;font-family:Segoe UI,Arial,sans-serif;color:#1f2937;"
+      th:style="'margin:0;padding:24px;background:' + ${bodyGradient} + ';font-family:Segoe UI,Arial,sans-serif;color:#1f2937;'">
+<table role="presentation" width="100%" cellspacing="0" cellpadding="0"
+       style="max-width:640px;margin:0 auto;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 12px 30px rgba(15,23,42,0.1);"
+       th:style="'max-width:640px;margin:0 auto;background:#ffffff;border-radius:16px;border:1px solid ' + ${cardBorderColor} + ';overflow:hidden;'">
+  <tr>
+    <td style="padding:22px 28px;background:linear-gradient(90deg,#ea580c,#dc2626);"
+        th:style="'padding:22px 28px;background:' + ${headerGradient} + ';'">
+      <p style="margin:0;font-size:11px;letter-spacing:1.2px;text-transform:uppercase;color:rgba(255,255,255,0.75);font-weight:700;"
+         th:text="${brandName} + ' · Appointment Update'">UniLink · Appointment Update</p>
+      <h2 style="margin:6px 0 0;font-size:22px;color:#ffffff;font-weight:800;">↺ Appointment Rescheduled</h2>
+    </td>
+  </tr>
+  <tr>
+    <td style="padding:28px;line-height:1.7;">
+      <p style="margin:0 0 14px;font-size:15px;">Hi <strong th:text="${studentName}">Student</strong>,</p>
+      <p style="margin:0 0 20px;font-size:15px;">
+        <strong th:text="${lecturerName}">Lecturer</strong> has rescheduled your appointment to a new time.
+        Your booking is now back to <strong style="color:#ea580c;">Pending</strong> — no action needed from you.
+      </p>
+
+      <div style="margin:0 0 20px;padding:18px 20px;border-radius:12px;border:1px solid #fed7aa;background:#fff7ed;">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+          <tr>
+            <td style="padding:4px 0;"><strong style="color:#ea580c;">📅 New Date</strong></td>
+            <td style="padding:4px 0;" th:text="${newDate}">2026-01-01</td>
+          </tr>
+          <tr>
+            <td style="padding:4px 0;"><strong style="color:#ea580c;">🕐 New Time</strong></td>
+            <td style="padding:4px 0;" th:text="${newTime}">10:00 – 10:30</td>
+          </tr>
+        </table>
+      </div>
+
+      <div style="padding:14px 18px;background:#fef2f2;border:1px solid #fecaca;border-left:4px solid #dc2626;border-radius:0 10px 10px 0;margin-bottom:20px;">
+        <p style="margin:0;font-size:13px;font-weight:700;color:#b91c1c;margin-bottom:4px;">Reason for rescheduling:</p>
+        <p style="margin:0;font-size:14px;color:#7f1d1d;" th:text="${reason}">Reason here</p>
+      </div>
+
+      <p style="margin:0 0 6px;font-size:14px;color:#374151;">Your appointment will need to be confirmed again by the lecturer.</p>
+
+      <hr style="border:none;border-top:1px solid #e5e7eb;margin:20px 0;" />
+      <p style="margin:0;font-size:12px;color:#9ca3af;">
+        Automated email from <span th:text="${brandName}">UniLink</span> ·
+        <a th:href="'mailto:' + ${supportEmail}" th:text="${supportEmail}" style="color:#6b7280;">Support</a>
+      </p>
+    </td>
+  </tr>
+</table>
+</body>
+</html>
