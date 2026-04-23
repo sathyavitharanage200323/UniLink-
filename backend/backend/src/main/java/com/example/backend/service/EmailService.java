@@ -53,20 +53,50 @@ public class EmailService {
         sendHtmlMail(to, "UniLink Password Reset Code", html);
     }
 
+    public void sendRescheduleEmail(String toStudent, String studentName,
+                                     String lecturerName, String lecturerDepartment,
+                                     String newDate, String newTime, String reason) {
+        Theme theme = resolveTheme(lecturerDepartment, lecturerName, true);
+        Context context = new Context();
+        context.setVariable("studentName", studentName);
+        context.setVariable("lecturerName", lecturerName);
+        context.setVariable("newDate", newDate);
+        context.setVariable("newTime", newTime);
+        context.setVariable("reason", reason != null && !reason.isBlank() ? reason : "No reason provided.");
+        context.setVariable("brandName", brandName);
+        context.setVariable("brandLogoUrl", brandLogoUrl);
+        context.setVariable("brandWebsiteUrl", brandWebsiteUrl);
+        context.setVariable("supportEmail", supportEmail);
+        context.setVariable("supportPhone", supportPhone);
+        context.setVariable("bodyGradient", theme.bodyGradient());
+        context.setVariable("cardBorderColor", theme.cardBorderColor());
+        context.setVariable("headerGradient", theme.headerGradient());
+        context.setVariable("detailBoxBackground", theme.detailBoxBackground());
+        context.setVariable("detailBoxBorder", theme.detailBoxBorder());
+        context.setVariable("labelColor", theme.labelColor());
+
+        String html = templateEngine.process("emails/booking-rescheduled", context);
+        sendHtmlMail(toStudent, "UniLink - Your Appointment Has Been Rescheduled", html);
+    }
+
     public void sendBookingAcceptedEmail(String toStudent,
                                          String studentName,
                                          String lecturerName,
                                          String lecturerDepartment,
                                          String bookingDate,
                                          String bookingTime,
-                                         String notes) {
+                                         String meetingLink,
+                                         String meetingLocation,
+                                         String confirmationMessage) {
         Theme theme = resolveTheme(lecturerDepartment, lecturerName, true);
         Context context = new Context();
         context.setVariable("studentName", studentName);
         context.setVariable("lecturerName", lecturerName);
         context.setVariable("bookingDate", bookingDate);
         context.setVariable("bookingTime", bookingTime);
-        context.setVariable("notes", notes);
+        context.setVariable("meetingLink", meetingLink != null && !meetingLink.isBlank() ? meetingLink : null);
+        context.setVariable("meetingLocation", meetingLocation != null && !meetingLocation.isBlank() ? meetingLocation : null);
+        context.setVariable("confirmationMessage", confirmationMessage != null && !confirmationMessage.isBlank() ? confirmationMessage : null);
         context.setVariable("brandName", brandName);
         context.setVariable("brandLogoUrl", brandLogoUrl);
         context.setVariable("brandWebsiteUrl", brandWebsiteUrl);
@@ -80,7 +110,7 @@ public class EmailService {
         context.setVariable("labelColor", theme.labelColor());
 
         String html = templateEngine.process("emails/booking-accepted", context);
-        sendHtmlMail(toStudent, "UniLink - Booking Request Accepted", html);
+        sendHtmlMail(toStudent, "UniLink - Your Appointment is Confirmed ✅", html);
     }
 
     public void sendBookingDeclinedEmail(String toStudent,

@@ -1,10 +1,14 @@
-import { useEffect, useState } from 'react';
+﻿import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Calendar, User, Wrench, ArrowLeft, Clock, BellOff, Bell, AlertCircle, CheckCircle, RefreshCw, Camera } from 'lucide-react';
+import { toast } from 'react-toastify';
+import { Calendar, User, Wrench, ArrowLeft, Clock, BellOff, Bell, AlertCircle, CheckCircle, RefreshCw, Camera, Video, MapPin, GraduationCap, MessageSquare, XCircle } from 'lucide-react';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 import { userApi } from '../api/chatApi';
 import api from '../api/axiosInstance';
+import { BACKEND_BASE_URL } from '../config';
+
+const BACKEND = BACKEND_BASE_URL;
 
 const DEPARTMENT_OPTIONS = [
 	'Faculty Of Computing',
@@ -36,6 +40,43 @@ const ACADEMIC_PERIODS = [
 	{ academicYear: 'Year 4', semester: 'Semester 1', label: 'Year 4 Semester 1' },
 	{ academicYear: 'Year 4', semester: 'Semester 2', label: 'Year 4 Semester 2' },
 ];
+
+/* ── Reschedule action buttons (stateful to prevent double-click) ─────── */
+function RescheduleButtons({ appointmentId, onDone }) {
+	const [loading, setLoading] = React.useState(null);
+	const [done, setDone] = React.useState(false);
+	if (done) return null;
+	const handle = async (action) => {
+		if (loading) return;
+		setLoading(action);
+		setDone(true);
+		try {
+			if (action === 'accept') {
+				await api.patch(`/appointments/${appointmentId}/status`, { status: 'CONFIRMED' });
+				toast.success('Appointment confirmed!');
+			} else {
+				await api.patch(`/appointments/${appointmentId}/status`, { status: 'CANCELLED', reason: 'Student declined the rescheduled time.' });
+				toast.info('Appointment declined.');
+			}
+			onDone();
+		} catch (err) {
+			setDone(false);
+			toast.error(err?.response?.data?.message || 'Failed. Please try again.');
+		} finally { setLoading(null); }
+	};
+	return (
+		<div style={{ display:'flex', gap:10, marginTop:4 }}>
+			<button onClick={() => handle('accept')} disabled={!!loading}
+				style={{ display:'inline-flex', alignItems:'center', gap:6, padding:'9px 18px', borderRadius:10, border:'none', background:'#16a34a', color:'white', fontWeight:700, fontSize:'0.82rem', cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.7 : 1 }}>
+				<CheckCircle size={14} /> {loading === 'accept' ? 'Confirming…' : 'Accept New Time'}
+			</button>
+			<button onClick={() => handle('decline')} disabled={!!loading}
+				style={{ display:'inline-flex', alignItems:'center', gap:6, padding:'9px 18px', borderRadius:10, border:'1.5px solid #dc2626', background:'white', color:'#dc2626', fontWeight:700, fontSize:'0.82rem', cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.7 : 1 }}>
+				<XCircle size={14} /> {loading === 'decline' ? 'Declining…' : 'Decline'}
+			</button>
+		</div>
+	);
+}
 
 export function AppointmentsPage({ currentUser, appointments = [], onLogout }) {
 	const navigate = useNavigate();
@@ -107,7 +148,10 @@ export function AppointmentsPage({ currentUser, appointments = [], onLogout }) {
 							<h1 style={{ margin:0, fontSize:'1.5rem', fontWeight:800, color:'#1c1c1e', display:'flex', alignItems:'center', gap:10 }}>
 								<Calendar size={22} style={{ color:'#007aff' }} /> {isAdmin ? 'All Appointments' : 'My Appointments'}
 							</h1>
+				<p style={{ margin:'4px 0 0', color:'#636366', fontSize:'0.82rem' }}>{list.length} total · auto-refreshes every 10s</p>
+
 							<p style={{ margin:'4px 0 0', color:'#636366', fontSize:'0.82rem' }}>{list.length} total � auto-refreshes every 10s</p>
+a65d18b16cd3da6375179f750065c59d7a7b35bc
 						</div>
 						<div style={{ display:'flex', gap:10, alignItems:'center' }}>
 							{!isLecturer && !isAdmin && (
@@ -149,13 +193,55 @@ export function AppointmentsPage({ currentUser, appointments = [], onLogout }) {
 
 				{/* Appointment cards */}
 				<div style={{ display:'flex', flexDirection:'column', gap:12 }}>
+					{/* Rescheduled appointments — pinned at top with alert styling */}
+					{filtered.filter(a => a.rescheduledAt).map(a => {
+						const mode = extract(a.notes, 'MODE');
+						return (
+							<div key={`rs-${a.id}`} style={{ background:'linear-gradient(135deg,rgba(220,38,38,0.07),rgba(255,255,255,0.85))', backdropFilter:'blur(16px)', border:'2px solid #ef4444', borderLeft:'5px solid #dc2626', borderRadius:18, padding:'16px 18px', display:'flex', flexDirection:'column', gap:10, boxShadow:'0 4px 20px rgba(220,38,38,0.15)', animation:'pulse-red 2s ease-in-out infinite' }}>
+								<div style={{ display:'flex', alignItems:'center', gap:10 }}>
+									<div style={{ width:44, height:44, borderRadius:12, background:'linear-gradient(135deg,#dc2626,#ea580c)', color:'white', fontWeight:800, fontSize:'0.9rem', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+										{(a.lecturer?.name||'L').split(' ').map(n=>n[0]).join('').slice(0,2).toUpperCase()}
+									</div>
+									<div style={{ flex:1 }}>
+										<div style={{ fontWeight:700, fontSize:'0.95rem', color:'#1c1c1e' }}>{a.lecturer?.name ?? 'Lecturer'}</div>
+										<div style={{ fontSize:'0.72rem', color:'#636366' }}>{a.lecturer?.department}</div>
+									</div>
+									<span style={{ display:'inline-flex', alignItems:'center', gap:5, background:'#dc2626', color:'white', borderRadius:20, padding:'4px 12px', fontSize:'0.72rem', fontWeight:800, textTransform:'uppercase', letterSpacing:'0.04em' }}>
+										↺ RESCHEDULED
+									</span>
+								</div>
+								<div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap', fontSize:'0.85rem', fontWeight:700, color:'#1c1c1e' }}>
+									<Clock size={14} style={{ color:'#dc2626' }} />
+									New time: {new Date(a.startTime).toLocaleString('en-GB', { weekday:'long', day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' })}
+									{mode && <span style={{ display:'inline-flex', alignItems:'center', gap:4, padding:'2px 10px', borderRadius:20, fontSize:'0.72rem', fontWeight:700, background:mode==='Online'?'#eff6ff':'#f0fdf4', color:mode==='Online'?'#2563eb':'#16a34a', border:`1px solid ${mode==='Online'?'#bfdbfe':'#bbf7d0'}` }}>{mode==='Online'?<Video size={11} />:<MapPin size={11} />} {mode}</span>}
+								</div>
+								{a.rescheduleReason && (
+									<div style={{ fontSize:'0.82rem', color:'#dc2626', background:'rgba(220,38,38,0.07)', border:'1px solid #fecaca', borderRadius:10, padding:'8px 12px', fontWeight:500 }}>
+										<strong>Reason:</strong> {a.rescheduleReason}
+									</div>
+								)}
+								{a.confirmationMessage && (
+									<div style={{ fontSize:'0.85rem', color:'#1c1c1e', display:'flex', gap:6 }}>💬 {a.confirmationMessage}</div>
+								)}
+								{(a.meetingLink || a.meetingLocation) && (
+									<div style={{ display:'flex', gap:10, flexWrap:'wrap', padding:'8px 12px', background:'linear-gradient(135deg,rgba(240,253,244,0.9),rgba(239,246,255,0.9))', border:'1px solid #bbf7d0', borderRadius:10 }}>
+										{a.meetingLink && <a href={a.meetingLink} target="_blank" rel="noopener noreferrer" style={{ display:'inline-flex', alignItems:'center', gap:5, color:'#007aff', fontWeight:700, fontSize:'0.82rem', textDecoration:'none', padding:'5px 12px', background:'rgba(0,122,255,0.08)', borderRadius:8 }}><Video size={13} /> Join Meeting</a>}
+										{a.meetingLocation && <span style={{ display:'inline-flex', alignItems:'center', gap:5, color:'#16a34a', fontWeight:600, fontSize:'0.82rem' }}><MapPin size={13} /> {a.meetingLocation}</span>}
+									</div>
+								)}
+								{/* Student accept/decline buttons for rescheduled appointment */}
+								<RescheduleButtons appointmentId={a.id} onDone={handleRefresh} />
+							</div>
+						);
+					})}
+
 					{filtered.length === 0 && (
 						<div style={{ background:'rgba(255,255,255,0.7)', backdropFilter:'blur(12px)', border:'1px solid rgba(0,0,0,0.07)', borderRadius:16, padding:'40px 20px', textAlign:'center', color:'#aeaeb2' }}>
 							<Calendar size={40} style={{ marginBottom:10, opacity:0.4 }} />
 							<p style={{ margin:0, fontWeight:600 }}>No {filter.toLowerCase()} appointments</p>
 						</div>
 					)}
-					{filtered.map((a) => {
+					{filtered.filter(a => !a.rescheduledAt).map((a) => {
 						const meta   = parseMeta(a.notes);
 						const reason = parseReason(a.notes);
 						const mode   = extract(a.notes, 'MODE');
@@ -186,8 +272,8 @@ export function AppointmentsPage({ currentUser, appointments = [], onLogout }) {
 										<div style={{ fontSize:'0.72rem', color:'#636366', marginTop:1 }}>{personDept}</div>
 									</div>
 									<div style={{ display:'flex', alignItems:'center', gap:6, flexWrap:'wrap', justifyContent:'flex-end' }}>
-										{isHP && <span style={{ display:'inline-flex', alignItems:'center', gap:3, background:'#fef2f2', color:'#dc2626', border:'1px solid #fecaca', borderRadius:20, padding:'2px 8px', fontSize:'0.68rem', fontWeight:700 }}>? HIGH PRIORITY</span>}
-										{a.rescheduledAt && <span style={{ display:'inline-flex', alignItems:'center', gap:3, background:'#fef2f2', color:'#dc2626', border:'1px solid #fecaca', borderRadius:20, padding:'2px 8px', fontSize:'0.68rem', fontWeight:700 }}>? RESCHEDULED</span>}
+										{isHP && <span style={{ display:'inline-flex', alignItems:'center', gap:3, background:'#fef2f2', color:'#dc2626', border:'1px solid #fecaca', borderRadius:20, padding:'2px 8px', fontSize:'0.68rem', fontWeight:700 }}>HIGH PRIORITY</span>}
+										{a.rescheduledAt && <span style={{ display:'inline-flex', alignItems:'center', gap:3, background:'#fef2f2', color:'#dc2626', border:'1px solid #fecaca', borderRadius:20, padding:'2px 8px', fontSize:'0.68rem', fontWeight:700 }}>RESCHEDULED</span>}
 										<span style={{ background:sc.bg, color:sc.color, border:`1.5px solid ${sc.border}`, borderRadius:20, padding:'4px 12px', fontSize:'0.72rem', fontWeight:700, textTransform:'uppercase', letterSpacing:'0.03em' }}>
 											{a.rescheduledAt ? 'Rescheduled' : a.status}
 										</span>
@@ -202,12 +288,15 @@ export function AppointmentsPage({ currentUser, appointments = [], onLogout }) {
 									</span>
 									{mode && (
 										<span style={{ display:'inline-flex', alignItems:'center', gap:4, padding:'2px 10px', borderRadius:20, fontSize:'0.72rem', fontWeight:700, background:mode==='Online'?'#eff6ff':'#f0fdf4', color:mode==='Online'?'#007aff':'#16a34a', border:`1px solid ${mode==='Online'?'#bfdbfe':'#bbf7d0'}` }}>
-											{mode==='Online'?'??':'??'} {mode}
+											{mode==='Online'?<Video size={11} />:<MapPin size={11} />} {mode}
 										</span>
 									)}
 								</div>
 
 								{/* Academic */}
+
+								{meta && <div style={{ fontSize:'0.75rem', color:'#636366', display:'flex', alignItems:'center', gap:5 }}>{meta}</div>}
+
 								{meta && <div style={{ fontSize:'0.75rem', color:'#636366', display:'flex', alignItems:'center', gap:5 }}>?? {meta}</div>}
 
 								{/* Reason � PENDING only */}
@@ -217,24 +306,25 @@ export function AppointmentsPage({ currentUser, appointments = [], onLogout }) {
 									</div>
 								)}
 
+
 								{/* Confirmed details */}
 								{a.status === 'CONFIRMED' && (a.meetingLink || a.meetingLocation || a.confirmationMessage) && (
 									<div style={{ display:'flex', flexDirection:'column', gap:8, padding:'12px 14px', background:'linear-gradient(135deg,rgba(240,253,244,0.9),rgba(239,246,255,0.9))', border:'1px solid #bbf7d0', borderRadius:12, backdropFilter:'blur(8px)' }}>
 										{a.confirmationMessage && (
 											<div style={{ fontSize:'0.85rem', color:'#1c1c1e', fontWeight:500, display:'flex', alignItems:'flex-start', gap:7 }}>
-												<span style={{ fontSize:'1rem', flexShrink:0 }}>??</span>
+												<MessageSquare size={14} style={{ color: "#16a34a", flexShrink:0 }} />
 												<span>{a.confirmationMessage}</span>
 											</div>
 										)}
 										<div style={{ display:'flex', alignItems:'center', gap:10, flexWrap:'wrap' }}>
 											{a.meetingLink && (
 												<a href={a.meetingLink} target="_blank" rel="noopener noreferrer" style={{ display:'inline-flex', alignItems:'center', gap:5, color:'#007aff', fontWeight:700, fontSize:'0.82rem', textDecoration:'none', padding:'6px 12px', background:'rgba(0,122,255,0.08)', borderRadius:10, border:'1px solid rgba(0,122,255,0.15)' }}>
-													?? Join Meeting
+													Join Meeting
 												</a>
 											)}
 											{a.meetingLocation && (
 												<span style={{ display:'inline-flex', alignItems:'center', gap:5, color:'#16a34a', fontWeight:600, fontSize:'0.82rem', padding:'6px 12px', background:'rgba(22,163,74,0.06)', borderRadius:10, border:'1px solid rgba(22,163,74,0.15)' }}>
-													?? {a.meetingLocation}
+													{a.meetingLocation}
 												</span>
 											)}
 										</div>
@@ -244,14 +334,14 @@ export function AppointmentsPage({ currentUser, appointments = [], onLogout }) {
 								{/* Cancelled reason */}
 								{a.status === 'CANCELLED' && a.rescheduleReason && (
 									<div style={{ display:'flex', alignItems:'center', gap:6, fontSize:'0.75rem', color:'#dc2626', fontWeight:600, background:'rgba(254,242,242,0.8)', border:'1px solid #fecaca', borderRadius:10, padding:'7px 12px' }}>
-										? {a.rescheduleReason}
+										{a.rescheduleReason}
 									</div>
 								)}
 
 								{/* Reschedule reason */}
 								{a.rescheduledAt && a.rescheduleReason && (
 									<div style={{ display:'flex', alignItems:'center', gap:6, fontSize:'0.75rem', color:'#dc2626', fontWeight:600, background:'rgba(254,242,242,0.8)', border:'1px solid #fecaca', borderRadius:10, padding:'7px 12px' }}>
-										? Rescheduled: {a.rescheduleReason}
+										RESCHEDULED: {a.rescheduleReason}
 									</div>
 								)}
 							</div>
@@ -268,7 +358,7 @@ export function ProfilePage({ currentUser, onLogout, onUserUpdate }) {
 	const isLecturer = currentUser?.role === 'LECTURER';
 	const isStudent = currentUser?.role === 'STUDENT';
 	const [profileImagePreview, setProfileImagePreview] = useState(
-		currentUser?.profileImage ? `http://localhost:8082/uploads/${currentUser.profileImage}` : null
+		currentUser?.profileImage ? `${BACKEND}/uploads/${currentUser.profileImage}` : null
 	);
 	const [uploadingImage, setUploadingImage] = useState(false);
 
@@ -888,4 +978,7 @@ export function ComingSoonPage({ currentUser, onLogout }) {
 		</div>
 	);
 }
+
+
+
 

@@ -4,7 +4,7 @@ import {
   Calendar, MessageSquare, Clock, CheckCircle,
   BookOpen, PlusCircle, ChevronRight, User,
   TrendingUp, ArrowRight, Bell, Star, MapPin, Video,
-  Hash, GraduationCap, Zap, RefreshCw
+  Hash, GraduationCap, Zap, RefreshCw, XCircle
 } from 'lucide-react';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
@@ -12,7 +12,55 @@ import { chatApi } from '../api/chatApi';
 import api from '../api/axiosInstance';
 import './StudentHome.css';
 
-/* ── Parse all fields from notes ─────────────────────────────────────── */
+import { toast } from 'react-toastify';
+
+/* ── Student action buttons for rescheduled appointments ─────────────── */
+function RescheduleActions({ appointmentId, onDone }) {
+  const [loading, setLoading] = React.useState(null);
+  const [done, setDone] = React.useState(false);
+
+  if (done) return null;
+
+  const handle = async (action) => {
+    if (loading) return;
+    setLoading(action);
+    setDone(true); // hide buttons immediately
+    try {
+      if (action === 'accept') {
+        await api.patch(`/appointments/${appointmentId}/status`, { status: 'CONFIRMED' });
+        toast.success('Appointment confirmed!');
+      } else {
+        await api.patch(`/appointments/${appointmentId}/status`, { status: 'CANCELLED', reason: 'Student declined the rescheduled time.' });
+        toast.info('Appointment declined.');
+      }
+      onDone();
+    } catch (err) {
+      setDone(false); // show buttons again on error
+      toast.error(err?.response?.data?.message || 'Failed. Please try again.');
+    } finally {
+      setLoading(null);
+    }
+  };
+
+  return (
+    <div style={{ display: 'flex', gap: 10, marginTop: 4 }}>
+      <button
+        onClick={() => handle('accept')}
+        disabled={!!loading}
+        style={{ display:'inline-flex', alignItems:'center', gap:6, padding:'8px 18px', borderRadius:10, border:'none', background:'#16a34a', color:'white', fontWeight:700, fontSize:'0.82rem', cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.7 : 1 }}
+      >
+        {loading === 'accept' ? '...' : <><CheckCircle size={14} /> Accept New Time</>}
+      </button>
+      <button
+        onClick={() => handle('decline')}
+        disabled={!!loading}
+        style={{ display:'inline-flex', alignItems:'center', gap:6, padding:'8px 18px', borderRadius:10, border:'1.5px solid #dc2626', background:'white', color:'#dc2626', fontWeight:700, fontSize:'0.82rem', cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.7 : 1 }}
+      >
+        {loading === 'decline' ? '...' : <><XCircle size={14} /> Decline</>}
+      </button>
+    </div>
+  );
+}
 function parseApptNotes(notes = '') {
   const extract = (key) => {
     const m = notes.match(new RegExp(`\\[${key}:([^\\]]+)\\]`));
@@ -52,32 +100,37 @@ export default function StudentHome({ currentUser, appointments = [], onLogout }
   const pendingAppts   = liveAppointments.filter((a) => a.status === 'PENDING');
   const completedCount = liveAppointments.filter((a) => a.status === 'COMPLETED').length;
 
-  // Show ALL appointments sorted by startTime descending (newest first)
-  const displayAppts = [...liveAppointments]
-    .sort((a, b) => new Date(b.startTime) - new Date(a.startTime));
+  // Sort: PENDING first, then CONFIRMED, then others — all by startTime desc
+  const displayAppts = [...liveAppointments].sort((a, b) => {
+    const priority = { PENDING: 0, CONFIRMED: 1, COMPLETED: 2, CANCELLED: 3 };
+    const pa = priority[a.status] ?? 4;
+    const pb = priority[b.status] ?? 4;
+    if (pa !== pb) return pa - pb;
+    return new Date(b.startTime) - new Date(a.startTime);
+  });
+
+  // Separate rescheduled appointments for highlighted display
+  const rescheduledAppts = displayAppts.filter(a => a.rescheduledAt);
+  const normalAppts = displayAppts.filter(a => !a.rescheduledAt);
 
   // Update live appointments when prop changes
   useEffect(() => {
     setLiveAppointments(appointments);
   }, [appointments]);
 
-  // Polling - refresh appointments every 5 seconds for real-time updates
+  // Polling - refresh appointments every 10 seconds
   useEffect(() => {
     if (!currentUser?.id) return;
-
     const pollAppointments = async () => {
       try {
         const res = await api.get(`/appointments/student/${currentUser.id}`);
         setLiveAppointments(res.data || []);
-      } catch (err) {
-        console.error('Error polling appointments:', err);
+      } catch {
+        // silently keep existing data on poll failure
       }
     };
-
-    // Poll immediately and then every 5 seconds
     pollAppointments();
     const pollInterval = setInterval(pollAppointments, 5000);
-
     return () => clearInterval(pollInterval);
   }, [currentUser?.id]);
 
@@ -122,13 +175,6 @@ export default function StudentHome({ currentUser, appointments = [], onLogout }
   /* Stats */
   const stats = [
     {
-      label: 'Upcoming',
-      value: displayAppts.length,
-      icon: Calendar,
-      bg: '#eff6ff',
-      color: '#2563eb',
-    },
-    {
       label: 'Pending',
       value: pendingAppts.length,
       icon: Clock,
@@ -136,11 +182,18 @@ export default function StudentHome({ currentUser, appointments = [], onLogout }
       color: '#d97706',
     },
     {
+      label: 'Confirmed',
+      value: confirmedAppts.length,
+      icon: CheckCircle,
+      bg: '#f0fdf4',
+      color: '#16a34a',
+    },
+    {
       label: 'Completed',
       value: completedCount,
       icon: CheckCircle,
       bg: '#f0fdf4',
-      color: '#16a34a',
+      color: '#0f766e',
     },
     {
       label: 'Unread Msgs',
@@ -167,8 +220,8 @@ export default function StudentHome({ currentUser, appointments = [], onLogout }
               <h1 className="sh-hero__name">{currentUser?.name}</h1>
               <p className="sh-hero__sub">
                 You have{' '}
-                <strong>{displayAppts.length} upcoming appointments</strong>{' '}
-                and <strong>{unreadCount} unread messages</strong>. Keep up the great work!
+                <strong>{pendingAppts.length} pending request{pendingAppts.length !== 1 ? 's' : ''}</strong>{' '}
+                and <strong>{confirmedAppts.length} confirmed appointment{confirmedAppts.length !== 1 ? 's' : ''}</strong>.
               </p>
               <div className="sh-hero__actions">
                 <button
@@ -228,11 +281,75 @@ export default function StudentHome({ currentUser, appointments = [], onLogout }
               </button>
             </div>
             <div className="sh-card__body">
-              {displayAppts.slice(0, 4).map((a) => {
+              {/* ── Rescheduled alert section ── */}
+              {rescheduledAppts.length > 0 && (
+                <div className="sh-reschedule-alert">
+                  <div className="sh-reschedule-alert__header">
+                    <RefreshCw size={15} />
+                    <span>{rescheduledAppts.length} Rescheduled Appointment{rescheduledAppts.length > 1 ? 's' : ''} — Action Required</span>
+                  </div>
+                  {rescheduledAppts.map((a) => {
+                    const parsed = parseApptNotes(a.notes || '');
+                    return (
+                      <div className="sh-reschedule-card" key={a.id}>
+                        <div className="sh-reschedule-card__top">
+                          <div className="sh-appt-avatar" style={{ background: 'linear-gradient(135deg,#dc2626,#ea580c)' }}>
+                            {getInitials(a.lecturer?.name ?? 'L')}
+                          </div>
+                          <div style={{ flex: 1 }}>
+                            <div className="sh-appt-card__lec-name">{a.lecturer?.name ?? 'Lecturer'}</div>
+                            <div className="sh-appt-card__lec-dept">{a.lecturer?.department}</div>
+                          </div>
+                          <span className="sh-reschedule-badge">
+                            <RefreshCw size={11} /> RESCHEDULED
+                          </span>
+                        </div>
+                        <div className="sh-reschedule-card__new-time">
+                          <Clock size={13} /> New time: <strong>{fmtDate(a.startTime)}</strong>
+                          {parsed.mode && (
+                            <span className={`sh-mode-pill sh-mode-pill--${parsed.mode.toLowerCase()}`}>
+                              {parsed.mode === 'Online' ? <Video size={11} /> : <MapPin size={11} />}
+                              {parsed.mode}
+                            </span>
+                          )}
+                        </div>
+                        {a.rescheduleReason && (
+                          <div className="sh-reschedule-card__reason">
+                            <strong>Reason:</strong> {a.rescheduleReason}
+                          </div>
+                        )}
+                        {a.confirmationMessage && (
+                          <div className="sh-appt-card__confirm-msg">💬 {a.confirmationMessage}</div>
+                        )}
+                        {(a.meetingLink || a.meetingLocation) && (
+                          <div className="sh-appt-card__confirmed" style={{ marginTop: 6 }}>
+                            {a.meetingLink && (
+                              <a href={a.meetingLink} target="_blank" rel="noopener noreferrer" className="sh-appt-card__link">
+                                <Video size={13} /> Join Meeting
+                              </a>
+                            )}
+                            {a.meetingLocation && (
+                              <span className="sh-appt-card__location"><MapPin size={13} /> {a.meetingLocation}</span>
+                            )}
+                          </div>
+                        )}
+                        {/* Student action buttons for rescheduled appointment */}
+                        <RescheduleActions appointmentId={a.id} onDone={() => {
+                          api.get(`/appointments/student/${currentUser.id}`)
+                            .then(r => setLiveAppointments(r.data || [])).catch(() => {});
+                        }} />
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* ── Normal appointments ── */}
+              {normalAppts.slice(0, rescheduledAppts.length > 0 ? 5 : 6).map((a) => {
                 const isRescheduled = a.rescheduledAt;
                 const parsed = parseApptNotes(a.notes || '');
-                const statusColor = isRescheduled ? '#dc2626' : (a.status === 'PENDING' ? '#d97706' : '#0f766e');
-                const statusBg    = isRescheduled ? '#fee2e2' : (a.status === 'PENDING' ? '#fef9c3' : '#dcfce7');
+                const statusColor = isRescheduled ? '#dc2626' : (a.status === 'PENDING' ? '#d97706' : a.status === 'CANCELLED' ? '#dc2626' : '#0f766e');
+                const statusBg    = isRescheduled ? '#fee2e2' : (a.status === 'PENDING' ? '#fef9c3' : a.status === 'CANCELLED' ? '#fee2e2' : '#dcfce7');
                 const statusLabel = isRescheduled ? 'RESCHEDULED' : (a.status ?? 'CONFIRMED');
 
                 return (
@@ -247,6 +364,7 @@ export default function StudentHome({ currentUser, appointments = [], onLogout }
                         <div className="sh-appt-card__lec-dept">{a.lecturer?.department}</div>
                       </div>
                       <span className="sh-status" style={{ background: statusBg, color: statusColor, border: `1px solid ${statusColor}` }}>
+                        {a.status === 'PENDING' && <span style={{ width:7, height:7, borderRadius:'50%', background:'#d97706', display:'inline-block', marginRight:4, animation:'sh-pulse-dot 1.5s ease-in-out infinite' }} />}
                         {parsed.isHighPriority && <Zap size={10} />} {statusLabel}
                       </span>
                     </div>
@@ -271,10 +389,7 @@ export default function StudentHome({ currentUser, appointments = [], onLogout }
                       </div>
                     )}
 
-                    {/* Reason — only show when PENDING, hide after confirmed */}
-                    {a.status === 'PENDING' && parsed.reason && (
-                      <div className="sh-appt-card__reason">"{parsed.reason}"</div>
-                    )}
+                    {/* Reason — hidden, students don't need to see their own reason */}
 
                     {/* Confirmed details — meeting link / location / message */}
                     {a.status === 'CONFIRMED' && (a.meetingLink || a.meetingLocation || a.confirmationMessage) && (
@@ -305,10 +420,18 @@ export default function StudentHome({ currentUser, appointments = [], onLogout }
                         <RefreshCw size={11} /> Rescheduled: {a.rescheduleReason}
                       </div>
                     )}
+
+                    {/* Cancellation reason from lecturer */}
+                    {a.status === 'CANCELLED' && a.rescheduleReason && (
+                      <div style={{ display:'flex', alignItems:'flex-start', gap:7, fontSize:'0.8rem', color:'#dc2626', fontWeight:500, background:'rgba(220,38,38,0.06)', border:'1px solid #fecaca', borderRadius:10, padding:'8px 12px' }}>
+                        <XCircle size={13} style={{ flexShrink:0, marginTop:1 }} />
+                        <span><strong>Declined reason:</strong> {a.rescheduleReason}</span>
+                      </div>
+                    )}
                   </div>
                 );
               })}
-              {displayAppts.length === 0 && (
+              {normalAppts.length === 0 && rescheduledAppts.length === 0 && (
                 <div className="sh-empty">
                   <Calendar size={38} />
                   <p>No upcoming appointments</p>
@@ -413,7 +536,7 @@ export default function StudentHome({ currentUser, appointments = [], onLogout }
                 </div>
                 <span>Resources</span>
               </button>
-              <button className="sh-quick-btn" onClick={() => navigate('/coming-soon')}>
+              <button className="sh-quick-btn" onClick={() => navigate('/notifications')}>
                 <div className="sh-quick-icon" style={{ background: '#fffbeb', color: '#d97706' }}>
                   <Bell size={24} />
                 </div>
@@ -457,3 +580,4 @@ function fmtDate(iso) {
     hour: '2-digit', minute: '2-digit',
   });
 }
+

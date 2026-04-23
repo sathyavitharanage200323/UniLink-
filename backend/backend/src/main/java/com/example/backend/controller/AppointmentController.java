@@ -60,33 +60,27 @@ public class AppointmentController {
     public ResponseEntity<Appointment> updateStatus(@PathVariable Long id,
                                                      @RequestBody Map<String, String> body) {
         Appointment.Status status = Appointment.Status.valueOf(body.get("status"));
-        String reason = body.get("reason");
-        String meetingLink = body.get("meetingLink");
+        String reason          = body.get("reason");
+        String meetingLink     = body.get("meetingLink");
         String meetingLocation = body.get("meetingLocation");
-        String confirmMsg = body.get("confirmMsg");
-        Appointment appt = appointmentService.updateStatus(id, status, reason);
-        if (meetingLink != null && !meetingLink.isBlank()) appt.setMeetingLink(meetingLink);
-        if (meetingLocation != null && !meetingLocation.isBlank()) appt.setMeetingLocation(meetingLocation);
-        if (confirmMsg != null && !confirmMsg.isBlank()) appt.setConfirmationMessage(confirmMsg);
-        if ((meetingLink != null && !meetingLink.isBlank()) || (meetingLocation != null && !meetingLocation.isBlank()) || (confirmMsg != null && !confirmMsg.isBlank())) {
-            appt = appointmentService.save(appt);
-        }
-        return ResponseEntity.ok(appt);
+        String confirmMsg      = body.get("confirmMsg");
+        return ResponseEntity.ok(
+            appointmentService.updateStatus(id, status, reason, meetingLink, meetingLocation, confirmMsg)
+        );
     }
 
-    /** Update appointment time (for reschedule/delay) */
+    /** Update appointment time (reschedule — resets to PENDING) */
     @PatchMapping("/{id}/time")
     public ResponseEntity<Appointment> updateTime(@PathVariable Long id,
                                                    @RequestBody Map<String, String> body) {
-        // Parse ISO 8601 format with timezone (e.g., "2026-03-26T10:00:00.000Z")
-        // Convert from Instant to LocalDateTime
         LocalDateTime newStart = java.time.Instant.parse(body.get("startTime"))
             .atZone(java.time.ZoneId.systemDefault())
             .toLocalDateTime();
         LocalDateTime newEnd = java.time.Instant.parse(body.get("endTime"))
             .atZone(java.time.ZoneId.systemDefault())
             .toLocalDateTime();
-        return ResponseEntity.ok(appointmentService.updateTime(id, newStart, newEnd));
+        String reason = body.get("reason");
+        return ResponseEntity.ok(appointmentService.updateTime(id, newStart, newEnd, reason));
     }
 
     /** Delete an appointment */

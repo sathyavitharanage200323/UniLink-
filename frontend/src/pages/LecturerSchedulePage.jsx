@@ -12,7 +12,9 @@ import Footer from '../components/Footer';
 import api from '../api/axiosInstance';
 import './LecturerSchedulePage.css';
 
-const BACKEND = 'http://localhost:8082';
+import { BACKEND_BASE_URL } from '../config';
+
+const BACKEND = BACKEND_BASE_URL;
 
 /* ── Parse all fields from notes ─────────────────────────────────────── */
 function parseNotes(notes = '') {
@@ -66,9 +68,10 @@ function AppointmentCard({ appointment, onAction, isExpanded, onToggle, onRefres
   const [meetingLocation, setMeetingLocation]       = useState('');
   const [confirmMsg, setConfirmMsg]                 = useState('');
   const [declineReason, setDeclineReason]           = useState('');
-  const [rescheduleDate, setRescheduleDate]         = useState('');
-  const [rescheduleTime, setRescheduleTime]         = useState('');
   const [rescheduleReason, setRescheduleReason]     = useState('');
+  const [selectedRescheduleSlot, setSelectedRescheduleSlot] = useState(null);
+  const [availableSlots, setAvailableSlots]         = useState([]);
+  const [slotsLoading, setSlotsLoading]             = useState(false);
   const [delayMinutes, setDelayMinutes]             = useState('15');
   const [delayReason, setDelayReason]               = useState('');
 
@@ -106,17 +109,32 @@ function AppointmentCard({ appointment, onAction, isExpanded, onToggle, onRefres
     catch { toast.error('Failed'); } finally { setActionLoading(null); }
   };
   const handleReschedule = async () => {
-    if (!rescheduleDate || !rescheduleTime) { toast.error('Select date and time'); return; }
+    if (!selectedRescheduleSlot) { toast.error('Select a new time slot'); return; }
     if (!rescheduleReason.trim()) { toast.error('Provide a reason'); return; }
     setActionLoading('reschedule');
     try {
-      const s = new Date(`${rescheduleDate}T${rescheduleTime}`);
-      const e = new Date(s.getTime() + 3600000);
+      const s = new Date(selectedRescheduleSlot.startTime);
+      const e = new Date(selectedRescheduleSlot.endTime);
       await api.patch(`/appointments/${appointment.id}/time`, { startTime: s.toISOString(), endTime: e.toISOString(), reason: rescheduleReason });
       toast.success('Rescheduled! Student notified.');
-      setShowRescheduleForm(false); setRescheduleDate(''); setRescheduleTime(''); setRescheduleReason('');
+      setShowRescheduleForm(false); setSelectedRescheduleSlot(null); setRescheduleReason(''); setAvailableSlots([]);
       if (onRefresh) await onRefresh();
     } catch (err) { toast.error(err.response?.data?.message || 'Failed'); } finally { setActionLoading(null); }
+  };
+
+  const openRescheduleForm = async () => {
+    setShowRescheduleForm(true);
+    setSlotsLoading(true);
+    try {
+      const res = await api.get(`/availability/lecturer/${appointment.lecturer?.id}/available`);
+      const fmtTime = t => { const [h,m] = (t||'00:00').substring(0,5).split(':'); const hr=parseInt(h); return `${hr>12?hr-12:hr||12}:${m} ${hr>=12?'PM':'AM'}`; };
+      setAvailableSlots((res.data||[]).map(s => {
+        const st = (s.startTime||'00:00').substring(0,5);
+        const et = (s.endTime  ||'00:30').substring(0,5);
+        return { id:s.id, slotDate:s.slotDate, time:`${fmtTime(st)} – ${fmtTime(et)}`, startTime:`${s.slotDate}T${st}:00`, endTime:`${s.slotDate}T${et}:00`, mode:s.mode||'', label:new Date(s.slotDate).toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'}) };
+      }));
+    } catch { toast.error('Could not load available slots'); }
+    finally { setSlotsLoading(false); }
   };
   const handleDelay = async () => {
     if (!delayReason.trim()) { toast.error('Provide a reason'); return; }
@@ -249,7 +267,7 @@ function AppointmentCard({ appointment, onAction, isExpanded, onToggle, onRefres
               <>
                 <button className="lsc-btn lsc-btn--green"  onClick={() => setShowAcceptForm(true)}     disabled={!!actionLoading}><CheckCircle size={14} /> Accept</button>
                 <button className="lsc-btn lsc-btn--red"    onClick={() => setShowDeclineForm(true)}    disabled={!!actionLoading}><XCircle size={14} /> Decline</button>
-                <button className="lsc-btn lsc-btn--ghost"  onClick={() => setShowRescheduleForm(true)} disabled={!!actionLoading}><RefreshCw size={14} /> Reschedule</button>
+                <button className="lsc-btn lsc-btn--ghost"  onClick={openRescheduleForm} disabled={!!actionLoading}><RefreshCw size={14} /> Reschedule</button>
               </>
             )}
             {isConfirmed && !showDelayForm && (
@@ -292,19 +310,67 @@ function AppointmentCard({ appointment, onAction, isExpanded, onToggle, onRefres
             )}
             {showRescheduleForm && (
               <div className="lsc-form-panel">
-                <div className="lsc-form-panel__title">Request Reschedule</div>
-                <div className="lsc-form-2col">
-                  <div className="lsc-form-row"><label className="lsc-form-label"><Calendar size={13} /> New Date</label>
-                    <input type="date" className="lsc-form-input" value={rescheduleDate} onChange={e => setRescheduleDate(e.target.value)} min={new Date().toISOString().split('T')[0]} /></div>
-                  <div className="lsc-form-row"><label className="lsc-form-label"><Clock size={13} /> New Time</label>
-                    <input type="time" className="lsc-form-input" value={rescheduleTime} onChange={e => setRescheduleTime(e.target.value)} /></div>
+                <div className="lsc-form-panel__title"><RefreshCw size={14} /> Request Reschedule</div>
+
+                {/* Slot picker */}
+                <div className="lsc-form-row">
+                  <label className="lsc-form-label"><Calendar size={13} /> Select New Time Slot</label>
+                  {slotsLoading ? (
+                    <div style={{ display:'flex', alignItems:'center', gap:8, color:'#64748b', fontSize:'0.82rem', padding:'8px 0' }}>
+                      <Loader2 size={14} className="lsc-spin" /> Loading available slots…
+                    </div>
+                  ) : availableSlots.length === 0 ? (
+                    <div style={{ fontSize:'0.82rem', color:'#94a3b8', padding:'8px 0' }}>No available slots found.</div>
+                  ) : (
+                    <div style={{ display:'flex', flexWrap:'wrap', gap:8, marginTop:6 }}>
+                      {/* Group by date */}
+                      {Object.entries(availableSlots.reduce((acc, s) => { if (!acc[s.slotDate]) acc[s.slotDate] = []; acc[s.slotDate].push(s); return acc; }, {})).map(([date, slots]) => (
+                        <div key={date} style={{ width:'100%' }}>
+                          <div style={{ fontSize:'0.72rem', fontWeight:700, color:'#64748b', textTransform:'uppercase', letterSpacing:'0.05em', marginBottom:6 }}>
+                            {new Date(date).toLocaleDateString('en-US', { weekday:'long', month:'short', day:'numeric' })}
+                          </div>
+                          <div style={{ display:'flex', flexWrap:'wrap', gap:7 }}>
+                            {slots.map(slot => {
+                              const sel = selectedRescheduleSlot?.id === slot.id;
+                              return (
+                                <button key={slot.id} onClick={() => setSelectedRescheduleSlot(slot)} style={{
+                                  display:'inline-flex', alignItems:'center', gap:5,
+                                  padding:'7px 14px', borderRadius:20,
+                                  border: sel ? 'none' : '1.5px solid rgba(255,255,255,0.15)',
+                                  background: sel ? '#2563eb' : 'rgba(255,255,255,0.08)',
+                                  color: sel ? 'white' : '#cbd5e1',
+                                  fontWeight:600, fontSize:'0.8rem', cursor:'pointer',
+                                  boxShadow: sel ? '0 0 12px rgba(37,99,235,0.4)' : 'none',
+                                  transition:'all 0.15s',
+                                }}>
+                                  <Clock size={12} /> {slot.time}
+                                  {slot.mode && <span style={{ fontSize:'0.65rem', opacity:0.75, marginLeft:2 }}>{slot.mode}</span>}
+                                  {sel && <CheckCircle size={12} />}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
-                <div className="lsc-form-row"><label className="lsc-form-label">Reason</label>
-                  <textarea className="lsc-form-textarea" rows={3} value={rescheduleReason} onChange={e => setRescheduleReason(e.target.value)} placeholder="e.g. Conflict with another meeting" /></div>
+
+                {/* Selected slot confirmation */}
+                {selectedRescheduleSlot && (
+                  <div style={{ display:'flex', alignItems:'center', gap:7, padding:'8px 12px', background:'rgba(37,99,235,0.12)', border:'1px solid rgba(37,99,235,0.3)', borderRadius:10, fontSize:'0.82rem', color:'#93c5fd' }}>
+                    <CheckCircle size={13} /> Selected: <strong>{selectedRescheduleSlot.label} · {selectedRescheduleSlot.time}</strong>
+                  </div>
+                )}
+
+                <div className="lsc-form-row">
+                  <label className="lsc-form-label">Reason for Rescheduling</label>
+                  <textarea className="lsc-form-textarea" rows={3} value={rescheduleReason} onChange={e => setRescheduleReason(e.target.value)} placeholder="e.g. Conflict with another meeting" />
+                </div>
                 <div className="lsc-form-btns">
                   <button className="lsc-btn lsc-btn--blue" onClick={handleReschedule} disabled={actionLoading === 'reschedule'}>
                     {actionLoading === 'reschedule' ? <><Loader2 size={13} className="lsc-spin" /> Rescheduling…</> : 'Reschedule & Notify'}</button>
-                  <button className="lsc-btn lsc-btn--ghost" onClick={() => setShowRescheduleForm(false)}>Cancel</button>
+                  <button className="lsc-btn lsc-btn--ghost" onClick={() => { setShowRescheduleForm(false); setSelectedRescheduleSlot(null); setAvailableSlots([]); }}>Cancel</button>
                 </div>
               </div>
             )}
@@ -351,8 +417,10 @@ export default function LecturerSchedulePage({ currentUser, onLogout }) {
   }, [currentUser]);
 
   const refresh = async () => {
-    try { const r = await api.get(`/appointments/lecturer/${currentUser.id}`); setAppointments(r.data); }
-    catch (e) { console.error(e); }
+    try {
+      const r = await api.get(`/appointments/lecturer/${currentUser.id}`);
+      setAppointments(r.data || []);
+    } catch { /* silently keep existing data */ }
   };
   const handleAction = async (id, status, meta = {}) => {
     await api.patch(`/appointments/${id}/status`, { status, ...meta });

@@ -37,7 +37,7 @@ public class Appointment {
     @Column(nullable = false)
     private Status status;
 
-    @Column(length = 500)
+    @Column(length = 1000)
     private String notes;
 
     // Extended fields present in DB from previous version
