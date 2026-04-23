@@ -79,6 +79,13 @@ public class UserService {
     }
 
     @Transactional
+    public User toggleNotifications(Long userId, boolean enabled) {
+        User user = getUser(userId);
+        user.setNotificationEnabled(enabled);
+        return userRepository.save(user);
+    }
+
+    @Transactional
     public AuthUserResponse updateProfile(Long userId, UserProfileUpdateRequest request) {
         if (request == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Request body is required");
@@ -214,6 +221,7 @@ public class UserService {
                     .phone(user.getPhone())
                     .expertise(user.getExpertise())
                     .doNotDisturb(user.isDoNotDisturb())
+                    .notificationEnabled(user.isNotificationEnabled())
                     .autoReplyMessage(user.getAutoReplyMessage())
                     .build();
         }

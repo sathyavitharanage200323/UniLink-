@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
@@ -16,9 +16,6 @@ import ProfilePage from './pages/ProfilePage.jsx';
 import BookingPage from './pages/BookingPage.jsx';
 import LecturerSchedulePage from './pages/LecturerSchedulePage.jsx';
 import SlotCalendarPage from './pages/SlotCalendarPage.jsx';
-import LecturerSlotsPage from './pages/LecturerSlotsPage.jsx';
-import LecturerPreferencesPage from './pages/LecturerPreferencesPage.jsx';
-
 import {
   getAllAppointments,
   getStudentAppointments,
@@ -99,6 +96,11 @@ function AppRoutes({ activeUser, appointments, onLogin, onLogout, onUserUpdate }
       <Route
         path="/profile"
         element={<ProfilePage currentUser={activeUser} onLogout={onLogout} onUserUpdate={onUserUpdate} />}
+      />
+
+      <Route
+        path="/notifications"
+        element={<NotificationsPage currentUser={activeUser} onLogout={onLogout} />}
       />
 
       <Route
@@ -193,21 +195,19 @@ function AppRoutes({ activeUser, appointments, onLogin, onLogout, onUserUpdate }
 }
 
 export default function App() {
-  const [activeUser, setActiveUser] = useState(null);
-  const [appointments, setAppointments] = useState([]);
+  const [activeUser,    setActiveUser]    = useState(null);
+  const [appointments,  setAppointments]  = useState([]);
 
   const handleLogin = async (user) => {
     setActiveUser(user);
+    localStorage.setItem('unilink_user', JSON.stringify(user));
     try {
       let appts = [];
-      if (user.role === 'STUDENT') {
-        appts = await getStudentAppointments(user.id);
-      } else if (user.role === 'LECTURER') {
-        appts = await getLecturerAppointments(user.id);
-      } else if (user.role === 'ADMIN') {
-        appts = await getAllAppointments();
-      }
+      if (user.role === 'STUDENT')        appts = await getStudentAppointments(user.id);
+      else if (user.role === 'LECTURER')  appts = await getLecturerAppointments(user.id);
+      else if (user.role === 'ADMIN')     appts = await getAllAppointments();
       setAppointments(appts);
+      localStorage.setItem('unilink_appointments', JSON.stringify(appts));
     } catch {
       setAppointments([]);
     }
@@ -216,10 +216,13 @@ export default function App() {
   const handleLogout = () => {
     setActiveUser(null);
     setAppointments([]);
+    localStorage.removeItem('unilink_user');
+    localStorage.removeItem('unilink_appointments');
   };
 
   const handleUserUpdate = (updatedUser) => {
     setActiveUser(updatedUser);
+    localStorage.setItem('unilink_user', JSON.stringify(updatedUser));
   };
 
   return (

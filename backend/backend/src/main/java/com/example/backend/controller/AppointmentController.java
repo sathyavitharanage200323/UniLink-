@@ -61,7 +61,17 @@ public class AppointmentController {
                                                      @RequestBody Map<String, String> body) {
         Appointment.Status status = Appointment.Status.valueOf(body.get("status"));
         String reason = body.get("reason");
-        return ResponseEntity.ok(appointmentService.updateStatus(id, status, reason));
+        String meetingLink = body.get("meetingLink");
+        String meetingLocation = body.get("meetingLocation");
+        String confirmMsg = body.get("confirmMsg");
+        Appointment appt = appointmentService.updateStatus(id, status, reason);
+        if (meetingLink != null && !meetingLink.isBlank()) appt.setMeetingLink(meetingLink);
+        if (meetingLocation != null && !meetingLocation.isBlank()) appt.setMeetingLocation(meetingLocation);
+        if (confirmMsg != null && !confirmMsg.isBlank()) appt.setConfirmationMessage(confirmMsg);
+        if ((meetingLink != null && !meetingLink.isBlank()) || (meetingLocation != null && !meetingLocation.isBlank()) || (confirmMsg != null && !confirmMsg.isBlank())) {
+            appt = appointmentService.save(appt);
+        }
+        return ResponseEntity.ok(appt);
     }
 
     /** Update appointment time (for reschedule/delay) */
@@ -84,5 +94,14 @@ public class AppointmentController {
     public ResponseEntity<Void> delete(@PathVariable Long id) {
         appointmentService.delete(id);
         return ResponseEntity.noContent().build();
+    }
+
+    /** Upload image/document attachments for an appointment */
+    @PatchMapping("/{id}/attachments")
+    public ResponseEntity<Appointment> uploadAttachments(
+            @PathVariable Long id,
+            @RequestParam(value = "image", required = false) org.springframework.web.multipart.MultipartFile image,
+            @RequestParam(value = "document", required = false) org.springframework.web.multipart.MultipartFile document) {
+        return ResponseEntity.ok(appointmentService.uploadAttachments(id, image, document));
     }
 }

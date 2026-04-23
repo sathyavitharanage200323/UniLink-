@@ -73,6 +73,17 @@ public class UserController {
         return ResponseEntity.ok(userService.toggleDoNotDisturb(id, dnd, msg));
     }
 
+    /**
+     * Toggle in-app notifications for any user role.
+     * Body: { enabled: true/false }
+     */
+    @PatchMapping("/{id}/notifications")
+    public ResponseEntity<User> toggleNotifications(@PathVariable Long id,
+                                                    @RequestBody Map<String, Object> body) {
+        boolean enabled = Boolean.parseBoolean(String.valueOf(body.getOrDefault("enabled", true)));
+        return ResponseEntity.ok(userService.toggleNotifications(id, enabled));
+    }
+
     @PutMapping("/{id}/profile")
     public ResponseEntity<AuthUserResponse> updateProfile(@PathVariable Long id,
                                                           @RequestBody UserProfileUpdateRequest request) {

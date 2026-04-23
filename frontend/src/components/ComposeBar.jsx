@@ -24,10 +24,9 @@ function pickRecordingMimeType() {
     return '';
   }
   const candidates = [
+    'audio/ogg;codecs=opus',
     'audio/webm;codecs=opus',
     'audio/webm',
-    'audio/ogg;codecs=opus',
-    'audio/mp4',
   ];
   return candidates.find((m) => MediaRecorder.isTypeSupported(m)) || '';
 }
@@ -250,6 +249,12 @@ export default function ComposeBar({
     }
     if (blocked) {
       toast.error('You are currently blocked from messaging this lecturer.');
+      return false;
+    }
+
+    // Guard against near-empty captures that can upload but contain no usable audio.
+    if (blob.size < 1024) {
+      toast.error('Recorded audio is too short or empty. Please record again.');
       return false;
     }
 

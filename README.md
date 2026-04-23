@@ -1,260 +1,102 @@
-# 📚 UniLink  (Lecturer Appointment Booking System )
+# UniLink — Lecturer Appointment Booking System
 
-A full-stack web application developed for the **ITPM module** to streamline the process of **booking academic consultation appointments between students and lecturers**.  
-The system ensures secure authentication, structured slot management, intelligent booking validation, and automated notifications.
-
----
-
-# 🚀 System Overview
-
-The **Lecturer Appointment Booking System** is designed using a **modular architecture**, where each component handles a core system responsibility.
-
-Instead of dividing work by simple CRUD operations, the system is structured into **four main layers**:
-
-1. **Authentication & User Management (Security Layer)**
-2. **Lecturer & Slot Management (Supply Layer)**
-3. **Booking & Appointment Engine (Core Logic)**
-4. **Dashboard, Notifications & Analytics (Intelligence Layer)**
-
-This architecture ensures scalability, security, and maintainability.
+A full-stack web application that streamlines academic consultation scheduling between students and lecturers. Built for the ITPM module.
 
 ---
 
-# 🏗 System Architecture
+## Tech Stack
+
+| Layer | Technology |
+|---|---|
+| Frontend | React 19, React Router 7, STOMP.js + SockJS |
+| Backend | Spring Boot 3.4.1 (Java 17), Spring Data JPA |
+| Database | MySQL 8 |
+| Real-time | WebSocket (STOMP over SockJS) |
+| Email | Gmail SMTP (Spring Mail) |
+| AI | Google Gemini API (chat summaries) |
+| Build | Maven (backend), Create React App (frontend) |
+
+---
+
+## Features
+
+- **Authentication** — Email/password login, role-based access (STUDENT / LECTURER / ADMIN), email-based password reset
+- **Appointment Booking** — Students book slots with lecturers; status flow: PENDING → CONFIRMED → COMPLETED
+- **Availability Management** — Lecturers set a weekly grid (Mon–Sun, 8 AM–6 PM, 30-min slots)
+- **Real-time Chat** — WebSocket chat tied to confirmed appointments, typing indicators, read receipts, pinned messages
+- **AI Chat Summaries** — Gemini API generates conversation summaries
+- **Bug Reporting** — Users report issues with severity levels; admin manages them
+- **Canned Responses** — Lecturers save quick-reply templates
+- **Do Not Disturb** — Lecturers toggle DND with an auto-reply message
+- **Admin Panel** — User management and bug report dashboard
+
+---
+
+## Project Structure
 
 ```
-Client (Frontend)
-        │
-        ▼
-Authentication Middleware (JWT)
-        │
-        ▼
-Business Logic Layer
- ├── User Management
- ├── Slot Management
- ├── Booking Engine
- └── Notification & Analytics
-        │
-        ▼
-Database (MongoDB / SQL)
+UniLink/
+├── backend/backend/        # Spring Boot application
+│   ├── src/main/java/      # Controllers, Services, Repositories, Models, DTOs
+│   ├── src/main/resources/ # application.properties, email templates
+│   └── pom.xml
+├── frontend/               # React application
+│   ├── src/
+│   │   ├── api/            # Axios API client
+│   │   ├── components/     # Reusable UI components
+│   │   ├── hooks/          # Custom React hooks
+│   │   └── pages/          # Page-level components
+│   └── package.json
+├── SQL/                    # Database schema and migration scripts
+└── docs/                   # Project documentation
 ```
 
 ---
 
-# 👥 Team Responsibilities
+## Getting Started
 
-## 🔐 Authentication & User Management (Security Layer)
+### Prerequisites
+- Java 17+
+- Node.js 18+
+- MySQL 8 running on `localhost:3306`
 
-**Member:**  
-👤 IT23761650 - **D.V.S. Madhubhashini**
+### 1. Database Setup
 
-### Responsibilities
-- Student registration
-- Login system for **students & lecturers**
-- Password encryption
-- Role-based access control (RBAC)
-- Profile management
-- Account deactivation
-
-### Security Features
-- JWT Authentication
-- Session management
-- Middleware route protection
-- Unauthorized access prevention
-
-⚠️ **Importance**
-
-If authentication fails, the entire system becomes insecure.  
-This module ensures **only authorized users can access system resources**.
-
----
-
-## 👨‍🏫 Lecturer & Slot Management (Supply Side)
-
-**Member:**  
-👤 IT23765542 - **D.V.N. Wasana**
-
-### Responsibilities
-
-- Lecturer profile management
-- Create lecturer availability slots
-- Edit / block time slots
-- View daily lecturer schedule
-- Prevent overlapping slots
-
-### Core Rules
-
-- ❌ No overlapping slots allowed
-- ✔ Slot capacity validation
-- ✔ Slot status management
-
-### Slot Status Types
-
-- `OPEN`
-- `FULL`
-- `BLOCKED`
-
-⚠️ **Importance**
-
-If slot logic fails, the system will allow **double bookings and scheduling conflicts**.
-
----
-
-## 📅 Booking & Appointment Engine (Core Logic)
-
-**Member:**  
-👤 IT23761650 - **D.V.S. Madhubhashini**
-
-### Responsibilities
-
-- Students book available lecturer slots
-- Prevent double booking
-- Appointment lifecycle management
-
-### Appointment Status Flow
-
-```
-Pending → Confirmed → Completed → Cancelled
+```sql
+CREATE DATABASE unilink;
 ```
 
-### Features
+Run the schema from `SQL/unilink_schema.sql`.
 
-- Booking validation
-- Conflict detection
-- Rescheduling appointments
-- Cancellation rules enforcement
-
-⚠️ **Importance**
-
-This module acts as the **core brain of the system**, enforcing business rules.
-
----
-
-## 📊 Dashboard, Notifications & Analytics (Intelligence Layer)
-
-**Member:**  
-👤 IT23681156 - **N M Korala**
-
-### Responsibilities
-
-- Lecturer dashboard
-- Student booking history
-- Email notifications
-- Booking analytics
-
-### Dashboard Features
-
-- Today's appointments
-- Upcoming meetings
-- Booking statistics
-- No-show tracking
-
-### Notification System
-
-Automated email alerts for:
-
-- Booking confirmation
-- Appointment cancellation
-- Appointment updates
-
-### Optional Feature
-
-📧 **Reminder email** sent **1 hour before the meeting**
-
----
-
-# 🧩 Final Module Breakdown
-
-| Member | Module | Responsibility Level |
-|------|------|------|
-| IT23761650 - D.V.S. Madhubhashini | Authentication & Roles | Security Foundation |
-| IT23765542 - D.V.N. Wasana | Lecturer & Slot Management | Scheduling Infrastructure |
-| IT23761650 - D.V.S. Madhubhashini | Booking & Appointment Engine | Core Business Logic |
-| IT23681156 - N M Korala | Dashboard & Notifications | System Intelligence |
-
----
-
-# 🛠 Technology Stack
-
-### Frontend
-- React.js
-- HTML5
-- CSS3
-- JavaScript
-
-### Backend
-- Node.js
-- Express.js
-
-### Database
-- MongoDB
-
-### Authentication
-- JWT (JSON Web Token)
-- Bcrypt password hashing
-
-### Notifications
-- Nodemailer
-
----
-
-# 🔑 Key System Features
-
-✔ Secure authentication system  
-✔ Role-based access control  
-✔ Lecturer availability management  
-✔ Smart booking validation  
-✔ Conflict prevention  
-✔ Appointment lifecycle tracking  
-✔ Email notification system  
-✔ User dashboards with analytics
-
----
-
-# 📦 Project Setup
-
-### 1️⃣ Clone Repository
+### 2. Backend
 
 ```bash
-git clone https://github.com/your-username/itpm-appointment-system.git
+cd backend/backend
+./mvnw spring-boot:run
+# Runs on http://localhost:8082
 ```
 
-### 2️⃣ Install Dependencies
+### 3. Frontend
 
 ```bash
+cd frontend
 npm install
-```
-
-### 3️⃣ Run Backend
-
-```bash
 npm start
-```
-
-### 4️⃣ Run Frontend
-
-```bash
-npm run dev
+# Runs on http://localhost:3000
 ```
 
 ---
 
-# 📌 Future Improvements
+## Team
 
-- Mobile application support
-- Video meeting integration
-- AI-based schedule suggestions
-- SMS notification system
-- Admin analytics panel
-
----
-
-# 📜 License
-
-This project is developed for **educational purposes for the ITPM module**.
+| Student ID | Name | Module |
+|---|---|---|
+| IT23761650 | D.V.S. Madhubhashini | Authentication & Booking Engine |
+| IT23765542 | D.V.N. Wasana | Lecturer & Slot Management |
+| IT23681156 | N M Korala | Dashboard, Notifications & Analytics |
 
 ---
 
-# ⭐ Project Vision
+## License
 
-The goal of this system is to **digitize and simplify lecturer consultation scheduling**, eliminating manual coordination and reducing scheduling conflicts.
+Developed for educational purposes — ITPM module.

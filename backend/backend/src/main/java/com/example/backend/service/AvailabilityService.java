@@ -35,8 +35,22 @@ public class AvailabilityService {
 
     public List<AvailabilitySlotDTO> getLecturerAvailableSlots(Long lecturerId) {
         User lecturer = userService.getUser(lecturerId);
+        LocalDate today = LocalDate.now();
+        LocalTime now = LocalTime.now();
+
         return availabilitySlotRepository.findByLecturerAndStatusOrderBySlotDateAscStartTimeAsc(lecturer, AvailabilitySlot.SlotStatus.AVAILABLE)
                 .stream()
+                .filter(slot -> {
+                    if (slot.getSlotDate() == null) return false;
+                    // Future date → always include
+                    if (slot.getSlotDate().isAfter(today)) return true;
+                    // Today → only include slots that haven't started yet
+                    if (slot.getSlotDate().isEqual(today)) {
+                        return slot.getStartTime() != null && slot.getStartTime().isAfter(now);
+                    }
+                    // Past date → exclude
+                    return false;
+                })
                 .map(AvailabilitySlotDTO::from)
                 .collect(Collectors.toList());
     }
