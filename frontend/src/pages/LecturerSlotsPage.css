@@ -1,4 +1,4 @@
-/* LecturerSlotsPage.css - StudentHome theme */
+/* LecturerSlotsPage.css - Updated with all fixes */
 
 :root {
   --navy: #0F2854;
@@ -19,6 +19,18 @@
   --text-primary: #0a1f42;
   --text-secondary: #3d5a82;
   --text-muted: #7a9bb8;
+
+  /* FIX 7: Status color variables (replaces hardcoded hex) */
+  --status-available-bg: #dcfce7;
+  --status-available-text: #15803d;
+  --status-booked-bg: #dbeafe;
+  --status-booked-text: #1d4ed8;
+  --status-blocked-bg: #fee2e2;
+  --status-blocked-text: #b91c1c;
+  --status-expired-bg: #e2e8f0;
+  --status-expired-text: #64748b;
+  --status-today-bg: #fef3c7;
+  --status-today-text: #a16207;
 }
 
 @keyframes fadeSlideUp {
@@ -46,6 +58,11 @@
   0% { background-position: 0% 50%; }
   50% { background-position: 100% 50%; }
   100% { background-position: 0% 50%; }
+}
+/* FIX 4: Banner fade-out animation */
+@keyframes bannerFadeIn {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .ls-layout {
@@ -203,15 +220,24 @@
   color: var(--text-secondary);
 }
 .ls-btn--ghost:hover { background: #f5faff; color: var(--navy); }
+/* FIX 2: Danger button for confirm modal */
+.ls-btn--danger {
+  background: #b91c1c;
+  color: white;
+  border-color: #b91c1c;
+}
+.ls-btn--danger:hover { background: #991b1b; transform: translateY(-1px); }
 
-/* Stats */
+/* Stats — FIX 1: six-column grid */
 .ls-stats {
   max-width: 1200px;
   margin: -28px auto 0;
   padding: 0 24px 24px;
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 16px;
+}
+.ls-stats--six {
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
 }
 .ls-stat-card {
   background: var(--white);
@@ -235,6 +261,14 @@
   background: var(--sky-15);
   color: var(--royal);
 }
+/* FIX 7: stat icon color variants using variables */
+.ls-stat-icon.purple { background: #f3f0ff; color: #6d28d9; }
+.ls-stat-icon.blue { background: #eff6ff; color: #1d4ed8; }
+.ls-stat-icon.green { background: #f0fdf4; color: #15803d; }
+.ls-stat-icon.teal { background: #f0fdfa; color: #0d9488; }
+.ls-stat-icon.orange { background: #fff7ed; color: #c2410c; }
+.ls-stat-icon.gray { background: #f8fafc; color: #64748b; }
+
 .ls-stat-card h3 {
   font-size: 1.75rem;
   font-weight: 800;
@@ -339,14 +373,16 @@
   color: var(--text-secondary);
   font-size: 0.85rem;
 }
+/* FIX 4: Banner animation */
 .ls-message {
   padding: 12px 14px;
   border-radius: 10px;
   font-size: 0.9rem;
   margin: 10px 0 14px;
+  animation: bannerFadeIn 0.3s ease;
 }
-.ls-message--error { background: #fee2e2; color: #b91c1c; }
-.ls-message--success { background: #dcfce7; color: #15803d; }
+.ls-message--error { background: var(--status-blocked-bg); color: var(--status-blocked-text); }
+.ls-message--success { background: var(--status-available-bg); color: var(--status-available-text); }
 
 .ls-form-actions {
   display: flex;
@@ -361,6 +397,7 @@
   justify-content: space-between;
   gap: 16px;
   padding: 16px 24px 0;
+  flex-wrap: wrap;
 }
 .ls-search {
   display: flex;
@@ -377,7 +414,7 @@
   outline: none;
   font-size: 0.9rem;
   color: var(--text-primary);
-  width: 220px;
+  width: 180px;
 }
 .ls-filters {
   display: flex;
@@ -388,12 +425,13 @@
   flex-wrap: wrap;
 }
 .ls-filter-btn {
-  padding: 8px 14px;
+  padding: 6px 12px;
   border-radius: 8px;
   border: none;
   background: transparent;
   color: var(--text-muted);
   font-weight: 600;
+  font-size: 0.82rem;
   cursor: pointer;
   transition: 0.2s;
 }
@@ -403,13 +441,14 @@
   box-shadow: 0 2px 8px rgba(0,0,0,0.05);
 }
 
-/* Slot list */
+/* Slot list — FIX 8: flexible height */
 .ls-slot-list {
   padding: 20px 24px 24px;
   display: flex;
   flex-direction: column;
   gap: 14px;
-  max-height: 540px;
+  min-height: 200px;
+  max-height: 60vh;
   overflow-y: auto;
 }
 .ls-slot-list::-webkit-scrollbar { width: 6px; }
@@ -431,6 +470,7 @@
 .ls-slot-time { font-size: 0.95rem; color: var(--text-secondary); margin-bottom: 6px; }
 .ls-slot-meta { display: flex; align-items: center; gap: 10px; font-size: 0.78rem; color: var(--text-muted); }
 
+/* FIX 7: Status badges use CSS variables */
 .ls-status-badge {
   display: inline-flex;
   align-items: center;
@@ -441,10 +481,11 @@
   text-transform: uppercase;
   letter-spacing: 0.4px;
 }
-.ls-status-badge.available { background: #dcfce7; color: #15803d; }
-.ls-status-badge.blocked { background: #fee2e2; color: #b91c1c; }
-.ls-status-badge.expired { background: #e2e8f0; color: #64748b; }
-.ls-status-badge.today { background: #fef3c7; color: #a16207; }
+.ls-status-badge.available { background: var(--status-available-bg); color: var(--status-available-text); }
+.ls-status-badge.booked { background: var(--status-booked-bg); color: var(--status-booked-text); }
+.ls-status-badge.blocked { background: var(--status-blocked-bg); color: var(--status-blocked-text); }
+.ls-status-badge.expired { background: var(--status-expired-bg); color: var(--status-expired-text); }
+.ls-status-badge.today { background: var(--status-today-bg); color: var(--status-today-text); }
 
 .ls-slot-item__right {
   display: flex;
@@ -464,8 +505,8 @@
 }
 .ls-action-btn.view { color: var(--royal); border-color: var(--sky-40); }
 .ls-action-btn.edit { color: #b45309; border-color: #fde68a; }
-.ls-action-btn.block { color: #b91c1c; border-color: #fecaca; }
-.ls-action-btn.delete { color: #b91c1c; border-color: #fee2e2; background: #fff5f5; }
+.ls-action-btn.block { color: var(--status-blocked-text); border-color: #fecaca; }
+.ls-action-btn.delete { color: var(--status-blocked-text); border-color: #fee2e2; background: #fff5f5; }
 .ls-action-btn:hover { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(15, 40, 84, 0.10); }
 
 /* Empty state */
@@ -487,6 +528,7 @@
   justify-content: center;
   z-index: 40;
   padding: 24px;
+  animation: fadeIn 0.2s ease;
 }
 .ls-modal {
   background: white;
@@ -497,6 +539,10 @@
   max-width: 760px;
   overflow: hidden;
   animation: scaleIn 0.25s ease;
+}
+/* FIX 2: Confirm modal is smaller */
+.ls-modal--confirm {
+  max-width: 440px;
 }
 .ls-modal__header {
   display: flex;
@@ -519,6 +565,16 @@
   padding: 0 22px 20px;
   display: flex;
   justify-content: flex-end;
+}
+/* FIX 2: Confirm modal actions — two buttons */
+.ls-modal__actions--confirm {
+  gap: 10px;
+}
+.ls-confirm-message {
+  font-size: 0.98rem;
+  color: var(--text-primary);
+  margin: 0;
+  line-height: 1.6;
 }
 
 .ls-detail-grid {
@@ -560,4 +616,21 @@
   .ls-search input { width: 100%; }
   .ls-row { grid-template-columns: 1fr; }
   .ls-detail-grid { grid-template-columns: 1fr; }
+  .ls-slot-item { flex-direction: column; align-items: flex-start; }
+  .ls-slot-item__right { width: 100%; justify-content: flex-start; }
 }
+
+.ls-inline-link {
+  border: none;
+  background: transparent;
+  color: #1c66cc;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 0;
+  font-size: inherit;
+}
+
+.ls-inline-link:hover {
+  text-decoration: underline;
+}
+

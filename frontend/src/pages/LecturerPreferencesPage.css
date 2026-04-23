@@ -1,0 +1,169 @@
+.prefV2-page {
+  font-family: Arial, sans-serif;
+  background: #f5f8ff;
+  min-height: 100vh;
+  padding-bottom: 40px;
+}
+
+/* HERO */
+.prefV2-hero {
+  background: linear-gradient(135deg, #1f5bd6, #3b82f6);
+  color: white;
+  padding: 40px 30px;
+  border-bottom-left-radius: 20px;
+  border-bottom-right-radius: 20px;
+}
+
+/* BUTTON GROUP (🔥 FIX ADDED) */
+.buttonGroup {
+  margin-top: 12px;
+  display: flex;
+  gap: 10px;
+}
+
+/* NAV BUTTONS (Back / Reload FIX) */
+.navBtn {
+  padding: 8px 14px;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,0.5);
+  background: rgba(255,255,255,0.15);
+  color: white;
+  cursor: pointer;
+  transition: 0.2s ease;
+  font-weight: 600;
+  backdrop-filter: blur(6px);
+}
+
+.navBtn:hover {
+  background: rgba(255,255,255,0.3);
+}
+
+/* GRID */
+.prefV2-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  padding: 24px;
+  align-items: start;
+}
+
+/* CARD */
+.prefV2-card {
+  background: white;
+  padding: 22px;
+  border-radius: 16px;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.08);
+  min-height: 520px;
+  display: flex;
+  flex-direction: column;
+}
+
+/* SCROLL */
+.scroll {
+  max-height: 70vh;
+  overflow-y: auto;
+  padding-right: 8px;
+}
+
+/* FORM ELEMENTS */
+.prefV2-card label {
+  font-weight: 600;
+  margin-bottom: 6px;
+  display: block;
+  color: #1f2d4d;
+}
+
+.prefV2-card input,
+.prefV2-card select {
+  width: 100%;
+  padding: 10px;
+  border-radius: 10px;
+  border: 1px solid #d0d7e6;
+  margin-bottom: 12px;
+  outline: none;
+}
+
+.prefV2-card input:focus,
+.prefV2-card select:focus {
+  border-color: #1f5bd6;
+  box-shadow: 0 0 0 3px rgba(31,91,214,0.15);
+}
+
+/* INFO BOX */
+.infoBox {
+  margin-top: 10px;
+  padding: 12px;
+  background: #e9f3ff;
+  border-radius: 10px;
+  font-weight: 600;
+}
+
+/* SAVE BUTTON */
+.saveBtn {
+  margin-top: auto;
+  width: 100%;
+  padding: 12px;
+  border: none;
+  border-radius: 10px;
+  background: #1f5bd6;
+  color: white;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.saveBtn:hover {
+  background: #174bb5;
+}
+
+/* RESET BUTTON (🔥 FIX ADDED) */
+.secondaryBtn {
+  width: 100%;
+  padding: 10px;
+  margin-top: 10px;
+  border-radius: 10px;
+  border: none;
+  background: #e5e7eb;
+  font-weight: 600;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.secondaryBtn:hover {
+  background: #d1d5db;
+}
+
+/* SLOT CARD */
+.slotCard {
+  background: #f0f6ff;
+  border-left: 5px solid #2b66ff;
+  padding: 12px;
+  margin-bottom: 10px;
+  border-radius: 10px;
+}
+
+.time {
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.meta {
+  font-size: 13px;
+  color: #6b7c93;
+}
+
+/* RESPONSIVE */
+@media (max-width: 900px) {
+  .prefV2-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.successBox {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.errorBox {
+  background: #fee2e2;
+  color: #991b1b;
+}
