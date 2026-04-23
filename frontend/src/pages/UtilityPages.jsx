@@ -40,6 +40,7 @@ const ACADEMIC_PERIODS = [
 export function AppointmentsPage({ currentUser, appointments = [], onLogout }) {
 	const navigate = useNavigate();
 	const isLecturer = currentUser?.role === 'LECTURER';
+	const isAdmin = currentUser?.role === 'ADMIN';
 	const [list, setList] = useState(appointments);
 	const [refreshing, setRefreshing] = useState(false);
 	const [filter, setFilter] = useState('ALL');
@@ -47,7 +48,12 @@ export function AppointmentsPage({ currentUser, appointments = [], onLogout }) {
 	const fetchAppts = async () => {
 		if (!currentUser?.id) return;
 		try {
-			const ep = isLecturer ? `/appointments/lecturer/${currentUser.id}` : `/appointments/student/${currentUser.id}`;
+			let ep;
+			if (isAdmin) {
+				ep = '/appointments';
+			} else {
+				ep = isLecturer ? `/appointments/lecturer/${currentUser.id}` : `/appointments/student/${currentUser.id}`;
+			}
 			const res = await api.get(ep);
 			setList(res.data || []);
 		} catch { /* keep cached */ }
@@ -58,7 +64,7 @@ export function AppointmentsPage({ currentUser, appointments = [], onLogout }) {
 		const t = setInterval(fetchAppts, 10000);
 		return () => clearInterval(t);
 	// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [currentUser?.id, isLecturer]);
+	}, [currentUser?.id, isLecturer, isAdmin]);
 
 	const handleRefresh = async () => {
 		setRefreshing(true);
@@ -89,7 +95,7 @@ export function AppointmentsPage({ currentUser, appointments = [], onLogout }) {
 			<main style={{ flex:1, maxWidth:860, margin:'0 auto', width:'100%', padding:'24px 16px 60px' }}>
 
 				{/* Back */}
-				<button onClick={() => navigate(isLecturer ? '/lecturer/home' : '/student/home')}
+				<button onClick={() => navigate(isAdmin ? '/admin/home' : (isLecturer ? '/lecturer/home' : '/student/home'))}
 					style={{ display:'inline-flex', alignItems:'center', gap:6, background:'rgba(255,255,255,0.7)', backdropFilter:'blur(12px)', border:'1px solid rgba(0,0,0,0.08)', borderRadius:10, padding:'8px 14px', fontSize:'0.875rem', fontWeight:600, color:'#3a3a3c', cursor:'pointer', marginBottom:20 }}>
 					<ArrowLeft size={15} /> Back
 				</button>
@@ -99,12 +105,12 @@ export function AppointmentsPage({ currentUser, appointments = [], onLogout }) {
 					<div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', flexWrap:'wrap', gap:12 }}>
 						<div>
 							<h1 style={{ margin:0, fontSize:'1.5rem', fontWeight:800, color:'#1c1c1e', display:'flex', alignItems:'center', gap:10 }}>
-								<Calendar size={22} style={{ color:'#007aff' }} /> My Appointments
+								<Calendar size={22} style={{ color:'#007aff' }} /> {isAdmin ? 'All Appointments' : 'My Appointments'}
 							</h1>
-							<p style={{ margin:'4px 0 0', color:'#636366', fontSize:'0.82rem' }}>{list.length} total · auto-refreshes every 10s</p>
+							<p style={{ margin:'4px 0 0', color:'#636366', fontSize:'0.82rem' }}>{list.length} total ï¿½ auto-refreshes every 10s</p>
 						</div>
 						<div style={{ display:'flex', gap:10, alignItems:'center' }}>
-							{!isLecturer && (
+							{!isLecturer && !isAdmin && (
 								<button onClick={() => navigate('/book')}
 									style={{ display:'inline-flex', alignItems:'center', gap:6, background:'linear-gradient(135deg,#007aff,#0055d4)', color:'white', border:'none', borderRadius:12, padding:'10px 18px', fontWeight:700, fontSize:'0.875rem', cursor:'pointer', boxShadow:'0 4px 12px rgba(0,122,255,0.3)' }}>
 									+ Book New
@@ -155,8 +161,8 @@ export function AppointmentsPage({ currentUser, appointments = [], onLogout }) {
 						const mode   = extract(a.notes, 'MODE');
 						const isHP   = (a.notes||'').includes('HIGH PRIORITY');
 						const sc     = a.rescheduledAt ? STATUS_CFG.CANCELLED : (STATUS_CFG[a.status] || STATUS_CFG.PENDING);
-						const personName = isLecturer ? (a.student?.name ?? 'Student') : (a.lecturer?.name ?? 'Lecturer');
-						const personDept = isLecturer ? a.student?.department : a.lecturer?.department;
+						const personName = isAdmin ? `${a.student?.name ?? 'Student'} & ${a.lecturer?.name ?? 'Lecturer'}` : (isLecturer ? (a.student?.name ?? 'Student') : (a.lecturer?.name ?? 'Lecturer'));
+						const personDept = isAdmin ? `${a.student?.department ?? ''} | ${a.lecturer?.department ?? ''}` : (isLecturer ? a.student?.department : a.lecturer?.department);
 
 						return (
 							<div key={a.id} style={{
@@ -204,7 +210,7 @@ export function AppointmentsPage({ currentUser, appointments = [], onLogout }) {
 								{/* Academic */}
 								{meta && <div style={{ fontSize:'0.75rem', color:'#636366', display:'flex', alignItems:'center', gap:5 }}>?? {meta}</div>}
 
-								{/* Reason — PENDING only */}
+								{/* Reason ï¿½ PENDING only */}
 								{a.status === 'PENDING' && reason && (
 									<div style={{ fontSize:'0.82rem', color:'#3a3a3c', fontStyle:'italic', padding:'8px 12px', background:'rgba(0,0,0,0.03)', borderLeft:'3px solid #007aff', borderRadius:'0 10px 10px 0', lineHeight:1.5 }}>
 										"{reason}"
