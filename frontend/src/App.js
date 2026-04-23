@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+
 import ChatPage from './components/ChatPage';
 import StudentHome from './pages/StudentHome';
 import LecturerHome from './pages/LecturerHome';
@@ -15,17 +16,16 @@ import ProfilePage from './pages/ProfilePage.jsx';
 import BookingPage from './pages/BookingPage.jsx';
 import LecturerSchedulePage from './pages/LecturerSchedulePage.jsx';
 import SlotCalendarPage from './pages/SlotCalendarPage.jsx';
-import NotificationsPage from './pages/NotificationsPage.jsx';
 import {
   getAllAppointments,
   getStudentAppointments,
   getLecturerAppointments,
 } from './api';
+
 import './App.css';
 
 import LoginPage from './pages/LoginPage.jsx';
 import AdminLoginPage from './pages/AdminLoginPage.jsx';
-
 
 function AppRoutes({ activeUser, appointments, onLogin, onLogout, onUserUpdate }) {
   if (!activeUser) {
@@ -139,8 +139,8 @@ function AppRoutes({ activeUser, appointments, onLogin, onLogout, onUserUpdate }
         path="/book"
         element={
           isStudent
-              ? <BookingPage currentUser={activeUser} onLogout={onLogout} />
-              : <Navigate to={homeRedirect} replace />
+            ? <BookingPage currentUser={activeUser} onLogout={onLogout} />
+            : <Navigate to={homeRedirect} replace />
         }
       />
 
@@ -149,6 +149,15 @@ function AppRoutes({ activeUser, appointments, onLogin, onLogout, onUserUpdate }
         element={
           isLecturer
             ? <LecturerSchedulePage currentUser={activeUser} onLogout={onLogout} />
+            : <Navigate to={homeRedirect} replace />
+        }
+      />
+
+      <Route
+        path="/lecturer/slots"
+        element={
+          isLecturer
+            ? <LecturerSlotsPage currentUser={activeUser} onLogout={onLogout} />
             : <Navigate to={homeRedirect} replace />
         }
       />
@@ -171,44 +180,23 @@ function AppRoutes({ activeUser, appointments, onLogin, onLogout, onUserUpdate }
         }
       />
 
+      <Route
+        path="/lecturer/preferences"
+        element={
+          isLecturer
+            ? <LecturerPreferencesPage currentUser={activeUser} />
+            : <Navigate to={homeRedirect} replace />
+        }
+      />
+
       <Route path="*" element={<Navigate to={homeRedirect} replace />} />
-      </Routes>
+    </Routes>
   );
 }
 
-/* ── Root App ── */
 export default function App() {
-  // ── Restore session from localStorage on mount ──────────────────────
-  const [activeUser, setActiveUser] = useState(() => {
-    try {
-      const saved = localStorage.getItem('unilink_user');
-      return saved ? JSON.parse(saved) : null;
-    } catch { return null; }
-  });
-
-  const [appointments, setAppointments] = useState(() => {
-    try {
-      const saved = localStorage.getItem('unilink_appointments');
-      return saved ? JSON.parse(saved) : [];
-    } catch { return []; }
-  });
-
-  // ── Refresh appointments in background after restoring session ───────
-  useEffect(() => {
-    if (!activeUser) return;
-    const fetchAppts = async () => {
-      try {
-        let appts = [];
-        if (activeUser.role === 'STUDENT')        appts = await getStudentAppointments(activeUser.id);
-        else if (activeUser.role === 'LECTURER')  appts = await getLecturerAppointments(activeUser.id);
-        else if (activeUser.role === 'ADMIN')     appts = await getAllAppointments();
-        setAppointments(appts);
-        localStorage.setItem('unilink_appointments', JSON.stringify(appts));
-      } catch { /* keep cached appointments */ }
-    };
-    fetchAppts();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeUser?.id]);
+  const [activeUser,    setActiveUser]    = useState(null);
+  const [appointments,  setAppointments]  = useState([]);
 
   const handleLogin = async (user) => {
     setActiveUser(user);
@@ -250,7 +238,3 @@ export default function App() {
     </BrowserRouter>
   );
 }
-
-
-
-
