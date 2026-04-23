@@ -56,6 +56,15 @@ public class Appointment {
     @Column(name = "reschedule_reason", length = 500)
     private String rescheduleReason;
 
+    @Column(name = "meeting_link", length = 500)
+    private String meetingLink;
+
+    @Column(name = "meeting_location", length = 255)
+    private String meetingLocation;
+
+    @Column(name = "confirmation_message", length = 500)
+    private String confirmationMessage;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 

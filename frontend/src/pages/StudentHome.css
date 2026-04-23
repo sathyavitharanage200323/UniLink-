@@ -758,3 +758,115 @@
   }
 }
 
+
+/* ── Apple-style appointment card ───────────────────────────────────── */
+.sh-appt-card {
+  background: rgba(255,255,255,0.72);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid rgba(0,0,0,0.07);
+  border-radius: 16px;
+  padding: 14px 16px;
+  margin-bottom: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+  transition: box-shadow 0.15s, transform 0.15s;
+}
+.sh-appt-card:last-child { margin-bottom: 0; }
+.sh-appt-card:hover { box-shadow: 0 6px 20px rgba(0,0,0,0.1); transform: translateY(-1px); }
+
+/* Header row */
+.sh-appt-card__header {
+  display: flex; align-items: center; gap: 10px;
+}
+.sh-appt-card__lec { flex: 1; min-width: 0; }
+.sh-appt-card__lec-name {
+  font-weight: 700; font-size: 0.9rem; color: #1c1c1e;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.sh-appt-card__lec-dept {
+  font-size: 0.72rem; color: #636366; margin-top: 1px;
+}
+
+/* Time row */
+.sh-appt-card__time {
+  display: flex; align-items: center; gap: 7px;
+  font-size: 0.82rem; font-weight: 600; color: #3a3a3c;
+  flex-wrap: wrap;
+}
+
+/* Mode pill */
+.sh-mode-pill {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 2px 9px; border-radius: 20px;
+  font-size: 0.72rem; font-weight: 700;
+}
+.sh-mode-pill--online   { background: #eff6ff; color: #2563eb; border: 1px solid #bfdbfe; }
+.sh-mode-pill--physical { background: #f0fdf4; color: #16a34a; border: 1px solid #bbf7d0; }
+
+/* Academic meta */
+.sh-appt-card__meta {
+  display: flex; align-items: center; gap: 5px;
+  font-size: 0.75rem; color: #636366; font-weight: 500;
+}
+
+/* Reason */
+.sh-appt-card__reason {
+  font-size: 0.8rem; color: #3a3a3c; font-style: italic;
+  padding: 8px 12px;
+  background: rgba(0,0,0,0.03);
+  border-left: 3px solid #007aff;
+  border-radius: 0 8px 8px 0;
+  line-height: 1.4;
+}
+
+/* Confirmed details */
+.sh-appt-card__confirmed {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  padding: 8px 12px;
+  background: linear-gradient(135deg, #f0fdf4, #eff6ff);
+  border: 1px solid #bbf7d0;
+  border-radius: 10px;
+}
+.sh-appt-card__link {
+  display: inline-flex; align-items: center; gap: 5px;
+  color: #007aff; font-weight: 700; font-size: 0.82rem;
+  text-decoration: none;
+  padding: 4px 10px;
+  background: rgba(0,122,255,0.08);
+  border-radius: 8px;
+  transition: background 0.15s;
+}
+.sh-appt-card__link:hover { background: rgba(0,122,255,0.15); }
+.sh-appt-card__location {
+  display: inline-flex; align-items: center; gap: 5px;
+  color: #16a34a; font-weight: 600; font-size: 0.82rem;
+}
+
+/* Reschedule notice */
+.sh-appt-card__reschedule {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 0.75rem; color: #dc2626; font-weight: 600;
+  background: #fef2f2; border: 1px solid #fecaca;
+  border-radius: 8px; padding: 6px 10px;
+}
+
+/* Status badge */
+.sh-status {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: 0.70rem; font-weight: 700;
+  padding: 3px 9px; border-radius: 999px;
+  text-transform: uppercase; letter-spacing: 0.4px;
+  flex-shrink: 0; white-space: nowrap;
+}
+
+/* Confirmation message from lecturer */
+.sh-appt-card__confirm-msg {
+  font-size: 0.82rem; color: #1c1c1e; font-weight: 500;
+  padding: 6px 0 8px;
+  border-bottom: 1px solid rgba(0,0,0,0.06);
+  margin-bottom: 6px;
+  line-height: 1.4;
+}

@@ -1,4 +1,4 @@
-ï»¿import { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Calendar, User, Wrench, ArrowLeft, Clock, BellOff, Bell, AlertCircle, CheckCircle, RefreshCw, Camera } from 'lucide-react';
 import Header from '../components/Header';
@@ -40,91 +40,223 @@ const ACADEMIC_PERIODS = [
 export function AppointmentsPage({ currentUser, appointments = [], onLogout }) {
 	const navigate = useNavigate();
 	const isLecturer = currentUser?.role === 'LECTURER';
-	const list = appointments.length > 0 ? appointments : [];
+	const [list, setList] = useState(appointments);
+	const [refreshing, setRefreshing] = useState(false);
+	const [filter, setFilter] = useState('ALL');
+
+	const fetchAppts = async () => {
+		if (!currentUser?.id) return;
+		try {
+			const ep = isLecturer ? `/appointments/lecturer/${currentUser.id}` : `/appointments/student/${currentUser.id}`;
+			const res = await api.get(ep);
+			setList(res.data || []);
+		} catch { /* keep cached */ }
+	};
+
+	useEffect(() => {
+		fetchAppts();
+		const t = setInterval(fetchAppts, 10000);
+		return () => clearInterval(t);
+	// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [currentUser?.id, isLecturer]);
+
+	const handleRefresh = async () => {
+		setRefreshing(true);
+		await fetchAppts();
+		setRefreshing(false);
+	};
+
+	const extract = (notes, key) => { const m = (notes||'').match(new RegExp(`\\[${key}:([^\\]]+)\\]`)); return m ? m[1].trim() : ''; };
+	const parseMeta = (notes) => { const m = (notes||'').match(/^\[([^\]]+)\]/); return m ? m[1].replace('| HIGH PRIORITY','').trim() : ''; };
+	const parseReason = (notes) => (notes||'').replace(/\[[^\]]+\]/g,'').trim();
+
+	const sorted = [...list].sort((a, b) => new Date(b.startTime) - new Date(a.startTime));
+	const filtered = filter === 'ALL' ? sorted : sorted.filter(a => a.status === filter);
+
+	const counts = { ALL: list.length, PENDING: 0, CONFIRMED: 0, COMPLETED: 0, CANCELLED: 0 };
+	list.forEach(a => { if (counts[a.status] !== undefined) counts[a.status]++; });
+
+	const STATUS_CFG = {
+		PENDING:   { color:'#d97706', bg:'#fffbeb', border:'#fde68a', dot:'#f59e0b' },
+		CONFIRMED: { color:'#16a34a', bg:'#f0fdf4', border:'#bbf7d0', dot:'#22c55e' },
+		CANCELLED: { color:'#dc2626', bg:'#fef2f2', border:'#fecaca', dot:'#ef4444' },
+		COMPLETED: { color:'#6b7280', bg:'#f8fafc', border:'#e2e8f0', dot:'#9ca3af' },
+	};
 
 	return (
-		<div style={{ minHeight: '100vh', background: '#f8fafc', display: 'flex', flexDirection: 'column' }}>
+		<div style={{ minHeight:'100vh', background:'linear-gradient(160deg,#f0f4ff 0%,#f8fafc 60%,#eff6ff 100%)', display:'flex', flexDirection:'column', fontFamily:'-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif' }}>
 			<Header currentUser={currentUser} onLogout={onLogout} unreadCount={0} />
-			<main style={{ flex: 1, maxWidth: 1100, margin: '0 auto', width: '100%', padding: '28px 16px' }}>
-				<button
-					type="button"
-					onClick={() => navigate(isLecturer ? '/lecturer/home' : '/student/home')}
-					style={{ display: 'inline-flex', alignItems: 'center', gap: 8, border: '1px solid #cbd5e1', background: 'white', padding: '8px 12px', borderRadius: 10, cursor: 'pointer' }}
-				>
-					<ArrowLeft size={16} /> Back
+			<main style={{ flex:1, maxWidth:860, margin:'0 auto', width:'100%', padding:'24px 16px 60px' }}>
+
+				{/* Back */}
+				<button onClick={() => navigate(isLecturer ? '/lecturer/home' : '/student/home')}
+					style={{ display:'inline-flex', alignItems:'center', gap:6, background:'rgba(255,255,255,0.7)', backdropFilter:'blur(12px)', border:'1px solid rgba(0,0,0,0.08)', borderRadius:10, padding:'8px 14px', fontSize:'0.875rem', fontWeight:600, color:'#3a3a3c', cursor:'pointer', marginBottom:20 }}>
+					<ArrowLeft size={15} /> Back
 				</button>
 
-				<section style={{ marginTop: 14, background: 'white', border: '1px solid #e2e8f0', borderRadius: 16, padding: 20 }}>
-					<h1 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: 10 }}>
-						<Calendar size={20} /> Appointments
-					</h1>
-					<p style={{ margin: '8px 0 0', color: '#475569' }}>
-						{list.length} appointment(s) loaded from backend.
-					</p>
-					<button
-						type="button"
-						onClick={() => navigate('/book')}
-						style={{ marginTop: 12, padding: '8px 16px', borderRadius: 10, border: 'none', background: '#2563eb', color: 'white', fontWeight: 700, cursor: 'pointer' }}
-					>
-						+ Book New Appointment
-					</button>
+				{/* Header card */}
+				<div style={{ background:'rgba(255,255,255,0.72)', backdropFilter:'blur(20px) saturate(180%)', border:'1px solid rgba(0,0,0,0.07)', borderRadius:20, padding:'20px 24px', marginBottom:16, boxShadow:'0 4px 24px rgba(0,0,0,0.07)' }}>
+					<div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', flexWrap:'wrap', gap:12 }}>
+						<div>
+							<h1 style={{ margin:0, fontSize:'1.5rem', fontWeight:800, color:'#1c1c1e', display:'flex', alignItems:'center', gap:10 }}>
+								<Calendar size={22} style={{ color:'#007aff' }} /> My Appointments
+							</h1>
+							<p style={{ margin:'4px 0 0', color:'#636366', fontSize:'0.82rem' }}>{list.length} total · auto-refreshes every 10s</p>
+						</div>
+						<div style={{ display:'flex', gap:10, alignItems:'center' }}>
+							{!isLecturer && (
+								<button onClick={() => navigate('/book')}
+									style={{ display:'inline-flex', alignItems:'center', gap:6, background:'linear-gradient(135deg,#007aff,#0055d4)', color:'white', border:'none', borderRadius:12, padding:'10px 18px', fontWeight:700, fontSize:'0.875rem', cursor:'pointer', boxShadow:'0 4px 12px rgba(0,122,255,0.3)' }}>
+									+ Book New
+								</button>
+							)}
+							<button onClick={handleRefresh} disabled={refreshing}
+								style={{ display:'inline-flex', alignItems:'center', gap:6, background:'rgba(0,0,0,0.04)', border:'1px solid rgba(0,0,0,0.08)', borderRadius:10, padding:'9px 14px', fontSize:'0.82rem', fontWeight:600, color:'#3a3a3c', cursor:'pointer' }}>
+								<RefreshCw size={14} style={{ animation: refreshing ? 'apf-rotate 0.8s linear infinite' : 'none' }} /> Refresh
+							</button>
+						</div>
+					</div>
 
-					<div style={{ marginTop: 16, display: 'grid', gap: 10 }}>
-						{list.map((a) => (
+					{/* Filter pills */}
+					<div style={{ display:'flex', gap:8, marginTop:16, flexWrap:'wrap' }}>
+						{['ALL','PENDING','CONFIRMED','COMPLETED','CANCELLED'].map(f => {
+							const active = filter === f;
+							const cfg = STATUS_CFG[f];
+							return (
+								<button key={f} onClick={() => setFilter(f)} style={{
+									display:'inline-flex', alignItems:'center', gap:5,
+									padding:'6px 14px', borderRadius:20,
+									border: active ? 'none' : '1px solid rgba(0,0,0,0.1)',
+									background: active ? (cfg ? cfg.color : '#007aff') : 'rgba(0,0,0,0.04)',
+									color: active ? 'white' : '#636366',
+									fontWeight:700, fontSize:'0.75rem', cursor:'pointer',
+									boxShadow: active ? `0 2px 8px ${cfg ? cfg.color+'55' : 'rgba(0,122,255,0.3)'}` : 'none',
+									transition:'all 0.15s',
+								}}>
+									{cfg && <span style={{ width:7, height:7, borderRadius:'50%', background: active ? 'rgba(255,255,255,0.7)' : cfg.dot, flexShrink:0 }} />}
+									{f} {f !== 'ALL' && <span style={{ opacity:0.75 }}>({counts[f]})</span>}
+								</button>
+							);
+						})}
+					</div>
+				</div>
+
+				{/* Appointment cards */}
+				<div style={{ display:'flex', flexDirection:'column', gap:12 }}>
+					{filtered.length === 0 && (
+						<div style={{ background:'rgba(255,255,255,0.7)', backdropFilter:'blur(12px)', border:'1px solid rgba(0,0,0,0.07)', borderRadius:16, padding:'40px 20px', textAlign:'center', color:'#aeaeb2' }}>
+							<Calendar size={40} style={{ marginBottom:10, opacity:0.4 }} />
+							<p style={{ margin:0, fontWeight:600 }}>No {filter.toLowerCase()} appointments</p>
+						</div>
+					)}
+					{filtered.map((a) => {
+						const meta   = parseMeta(a.notes);
+						const reason = parseReason(a.notes);
+						const mode   = extract(a.notes, 'MODE');
+						const isHP   = (a.notes||'').includes('HIGH PRIORITY');
+						const sc     = a.rescheduledAt ? STATUS_CFG.CANCELLED : (STATUS_CFG[a.status] || STATUS_CFG.PENDING);
+						const personName = isLecturer ? (a.student?.name ?? 'Student') : (a.lecturer?.name ?? 'Lecturer');
+						const personDept = isLecturer ? a.student?.department : a.lecturer?.department;
+
+						return (
 							<div key={a.id} style={{
-								border: a.rescheduledAt ? '1px solid #fca5a5' : '1px solid #e2e8f0',
-								borderLeft: a.rescheduledAt ? '4px solid #dc2626' : '1px solid #e2e8f0',
-								borderRadius: 12, padding: 14,
-								background: a.rescheduledAt ? '#fff8f8' : '#fcfdff'
+								background:'rgba(255,255,255,0.78)',
+								backdropFilter:'blur(20px) saturate(180%)',
+								WebkitBackdropFilter:'blur(20px) saturate(180%)',
+								border:`1px solid ${sc.border}`,
+								borderLeft: `4px solid ${sc.color}`,
+								borderRadius:18, padding:'16px 18px',
+								boxShadow:'0 2px 16px rgba(0,0,0,0.06)',
+								display:'flex', flexDirection:'column', gap:10,
+								transition:'box-shadow 0.15s, transform 0.15s',
 							}}>
-								<div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
-									<div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-										<strong>{isLecturer ? (a.student?.name ?? 'Student') : (a.lecturer?.name ?? 'Lecturer')}</strong>
-										{a.rescheduledAt && (
-											<div style={{ 
-												display: 'flex', alignItems: 'center', gap: 4,
-												padding: '3px 8px', background: '#fee2e2',
-												border: '1px solid #fca5a5', borderRadius: 6,
-												color: '#dc2626', fontSize: 11, fontWeight: 700
-											}}>
-												<RefreshCw size={11} /> RESCHEDULED
+								{/* Header */}
+								<div style={{ display:'flex', alignItems:'center', gap:12 }}>
+									<div style={{ width:44, height:44, borderRadius:12, background:'linear-gradient(135deg,#007aff,#5856d6)', color:'white', fontWeight:800, fontSize:'0.9rem', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, boxShadow:'0 2px 8px rgba(0,122,255,0.3)' }}>
+										{personName.split(' ').map(n=>n[0]).join('').slice(0,2).toUpperCase()}
+									</div>
+									<div style={{ flex:1, minWidth:0 }}>
+										<div style={{ fontWeight:700, fontSize:'0.95rem', color:'#1c1c1e', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{personName}</div>
+										<div style={{ fontSize:'0.72rem', color:'#636366', marginTop:1 }}>{personDept}</div>
+									</div>
+									<div style={{ display:'flex', alignItems:'center', gap:6, flexWrap:'wrap', justifyContent:'flex-end' }}>
+										{isHP && <span style={{ display:'inline-flex', alignItems:'center', gap:3, background:'#fef2f2', color:'#dc2626', border:'1px solid #fecaca', borderRadius:20, padding:'2px 8px', fontSize:'0.68rem', fontWeight:700 }}>? HIGH PRIORITY</span>}
+										{a.rescheduledAt && <span style={{ display:'inline-flex', alignItems:'center', gap:3, background:'#fef2f2', color:'#dc2626', border:'1px solid #fecaca', borderRadius:20, padding:'2px 8px', fontSize:'0.68rem', fontWeight:700 }}>? RESCHEDULED</span>}
+										<span style={{ background:sc.bg, color:sc.color, border:`1.5px solid ${sc.border}`, borderRadius:20, padding:'4px 12px', fontSize:'0.72rem', fontWeight:700, textTransform:'uppercase', letterSpacing:'0.03em' }}>
+											{a.rescheduledAt ? 'Rescheduled' : a.status}
+										</span>
+									</div>
+								</div>
+
+								{/* Time + mode */}
+								<div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
+									<span style={{ display:'flex', alignItems:'center', gap:5, fontSize:'0.82rem', fontWeight:600, color:'#3a3a3c' }}>
+										<Clock size={13} style={{ color:'#007aff' }} />
+										{new Date(a.startTime).toLocaleString('en-GB', { weekday:'short', day:'numeric', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' })}
+									</span>
+									{mode && (
+										<span style={{ display:'inline-flex', alignItems:'center', gap:4, padding:'2px 10px', borderRadius:20, fontSize:'0.72rem', fontWeight:700, background:mode==='Online'?'#eff6ff':'#f0fdf4', color:mode==='Online'?'#007aff':'#16a34a', border:`1px solid ${mode==='Online'?'#bfdbfe':'#bbf7d0'}` }}>
+											{mode==='Online'?'??':'??'} {mode}
+										</span>
+									)}
+								</div>
+
+								{/* Academic */}
+								{meta && <div style={{ fontSize:'0.75rem', color:'#636366', display:'flex', alignItems:'center', gap:5 }}>?? {meta}</div>}
+
+								{/* Reason — PENDING only */}
+								{a.status === 'PENDING' && reason && (
+									<div style={{ fontSize:'0.82rem', color:'#3a3a3c', fontStyle:'italic', padding:'8px 12px', background:'rgba(0,0,0,0.03)', borderLeft:'3px solid #007aff', borderRadius:'0 10px 10px 0', lineHeight:1.5 }}>
+										"{reason}"
+									</div>
+								)}
+
+								{/* Confirmed details */}
+								{a.status === 'CONFIRMED' && (a.meetingLink || a.meetingLocation || a.confirmationMessage) && (
+									<div style={{ display:'flex', flexDirection:'column', gap:8, padding:'12px 14px', background:'linear-gradient(135deg,rgba(240,253,244,0.9),rgba(239,246,255,0.9))', border:'1px solid #bbf7d0', borderRadius:12, backdropFilter:'blur(8px)' }}>
+										{a.confirmationMessage && (
+											<div style={{ fontSize:'0.85rem', color:'#1c1c1e', fontWeight:500, display:'flex', alignItems:'flex-start', gap:7 }}>
+												<span style={{ fontSize:'1rem', flexShrink:0 }}>??</span>
+												<span>{a.confirmationMessage}</span>
 											</div>
 										)}
+										<div style={{ display:'flex', alignItems:'center', gap:10, flexWrap:'wrap' }}>
+											{a.meetingLink && (
+												<a href={a.meetingLink} target="_blank" rel="noopener noreferrer" style={{ display:'inline-flex', alignItems:'center', gap:5, color:'#007aff', fontWeight:700, fontSize:'0.82rem', textDecoration:'none', padding:'6px 12px', background:'rgba(0,122,255,0.08)', borderRadius:10, border:'1px solid rgba(0,122,255,0.15)' }}>
+													?? Join Meeting
+												</a>
+											)}
+											{a.meetingLocation && (
+												<span style={{ display:'inline-flex', alignItems:'center', gap:5, color:'#16a34a', fontWeight:600, fontSize:'0.82rem', padding:'6px 12px', background:'rgba(22,163,74,0.06)', borderRadius:10, border:'1px solid rgba(22,163,74,0.15)' }}>
+													?? {a.meetingLocation}
+												</span>
+											)}
+										</div>
 									</div>
-									<div style={{ color: a.rescheduledAt ? '#dc2626' : '#0f766e', fontWeight: 700, fontSize: 12 }}>
-										{a.rescheduledAt ? 'RESCHEDULED' : a.status}
+								)}
+
+								{/* Cancelled reason */}
+								{a.status === 'CANCELLED' && a.rescheduleReason && (
+									<div style={{ display:'flex', alignItems:'center', gap:6, fontSize:'0.75rem', color:'#dc2626', fontWeight:600, background:'rgba(254,242,242,0.8)', border:'1px solid #fecaca', borderRadius:10, padding:'7px 12px' }}>
+										? {a.rescheduleReason}
 									</div>
-								</div>
-								<div style={{ marginTop: 6, color: '#64748b', display: 'flex', alignItems: 'center', gap: 6 }}>
-									<Clock size={14} /> {new Date(a.startTime).toLocaleString()}
-								</div>
-								{a.notes && <div style={{ marginTop: 4, color: '#334155' }}>{a.notes}</div>}
+								)}
+
+								{/* Reschedule reason */}
 								{a.rescheduledAt && a.rescheduleReason && (
-									<div style={{
-										marginTop: 8, padding: '6px 10px',
-										background: '#fee2e2', borderRadius: 6,
-										color: '#dc2626', fontSize: 12, fontWeight: 600,
-										display: 'flex', alignItems: 'flex-start', gap: 6
-									}}>
-										<RefreshCw size={12} style={{ marginTop: 1, flexShrink: 0 }} />
-										<span><strong>Reschedule reason:</strong> {a.rescheduleReason}</span>
+									<div style={{ display:'flex', alignItems:'center', gap:6, fontSize:'0.75rem', color:'#dc2626', fontWeight:600, background:'rgba(254,242,242,0.8)', border:'1px solid #fecaca', borderRadius:10, padding:'7px 12px' }}>
+										? Rescheduled: {a.rescheduleReason}
 									</div>
 								)}
 							</div>
-						))}
-						{list.length === 0 && (
-							<div style={{ border: '1px dashed #cbd5e1', borderRadius: 12, padding: 16, color: '#64748b' }}>
-								No appointments yet.
-							</div>
-						)}
-					</div>
-				</section>
+						);
+					})}
+				</div>
 			</main>
 			<Footer />
 		</div>
 	);
 }
-
 export function ProfilePage({ currentUser, onLogout, onUserUpdate }) {
 	const navigate = useNavigate();
 	const isLecturer = currentUser?.role === 'LECTURER';
