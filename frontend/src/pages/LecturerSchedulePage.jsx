@@ -37,7 +37,7 @@ function parseNotes(notes = '') {
 }
 
 const STATUS_CFG = {
-  PENDING:   { label: 'Pending',   color: '#ea580c', bg: '#fff7ed', border: '#fed7aa', Icon: Clock },
+  PENDING:   { label: 'Pending',   color: '#ea580c', bg: '#FFF5F0', border: '#FDDCC8', Icon: Clock },
   CONFIRMED: { label: 'Confirmed', color: '#16a34a', bg: '#f0fdf4', border: '#bbf7d0', Icon: CheckCircle },
   CANCELLED: { label: 'Cancelled', color: '#dc2626', bg: '#fef2f2', border: '#fecaca', Icon: XCircle },
   COMPLETED: { label: 'Completed', color: '#6b7280', bg: '#f8fafc', border: '#e2e8f0', Icon: Archive },
@@ -69,6 +69,8 @@ function AppointmentCard({ appointment, onAction, isExpanded, onToggle, onRefres
   const [confirmMsg, setConfirmMsg]                 = useState('');
   const [declineReason, setDeclineReason]           = useState('');
   const [rescheduleReason, setRescheduleReason]     = useState('');
+  const [rescheduleLocation, setRescheduleLocation] = useState('');
+  const [rescheduleSuccess, setRescheduleSuccess]   = useState(false);
   const [selectedRescheduleSlot, setSelectedRescheduleSlot] = useState(null);
   const [availableSlots, setAvailableSlots]         = useState([]);
   const [slotsLoading, setSlotsLoading]             = useState(false);
@@ -110,15 +112,28 @@ function AppointmentCard({ appointment, onAction, isExpanded, onToggle, onRefres
   };
   const handleReschedule = async () => {
     if (!selectedRescheduleSlot) { toast.error('Select a new time slot'); return; }
-    if (!rescheduleReason.trim()) { toast.error('Provide a reason'); return; }
     setActionLoading('reschedule');
     try {
       const s = new Date(selectedRescheduleSlot.startTime);
       const e = new Date(selectedRescheduleSlot.endTime);
-      await api.patch(`/appointments/${appointment.id}/time`, { startTime: s.toISOString(), endTime: e.toISOString(), reason: rescheduleReason });
+      await api.patch(`/appointments/${appointment.id}/time`, {
+        startTime: s.toISOString(),
+        endTime: e.toISOString(),
+        reason: rescheduleReason.trim() || null,
+        meetingLocation: rescheduleLocation.trim() || null,
+      });
+      // Slide-out success animation
+      setRescheduleSuccess(true);
+      setTimeout(() => {
+        setShowRescheduleForm(false);
+        setSelectedRescheduleSlot(null);
+        setRescheduleReason('');
+        setRescheduleLocation('');
+        setAvailableSlots([]);
+        setRescheduleSuccess(false);
+        if (onRefresh) onRefresh();
+      }, 800);
       toast.success('Rescheduled! Student notified.');
-      setShowRescheduleForm(false); setSelectedRescheduleSlot(null); setRescheduleReason(''); setAvailableSlots([]);
-      if (onRefresh) await onRefresh();
     } catch (err) { toast.error(err.response?.data?.message || 'Failed'); } finally { setActionLoading(null); }
   };
 
@@ -199,9 +214,9 @@ function AppointmentCard({ appointment, onAction, isExpanded, onToggle, onRefres
                   { icon: Hash,          label: 'IT Number',   value: displayIT,           iconBg: '#eff6ff', iconColor: '#2563eb' },
                   { icon: Mail,          label: 'IT Email',    value: itEmail || (displayIT && displayIT !== 'N/A' ? `${displayIT.toLowerCase()}@my.sliit.lk` : null), iconBg: '#f0fdf4', iconColor: '#16a34a' },
                   { icon: Phone,         label: 'Phone',       value: displayPhone,         iconBg: '#fdf4ff', iconColor: '#9333ea' },
-                  { icon: BookOpen,      label: 'Department',  value: student.department,   iconBg: '#fff7ed', iconColor: '#ea580c' },
+                  { icon: BookOpen,      label: 'Department',  value: student.department,   iconBg: '#FFF5F0', iconColor: '#ea580c' },
                   { icon: GraduationCap, label: 'Academic',    value: meta || [student.academicYear, student.semester].filter(Boolean).join(' – '), iconBg: '#eff6ff', iconColor: '#0891b2' },
-                  { icon: GraduationCap, label: 'Batch',       value: student.batch,        iconBg: '#fef9c3', iconColor: '#ca8a04' },
+                  { icon: GraduationCap, label: 'Batch',       value: student.batch,        iconBg: '#FEF0E6', iconColor: '#B5722A' },
                 ].filter(r => r.value).map(({ icon: Icon, label, value, iconBg, iconColor }) => (
                   <div key={label} className="lsc-field-row">
                     <span className="lsc-field-row__icon" style={{ background: iconBg, color: iconColor }}><Icon size={13} /></span>
@@ -309,69 +324,88 @@ function AppointmentCard({ appointment, onAction, isExpanded, onToggle, onRefres
               </div>
             )}
             {showRescheduleForm && (
-              <div className="lsc-form-panel">
-                <div className="lsc-form-panel__title"><RefreshCw size={14} /> Request Reschedule</div>
-
-                {/* Slot picker */}
-                <div className="lsc-form-row">
-                  <label className="lsc-form-label"><Calendar size={13} /> Select New Time Slot</label>
-                  {slotsLoading ? (
-                    <div style={{ display:'flex', alignItems:'center', gap:8, color:'#64748b', fontSize:'0.82rem', padding:'8px 0' }}>
-                      <Loader2 size={14} className="lsc-spin" /> Loading available slots…
-                    </div>
-                  ) : availableSlots.length === 0 ? (
-                    <div style={{ fontSize:'0.82rem', color:'#94a3b8', padding:'8px 0' }}>No available slots found.</div>
-                  ) : (
-                    <div style={{ display:'flex', flexWrap:'wrap', gap:8, marginTop:6 }}>
-                      {/* Group by date */}
-                      {Object.entries(availableSlots.reduce((acc, s) => { if (!acc[s.slotDate]) acc[s.slotDate] = []; acc[s.slotDate].push(s); return acc; }, {})).map(([date, slots]) => (
-                        <div key={date} style={{ width:'100%' }}>
-                          <div style={{ fontSize:'0.72rem', fontWeight:700, color:'#64748b', textTransform:'uppercase', letterSpacing:'0.05em', marginBottom:6 }}>
-                            {new Date(date).toLocaleDateString('en-US', { weekday:'long', month:'short', day:'numeric' })}
-                          </div>
-                          <div style={{ display:'flex', flexWrap:'wrap', gap:7 }}>
-                            {slots.map(slot => {
-                              const sel = selectedRescheduleSlot?.id === slot.id;
-                              return (
-                                <button key={slot.id} onClick={() => setSelectedRescheduleSlot(slot)} style={{
-                                  display:'inline-flex', alignItems:'center', gap:5,
-                                  padding:'7px 14px', borderRadius:20,
-                                  border: sel ? 'none' : '1.5px solid rgba(255,255,255,0.15)',
-                                  background: sel ? '#2563eb' : 'rgba(255,255,255,0.08)',
-                                  color: sel ? 'white' : '#cbd5e1',
-                                  fontWeight:600, fontSize:'0.8rem', cursor:'pointer',
-                                  boxShadow: sel ? '0 0 12px rgba(37,99,235,0.4)' : 'none',
-                                  transition:'all 0.15s',
-                                }}>
-                                  <Clock size={12} /> {slot.time}
-                                  {slot.mode && <span style={{ fontSize:'0.65rem', opacity:0.75, marginLeft:2 }}>{slot.mode}</span>}
-                                  {sel && <CheckCircle size={12} />}
-                                </button>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                {/* Selected slot confirmation */}
-                {selectedRescheduleSlot && (
-                  <div style={{ display:'flex', alignItems:'center', gap:7, padding:'8px 12px', background:'rgba(37,99,235,0.12)', border:'1px solid rgba(37,99,235,0.3)', borderRadius:10, fontSize:'0.82rem', color:'#93c5fd' }}>
-                    <CheckCircle size={13} /> Selected: <strong>{selectedRescheduleSlot.label} · {selectedRescheduleSlot.time}</strong>
+              <div className={`lsc-form-panel${rescheduleSuccess ? ' lsc-form-panel--success' : ''}`}
+                style={{ transition:'all 0.4s ease', transform: rescheduleSuccess ? 'scale(0.97)' : 'scale(1)', opacity: rescheduleSuccess ? 0 : 1 }}>
+                {rescheduleSuccess ? (
+                  <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:10, padding:'20px 0', color:'#16a34a' }}>
+                    <CheckCircle size={36} style={{ animation:'lsc-pop 0.4s ease' }} />
+                    <span style={{ fontWeight:700, fontSize:'0.95rem' }}>Rescheduled! Student notified.</span>
                   </div>
-                )}
+                ) : (
+                  <>
+                    <div className="lsc-form-panel__title"><RefreshCw size={14} /> Reschedule Appointment</div>
 
-                <div className="lsc-form-row">
-                  <label className="lsc-form-label">Reason for Rescheduling</label>
-                  <textarea className="lsc-form-textarea" rows={3} value={rescheduleReason} onChange={e => setRescheduleReason(e.target.value)} placeholder="e.g. Conflict with another meeting" />
-                </div>
-                <div className="lsc-form-btns">
-                  <button className="lsc-btn lsc-btn--blue" onClick={handleReschedule} disabled={actionLoading === 'reschedule'}>
-                    {actionLoading === 'reschedule' ? <><Loader2 size={13} className="lsc-spin" /> Rescheduling…</> : 'Reschedule & Notify'}</button>
-                  <button className="lsc-btn lsc-btn--ghost" onClick={() => { setShowRescheduleForm(false); setSelectedRescheduleSlot(null); setAvailableSlots([]); }}>Cancel</button>
-                </div>
+                    {/* Slot picker */}
+                    <div className="lsc-form-row">
+                      <label className="lsc-form-label"><Calendar size={13} /> Select New Time Slot</label>
+                      {slotsLoading ? (
+                        <div style={{ display:'flex', alignItems:'center', gap:8, color:'#64748b', fontSize:'0.82rem', padding:'8px 0' }}>
+                          <Loader2 size={14} className="lsc-spin" /> Loading your available slots…
+                        </div>
+                      ) : availableSlots.length === 0 ? (
+                        <div style={{ fontSize:'0.82rem', color:'#94a3b8', padding:'8px 0' }}>No available slots. Add slots in Manage Availability first.</div>
+                      ) : (
+                        <div style={{ display:'flex', flexWrap:'wrap', gap:8, marginTop:6, maxHeight:220, overflowY:'auto' }}>
+                          {Object.entries(availableSlots.reduce((acc, s) => { if (!acc[s.slotDate]) acc[s.slotDate] = []; acc[s.slotDate].push(s); return acc; }, {})).map(([date, slots]) => (
+                            <div key={date} style={{ width:'100%' }}>
+                              <div style={{ fontSize:'0.72rem', fontWeight:700, color:'#64748b', textTransform:'uppercase', letterSpacing:'0.05em', marginBottom:6 }}>
+                                {new Date(date).toLocaleDateString('en-US', { weekday:'long', month:'short', day:'numeric' })}
+                              </div>
+                              <div style={{ display:'flex', flexWrap:'wrap', gap:7 }}>
+                                {slots.map(slot => {
+                                  const sel = selectedRescheduleSlot?.id === slot.id;
+                                  return (
+                                    <button key={slot.id} onClick={() => setSelectedRescheduleSlot(slot)} style={{
+                                      display:'inline-flex', alignItems:'center', gap:5,
+                                      padding:'7px 14px', borderRadius:20,
+                                      border: sel ? 'none' : '1.5px solid rgba(255,255,255,0.15)',
+                                      background: sel ? '#2563eb' : 'rgba(255,255,255,0.08)',
+                                      color: sel ? 'white' : '#cbd5e1',
+                                      fontWeight:600, fontSize:'0.8rem', cursor:'pointer',
+                                      boxShadow: sel ? '0 0 12px rgba(37,99,235,0.4)' : 'none',
+                                      transition:'all 0.15s',
+                                    }}>
+                                      <Clock size={12} /> {slot.time}
+                                      {slot.mode && <span style={{ fontSize:'0.65rem', opacity:0.75, marginLeft:2 }}>{slot.mode}</span>}
+                                      {sel && <CheckCircle size={12} />}
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Selected slot confirmation */}
+                    {selectedRescheduleSlot && (
+                      <div style={{ display:'flex', alignItems:'center', gap:7, padding:'8px 12px', background:'rgba(37,99,235,0.12)', border:'1px solid rgba(37,99,235,0.3)', borderRadius:10, fontSize:'0.82rem', color:'#93c5fd' }}>
+                        <CheckCircle size={13} /> <strong>{selectedRescheduleSlot.label} · {selectedRescheduleSlot.time}</strong>
+                        {selectedRescheduleSlot.mode && <span style={{ opacity:0.75 }}>· {selectedRescheduleSlot.mode}</span>}
+                      </div>
+                    )}
+
+                    {/* Meeting location */}
+                    <div className="lsc-form-row">
+                      <label className="lsc-form-label"><MapPin size={13} /> Meeting Location <span style={{ opacity:0.5, fontWeight:400 }}>(optional)</span></label>
+                      <input className="lsc-form-input" value={rescheduleLocation} onChange={e => setRescheduleLocation(e.target.value)} placeholder="e.g. Room 301, Block A or Teams link" />
+                    </div>
+
+                    {/* Reason */}
+                    <div className="lsc-form-row">
+                      <label className="lsc-form-label">Reason for Rescheduling <span style={{ opacity:0.5, fontWeight:400 }}>(optional)</span></label>
+                      <textarea className="lsc-form-textarea" rows={2} value={rescheduleReason} onChange={e => setRescheduleReason(e.target.value)} placeholder="e.g. Conflict with faculty meeting" />
+                    </div>
+
+                    <div className="lsc-form-btns">
+                      <button className="lsc-btn lsc-btn--blue" onClick={handleReschedule} disabled={!selectedRescheduleSlot || actionLoading === 'reschedule'}>
+                        {actionLoading === 'reschedule' ? <><Loader2 size={13} className="lsc-spin" /> Rescheduling…</> : <><RefreshCw size={13} /> Reschedule & Notify Student</>}
+                      </button>
+                      <button className="lsc-btn lsc-btn--ghost" onClick={() => { setShowRescheduleForm(false); setSelectedRescheduleSlot(null); setAvailableSlots([]); setRescheduleReason(''); setRescheduleLocation(''); }}>Cancel</button>
+                    </div>
+                  </>
+                )}
               </div>
             )}
             {showDelayForm && (
@@ -452,7 +486,7 @@ export default function LecturerSchedulePage({ currentUser, onLogout }) {
 
         <div className="lsc-stats">
           {[
-            { key: 'PENDING',   label: 'Pending',   Icon: Clock,       grad: 'linear-gradient(135deg,#fff7ed,#fed7aa)', color: '#ea580c' },
+            { key: 'PENDING',   label: 'Pending',   Icon: Clock,       grad: 'linear-gradient(135deg,#FFF5F0,#FDDCC8)', color: '#ea580c' },
             { key: 'CONFIRMED', label: 'Confirmed', Icon: CheckCircle, grad: 'linear-gradient(135deg,#f0fdf4,#bbf7d0)', color: '#16a34a' },
             { key: 'COMPLETED', label: 'Completed', Icon: Archive,     grad: 'linear-gradient(135deg,#f8fafc,#e2e8f0)', color: '#6b7280' },
             { key: 'CANCELLED', label: 'Cancelled', Icon: XCircle,     grad: 'linear-gradient(135deg,#fef2f2,#fecaca)', color: '#dc2626' },

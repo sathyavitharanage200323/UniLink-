@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import {
   ArrowLeft, ArrowRight, Zap, Clock, CheckCircle, AlertCircle,
-  Loader2, User, MapPin, Calendar
+  Loader2, User, MapPin, Calendar, Video
 } from 'lucide-react';
 import api from '../api/axiosInstance';
 import { createAppointment } from '../api';
@@ -33,7 +33,7 @@ function initials(name = '') {
 
 /* ── Step indicator ──────────────────────────────────────────────────── */
 function StepBar({ step }) {
-  const steps = ['Select Lecturer', 'Choose Slot', 'Book'];
+  const steps = ['Select Lecturer', 'Choose Slot', 'Book', 'Confirmed'];
   return (
     <div className="bp-stepbar">
       {steps.map((label, i) => (
@@ -424,6 +424,120 @@ function StepForm({ lecturer, selectedSlot, formData, onChange, onConfirm, onBac
   );
 }
 
+/* ── Step 4 — Booking Confirmed ──────────────────────────────────────── */
+function StepConfirmed({ lecturer, selectedSlot, formData, onBookAnother, onGoHome }) {
+  const [now, setNow] = React.useState(new Date());
+  const [confetti, setConfetti] = React.useState(true);
+
+  // Real-time clock
+  React.useEffect(() => {
+    const t = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(t);
+  }, []);
+
+  // Hide confetti after 4s
+  React.useEffect(() => {
+    const t = setTimeout(() => setConfetti(false), 4000);
+    return () => clearTimeout(t);
+  }, []);
+
+  const fmtClock = (d) => d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  const fmtClockDate = (d) => d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+
+  return (
+    <div className="bp-confirmed-wrap">
+      {/* Confetti burst */}
+      {confetti && (
+        <div className="bp-confetti" aria-hidden="true">
+          {[...Array(18)].map((_, i) => (
+            <span key={i} className="bp-confetti__dot" style={{
+              '--x': `${Math.random() * 100}%`,
+              '--delay': `${Math.random() * 0.6}s`,
+              '--color': ['#007aff','#34c759','#ff9f0a','#ff375f','#5856d6','#30d158'][i % 6],
+              '--size': `${6 + Math.random() * 8}px`,
+            }} />
+          ))}
+        </div>
+      )}
+
+      {/* Success icon */}
+      <div className="bp-confirmed__icon">
+        <CheckCircle size={52} style={{ color: '#34c759' }} />
+      </div>
+
+      <h2 className="bp-confirmed__title">Booking Submitted!</h2>
+      <p className="bp-confirmed__sub">Your consultation request is awaiting lecturer confirmation.</p>
+
+      {/* Real-time clock */}
+      <div className="bp-confirmed__clock">
+        <div className="bp-confirmed__clock-time">{fmtClock(now)}</div>
+        <div className="bp-confirmed__clock-date">{fmtClockDate(now)}</div>
+      </div>
+
+      {/* Booking details card */}
+      <div className="bp-confirmed__card">
+        <div className="bp-confirmed__card-header">
+          <LecturerAvatar lec={lecturer} size={48} />
+          <div>
+            <div className="bp-confirmed__lec-name">{lecturer.name}</div>
+            <div className="bp-confirmed__lec-dept">{lecturer.department}</div>
+          </div>
+        </div>
+
+        <div className="bp-confirmed__details">
+          <div className="bp-confirmed__detail-row">
+            <Calendar size={15} style={{ color: '#007aff', flexShrink: 0 }} />
+            <div>
+              <div className="bp-confirmed__detail-label">Date</div>
+              <div className="bp-confirmed__detail-value">{fmtDate(selectedSlot.slotDate)}</div>
+            </div>
+          </div>
+          <div className="bp-confirmed__detail-row">
+            <Clock size={15} style={{ color: '#007aff', flexShrink: 0 }} />
+            <div>
+              <div className="bp-confirmed__detail-label">Time</div>
+              <div className="bp-confirmed__detail-value">{selectedSlot.time}</div>
+            </div>
+          </div>
+          {selectedSlot.mode && (
+            <div className="bp-confirmed__detail-row">
+              {selectedSlot.mode === 'Online'
+                ? <Video size={15} style={{ color: '#007aff', flexShrink: 0 }} />
+                : <MapPin size={15} style={{ color: '#34c759', flexShrink: 0 }} />}
+              <div>
+                <div className="bp-confirmed__detail-label">Mode</div>
+                <div className="bp-confirmed__detail-value">{selectedSlot.mode}</div>
+              </div>
+            </div>
+          )}
+          <div className="bp-confirmed__detail-row">
+            <User size={15} style={{ color: '#007aff', flexShrink: 0 }} />
+            <div>
+              <div className="bp-confirmed__detail-label">Student</div>
+              <div className="bp-confirmed__detail-value">{formData.studentName}</div>
+            </div>
+          </div>
+        </div>
+
+        <div className="bp-confirmed__status">
+          <span className="bp-confirmed__status-dot" />
+          Pending lecturer confirmation
+        </div>
+      </div>
+
+      {/* Actions */}
+      <div className="bp-confirmed__actions">
+        <button className="bp-confirmed__btn-home" onClick={onGoHome}>
+          Go to Dashboard
+        </button>
+        <button className="bp-confirmed__btn-another" onClick={onBookAnother}>
+          Book Another
+        </button>
+      </div>
+    </div>
+  );
+}
+
 /* ── Toast ───────────────────────────────────────────────────────────── */
 function StatusToast({ show, success, message }) {
   if (!show) return null;
@@ -548,10 +662,7 @@ export default function BookingPage({ currentUser, onLogout }) {
 
       showToast(true, 'Appointment request submitted. Awaiting lecturer confirmation.');
       setSlots(prev => prev.map(s => String(s.id) === String(selectedSlot.id) ? { ...s, status: 'PENDING' } : s));
-      setSelectedSlotId('');
-      setFormData(prev => ({ ...prev, reason: '', phoneNumber: '', itEmail: '', image: null, document: null }));
-      setStep(1);
-      setSelectedLecturer(null);
+      setStep(4); // go to confirmation screen
     } catch (err) {
       showToast(false, err?.response?.data?.message || err?.message || 'Failed to book. Please try again.');
     } finally {
@@ -602,6 +713,33 @@ export default function BookingPage({ currentUser, onLogout }) {
               onBack={() => setStep(2)}
               loading={loading}
               loadingMsg={loadingMsg}
+            />
+          )}
+
+          {step === 4 && selectedLecturer && selectedSlot && (
+            <StepConfirmed
+              lecturer={selectedLecturer}
+              selectedSlot={selectedSlot}
+              formData={formData}
+              onGoHome={() => navigate('/student/home')}
+              onBookAnother={() => {
+                setStep(1);
+                setSelectedLecturer(null);
+                setSelectedSlotId('');
+                setSlots([]);
+                setFormData({
+                  studentName: '',
+                  itNumber: '',
+                  itEmail: '',
+                  academicYear: '',
+                  semester: '',
+                  reason: '',
+                  phoneNumber: '',
+                  image: null,
+                  document: null,
+                  isHighPriority: false,
+                });
+              }}
             />
           )}
         </div>

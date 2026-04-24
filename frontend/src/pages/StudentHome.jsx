@@ -110,7 +110,7 @@ export default function StudentHome({ currentUser, appointments = [], onLogout }
   });
 
   // Separate rescheduled appointments for highlighted display
-  const rescheduledAppts = displayAppts.filter(a => a.rescheduledAt);
+  const rescheduledAppts = displayAppts.filter(a => a.rescheduledAt && a.status === 'PENDING');
   const normalAppts = displayAppts.filter(a => !a.rescheduledAt);
 
   // Update live appointments when prop changes
@@ -178,8 +178,8 @@ export default function StudentHome({ currentUser, appointments = [], onLogout }
       label: 'Pending',
       value: pendingAppts.length,
       icon: Clock,
-      bg: '#fffbeb',
-      color: '#d97706',
+      bg: '#FEF0E6',
+      color: '#B5722A',
     },
     {
       label: 'Confirmed',
@@ -318,6 +318,11 @@ export default function StudentHome({ currentUser, appointments = [], onLogout }
                             <strong>Reason:</strong> {a.rescheduleReason}
                           </div>
                         )}
+                        {a.meetingLocation && (
+                          <div style={{ display:'flex', alignItems:'center', gap:6, fontSize:'0.82rem', fontWeight:600, color:'#16a34a', background:'rgba(22,163,74,0.07)', border:'1px solid #bbf7d0', borderRadius:9, padding:'6px 12px' }}>
+                            <MapPin size={13} /> {a.meetingLocation}
+                          </div>
+                        )}
                         {a.confirmationMessage && (
                           <div className="sh-appt-card__confirm-msg">💬 {a.confirmationMessage}</div>
                         )}
@@ -333,11 +338,13 @@ export default function StudentHome({ currentUser, appointments = [], onLogout }
                             )}
                           </div>
                         )}
-                        {/* Student action buttons for rescheduled appointment */}
-                        <RescheduleActions appointmentId={a.id} onDone={() => {
-                          api.get(`/appointments/student/${currentUser.id}`)
-                            .then(r => setLiveAppointments(r.data || [])).catch(() => {});
-                        }} />
+                        {/* Student action buttons — only show if still PENDING after reschedule */}
+                        {a.rescheduledAt && a.status === 'PENDING' && (
+                          <RescheduleActions appointmentId={a.id} onDone={() => {
+                            api.get(`/appointments/student/${currentUser.id}`)
+                              .then(r => setLiveAppointments(r.data || [])).catch(() => {});
+                          }} />
+                        )}
                       </div>
                     );
                   })}
@@ -348,8 +355,8 @@ export default function StudentHome({ currentUser, appointments = [], onLogout }
               {normalAppts.slice(0, rescheduledAppts.length > 0 ? 5 : 6).map((a) => {
                 const isRescheduled = a.rescheduledAt;
                 const parsed = parseApptNotes(a.notes || '');
-                const statusColor = isRescheduled ? '#dc2626' : (a.status === 'PENDING' ? '#d97706' : a.status === 'CANCELLED' ? '#dc2626' : '#0f766e');
-                const statusBg    = isRescheduled ? '#fee2e2' : (a.status === 'PENDING' ? '#fef9c3' : a.status === 'CANCELLED' ? '#fee2e2' : '#dcfce7');
+                const statusColor = isRescheduled ? '#dc2626' : (a.status === 'PENDING' ? '#B5722A' : a.status === 'CANCELLED' ? '#dc2626' : '#0f766e');
+                const statusBg    = isRescheduled ? '#fee2e2' : (a.status === 'PENDING' ? '#FEF0E6' : a.status === 'CANCELLED' ? '#fee2e2' : '#dcfce7');
                 const statusLabel = isRescheduled ? 'RESCHEDULED' : (a.status ?? 'CONFIRMED');
 
                 return (
@@ -364,7 +371,7 @@ export default function StudentHome({ currentUser, appointments = [], onLogout }
                         <div className="sh-appt-card__lec-dept">{a.lecturer?.department}</div>
                       </div>
                       <span className="sh-status" style={{ background: statusBg, color: statusColor, border: `1px solid ${statusColor}` }}>
-                        {a.status === 'PENDING' && <span style={{ width:7, height:7, borderRadius:'50%', background:'#d97706', display:'inline-block', marginRight:4, animation:'sh-pulse-dot 1.5s ease-in-out infinite' }} />}
+                        {a.status === 'PENDING' && <span style={{ width:7, height:7, borderRadius:'50%', background:'#E8650A', display:'inline-block', marginRight:4, animation:'sh-pulse-dot 1.5s ease-in-out infinite' }} />}
                         {parsed.isHighPriority && <Zap size={10} />} {statusLabel}
                       </span>
                     </div>
@@ -497,7 +504,7 @@ export default function StudentHome({ currentUser, appointments = [], onLogout }
         <div className="sh-full-width">
           <div className="sh-card">
             <div className="sh-card__header">
-              <h2><Star size={17} style={{ color: '#f59e0b' }} /> Quick Actions</h2>
+              <h2><Star size={17} style={{ color: '#E8650A' }} /> Quick Actions</h2>
             </div>
             <div className="sh-quick-grid">
               <button className="sh-quick-btn" onClick={() => navigate('/book')}>
@@ -537,7 +544,7 @@ export default function StudentHome({ currentUser, appointments = [], onLogout }
                 <span>Resources</span>
               </button>
               <button className="sh-quick-btn" onClick={() => navigate('/notifications')}>
-                <div className="sh-quick-icon" style={{ background: '#fffbeb', color: '#d97706' }}>
+                <div className="sh-quick-icon" style={{ background: '#FEF0E6', color: '#B5722A' }}>
                   <Bell size={24} />
                 </div>
                 <span>Notifications</span>

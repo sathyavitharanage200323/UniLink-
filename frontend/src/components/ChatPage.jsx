@@ -637,8 +637,8 @@ export default function ChatPage({ currentUser, appointments = [], onLogout, onU
                   {studentDisciplines.map(d => (
                     <span key={d.id} title={d.reason} style={{
                       fontSize: '0.7rem', padding: '2px 6px', borderRadius: '4px',
-                      backgroundColor: d.type === 'WARNING' ? '#fef08a' : '#fecaca',
-                      color: d.type === 'WARNING' ? '#854d0e' : '#991b1b',
+                      backgroundColor: d.type === 'WARNING' ? '#FEF0E6' : '#fecaca',
+                      color: d.type === 'WARNING' ? '#B5722A' : '#991b1b',
                       display: 'inline-flex', alignItems: 'center', gap: '4px', border: '1px solid currentColor'
                     }}>
                       {d.type === 'WARNING' ? '⚠️ Warning' : '🚫 Blocked'}
@@ -693,7 +693,7 @@ export default function ChatPage({ currentUser, appointments = [], onLogout, onU
 
             {/* Warnings / Discipline Banner for Students */}
             {!isLecturer && studentDisciplines.length > 0 && (
-              <div className="room-banner" style={{ background: '#fef08a', color: '#854d0e', borderBottom: '1px solid #fde047', flexDirection: 'column', alignItems: 'flex-start', padding: '8px 16px', gap: '4px' }}>
+              <div className="room-banner" style={{ background: '#FEF0E6', color: '#B5722A', borderBottom: '1px solid #FDDCC8', flexDirection: 'column', alignItems: 'flex-start', padding: '8px 16px', gap: '4px' }}>
                 {studentDisciplines.map(d => (
                   <div key={d.id} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     {d.type === 'WARNING' ? '⚠️' : '🚫'}

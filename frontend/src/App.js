@@ -16,6 +16,11 @@ import ProfilePage from './pages/ProfilePage.jsx';
 import BookingPage from './pages/BookingPage.jsx';
 import LecturerSchedulePage from './pages/LecturerSchedulePage.jsx';
 import SlotCalendarPage from './pages/SlotCalendarPage.jsx';
+import NotificationsPage from './pages/NotificationsPage.jsx';
+import LecturerSlotsPage from './pages/LecturerSlotsPage.jsx';
+import LecturerPreferencesPage from './pages/LecturerPreferencesPage.jsx';
+import LoginPage from './pages/LoginPage.jsx';
+import AdminLoginPage from './pages/AdminLoginPage.jsx';
 import {
   getAllAppointments,
   getStudentAppointments,
@@ -23,9 +28,6 @@ import {
 } from './api';
 
 import './App.css';
-
-import LoginPage from './pages/LoginPage.jsx';
-import AdminLoginPage from './pages/AdminLoginPage.jsx';
 
 function AppRoutes({ activeUser, appointments, onLogin, onLogout, onUserUpdate }) {
   if (!activeUser) {
@@ -195,8 +197,37 @@ function AppRoutes({ activeUser, appointments, onLogin, onLogout, onUserUpdate }
 }
 
 export default function App() {
-  const [activeUser,    setActiveUser]    = useState(null);
-  const [appointments,  setAppointments]  = useState([]);
+  // ── Restore session from localStorage on mount ──────────────────────
+  const [activeUser, setActiveUser] = useState(() => {
+    try {
+      const saved = localStorage.getItem('unilink_user');
+      return saved ? JSON.parse(saved) : null;
+    } catch { return null; }
+  });
+
+  const [appointments, setAppointments] = useState(() => {
+    try {
+      const saved = localStorage.getItem('unilink_appointments');
+      return saved ? JSON.parse(saved) : [];
+    } catch { return []; }
+  });
+
+  // ── Silently refresh appointments in background after restore ────────
+  useEffect(() => {
+    if (!activeUser?.id) return;
+    const refresh = async () => {
+      try {
+        let appts = [];
+        if (activeUser.role === 'STUDENT')       appts = await getStudentAppointments(activeUser.id);
+        else if (activeUser.role === 'LECTURER') appts = await getLecturerAppointments(activeUser.id);
+        else if (activeUser.role === 'ADMIN')    appts = await getAllAppointments();
+        setAppointments(appts);
+        localStorage.setItem('unilink_appointments', JSON.stringify(appts));
+      } catch { /* keep cached */ }
+    };
+    refresh();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeUser?.id]);
 
   const handleLogin = async (user) => {
     setActiveUser(user);

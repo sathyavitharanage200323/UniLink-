@@ -1,0 +1,167 @@
+/**
+ * LoginPage.css — CSS token-based styles for LoginPage.jsx
+ * Requirements: 8.2, 8.4, 8.5
+ */
+
+/* Login page container with hero gradient background */
+.login-page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(
+    135deg,
+    var(--color-hero-from) 0%,
+    var(--color-hero-mid) 50%,
+    var(--color-hero-to) 100%
+  );
+  font-family: var(--font-body);
+  gap: 40px;
+  padding: 0 20px;
+  position: relative;
+}
+
+/* Logo container */
+.login-page__logo {
+  text-align: center;
+  margin-bottom: 8px;
+}
+
+.login-page__logo img {
+  height: 300px;
+  max-width: 90vw;
+  object-fit: contain;
+}
+
+/* Main auth card */
+.login-page__card {
+  width: min(860px, 100%);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  background: rgba(255, 255, 255, 0.16);
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  backdrop-filter: blur(12px);
+  color: var(--color-bg-elevated);
+  position: relative;
+  z-index: 1;
+}
+
+/* Tab buttons */
+.login-page__tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 18px;
+}
+
+.login-page__tab {
+  border: none;
+  border-radius: 10px;
+  padding: 10px 14px;
+  cursor: pointer;
+  font-weight: 700;
+  transition: background 0.2s, color 0.2s;
+}
+
+.login-page__tab--active {
+  background: var(--color-bg-elevated);
+  color: var(--color-primary);
+}
+
+.login-page__tab--inactive {
+  background: rgba(255, 255, 255, 0.2);
+  color: var(--color-bg-elevated);
+}
+
+/* Admin login link */
+.login-page__admin-link {
+  margin-bottom: 14px;
+  text-align: right;
+}
+
+.login-page__admin-link a {
+  color: var(--color-primary-light);
+  text-decoration: none;
+  font-weight: 600;
+}
+
+/* Form layout */
+.login-page__form {
+  display: grid;
+  gap: 12px;
+}
+
+.login-page__form-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+/* Auth input fields */
+.auth-input {
+  width: 100%;
+  height: 42px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  background: rgba(255, 255, 255, 0.16);
+  color: var(--color-bg-elevated);
+  -webkit-text-fill-color: var(--color-bg-elevated);
+  caret-color: var(--color-bg-elevated);
+  padding: 0 12px;
+  box-sizing: border-box;
+  outline: none;
+  font-family: var(--font-body);
+}
+
+.auth-input::placeholder {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.auth-input:focus {
+  border-color: rgba(255, 255, 255, 0.7);
+}
+
+/* Textarea variant */
+.auth-input--textarea {
+  min-height: 90px;
+  resize: vertical;
+  padding: 12px;
+}
+
+/* Auth button */
+.auth-button {
+  border: none;
+  border-radius: 10px;
+  height: 42px;
+  background: var(--color-bg-elevated);
+  color: var(--color-primary);
+  font-weight: 800;
+  cursor: pointer;
+  font-family: var(--font-body);
+  transition: background 0.2s, transform 0.1s;
+}
+
+.auth-button:hover:not(:disabled) {
+  background: var(--color-bg);
+  transform: translateY(-1px);
+}
+
+.auth-button:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.auth-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Forgot password link */
+.login-page__forgot-link {
+  text-align: right;
+}
+
+.login-page__forgot-link a {
+  color: var(--color-primary-light);
+  text-decoration: none;
+  font-weight: 600;
+}

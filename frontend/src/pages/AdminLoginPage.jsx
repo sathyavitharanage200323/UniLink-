@@ -110,7 +110,7 @@ const buttonStyle = {
   height: 42,
   borderRadius: 10,
   border: 'none',
-  background: '#f59e0b',
+  background: '#E8650A',
   color: '#111827',
   fontWeight: 800,
   cursor: 'pointer',

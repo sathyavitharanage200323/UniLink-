@@ -29,8 +29,8 @@
   --status-blocked-text: #b91c1c;
   --status-expired-bg: #e2e8f0;
   --status-expired-text: #64748b;
-  --status-today-bg: #fef3c7;
-  --status-today-text: #a16207;
+  --status-today-bg: #FEF0E6;
+  --status-today-text: #B5722A;
 }
 
 @keyframes fadeSlideUp {
@@ -504,7 +504,7 @@
   transition: 0.2s;
 }
 .ls-action-btn.view { color: var(--royal); border-color: var(--sky-40); }
-.ls-action-btn.edit { color: #b45309; border-color: #fde68a; }
+.ls-action-btn.edit { color: #B5722A; border-color: #FDDCC8; }
 .ls-action-btn.block { color: var(--status-blocked-text); border-color: #fecaca; }
 .ls-action-btn.delete { color: var(--status-blocked-text); border-color: #fee2e2; background: #fff5f5; }
 .ls-action-btn:hover { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(15, 40, 84, 0.10); }
