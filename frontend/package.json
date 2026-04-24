@@ -49,15 +49,12 @@
     ]
   },
   "devDependencies": {
-<<<<<<< HEAD
-    "fast-check": "^3.23.2"
+    "fast-check": "^3.23.2",
+    "cypress": "^15.14.1"
   },
   "jest": {
     "moduleNameMapper": {
       "^react-router-dom$": "<rootDir>/node_modules/react-router-dom/dist/index.js"
     }
-=======
-    "cypress": "^15.14.1"
->>>>>>> c387108dc87a68e56a942e6989ff39fa3c572565
   }
 }
