@@ -18,9 +18,12 @@ import LecturerSchedulePage from './pages/LecturerSchedulePage.jsx';
 import SlotCalendarPage from './pages/SlotCalendarPage.jsx';
 import NotificationsPage from './pages/NotificationsPage.jsx';
 import LecturerSlotsPage from './pages/LecturerSlotsPage.jsx';
+<<<<<<< HEAD
 import LecturerPreferencesPage from './pages/LecturerPreferencesPage.jsx';
 import LoginPage from './pages/LoginPage.jsx';
 import AdminLoginPage from './pages/AdminLoginPage.jsx';
+=======
+>>>>>>> c387108dc87a68e56a942e6989ff39fa3c572565
 import {
   getAllAppointments,
   getStudentAppointments,
@@ -178,15 +181,6 @@ function AppRoutes({ activeUser, appointments, onLogin, onLogout, onUserUpdate }
         element={
           isLecturer
             ? <SlotCalendarPage currentUser={activeUser} onLogout={onLogout} />
-            : <Navigate to={homeRedirect} replace />
-        }
-      />
-
-      <Route
-        path="/lecturer/preferences"
-        element={
-          isLecturer
-            ? <LecturerPreferencesPage currentUser={activeUser} />
             : <Navigate to={homeRedirect} replace />
         }
       />
