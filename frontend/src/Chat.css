@@ -6,19 +6,19 @@
 
 /* ── CSS Variables ──────────────────────────────────────── */
 :root {
-  --primary: #2563eb;
-  --primary-dark: #1d4ed8;
-  --primary-light: #dbeafe;
-  --accent: #7c3aed;
+  --primary: #296374;
+  --primary-dark: #0C2C55;
+  --primary-light: #e8f4f7;
+  --accent: #629FAD;
   --success: #16a34a;
   --danger: #dc2626;
-  --warning: #D45A08;
-  --bg: #f1f5f9;
+  --warning: #296374;
+  --bg: #f2f5f0;
   --surface: #ffffff;
-  --surface2: #f8fafc;
-  --border: #e2e8f0;
-  --text: #1e293b;
-  --text-muted: #64748b;
+  --surface2: #EDEDCE;
+  --border: #d4dfe3;
+  --text: #0C2C55;
+  --text-muted: #629FAD;
   --shadow: 0 1px 3px rgb(0 0 0 / 0.1), 0 1px 2px rgb(0 0 0 / 0.06);
   --shadow-md: 0 4px 6px rgb(0 0 0 / 0.07), 0 2px 4px rgb(0 0 0 / 0.06);
   --radius: 12px;
@@ -103,13 +103,13 @@ body { font-family: 'Inter', system-ui, sans-serif; background: var(--bg); color
 .sidebar-item:hover { background: var(--surface2); }
 .sidebar-item.active { background: var(--primary-light); border-left-color: var(--primary); }
 .sidebar-item.needs-attention {
-  background: #FFF5F0;
-  border-left-color: #E8650A;
+  background: #e8f4f7;
+  border-left-color: #296374;
 }
-.sidebar-item.needs-attention:hover { background: #ffedd5; }
+.sidebar-item.needs-attention:hover { background: #d4eaf0; }
 .sidebar-item.needs-attention.active {
-  background: #ffedd5;
-  border-left-color: #ea580c;
+  background: #d4eaf0;
+  border-left-color: #0C2C55;
 }
 .sidebar-item.resolved {
   background: var(--surface);
@@ -216,7 +216,7 @@ body { font-family: 'Inter', system-ui, sans-serif; background: var(--bg); color
   align-items: center;
   gap: 6px;
 }
-.room-banner.resolved { background: #FFF5F0; border-color: #FDDCC8; color: #7A3A10; }
+.room-banner.resolved { background: #e8f4f7; border-color: #b0d4dc; color: #0C2C55; }
 
 /* ── Messages Area ──────────────────────────────────────── */
 .messages-area {
@@ -506,17 +506,17 @@ body { font-family: 'Inter', system-ui, sans-serif; background: var(--bg); color
 
 /* ── Pinned Banner ──────────────────────────────────────── */
 .pinned-banner {
-  background: #FFF5F0;
-  border-bottom: 1px solid #FDDCC8;
+  background: #e8f4f7;
+  border-bottom: 1px solid #b0d4dc;
   padding: 8px 20px;
   display: flex;
   align-items: center;
   gap: 8px;
   font-size: 0.82rem;
-  color: #7A3A10;
+  color: #0C2C55;
   cursor: pointer;
 }
-.pinned-banner:hover { background: #FEF0E6; }
+.pinned-banner:hover { background: #d4eaf0; }
 
 /* ── Compose Bar ────────────────────────────────────────── */
 .compose-area {
@@ -711,14 +711,14 @@ body { font-family: 'Inter', system-ui, sans-serif; background: var(--bg); color
 
 /* ── DND Toggle ─────────────────────────────────────────── */
 .dnd-bar {
-  background: #FFF5F0;
-  border-top: 1px solid #FDDCC8;
+  background: #e8f4f7;
+  border-top: 1px solid #b0d4dc;
   padding: 8px 16px;
   display: flex;
   align-items: center;
   gap: 10px;
   font-size: 0.82rem;
-  color: #7A3A10;
+  color: #0C2C55;
 }
 .toggle {
   position: relative;
@@ -770,7 +770,7 @@ body { font-family: 'Inter', system-ui, sans-serif; background: var(--bg); color
 .summary-panel {
   padding: 12px 16px;
   border-top: 1px solid var(--border);
-  background: linear-gradient(180deg, #f8fbff 0%, #eef6ff 100%);
+  background: linear-gradient(180deg, #f2f5f0 0%, #e8f4f7 100%);
 }
 
 .summary-panel-header {
@@ -785,7 +785,7 @@ body { font-family: 'Inter', system-ui, sans-serif; background: var(--bg); color
   display: flex;
   align-items: center;
   gap: 8px;
-  color: #1e40af;
+  color: #0C2C55;
 }
 
 .summary-controls {
@@ -825,7 +825,7 @@ body { font-family: 'Inter', system-ui, sans-serif; background: var(--bg); color
 
 .summary-block {
   background: #ffffff;
-  border: 1px solid #dbeafe;
+  border: 1px solid #d4dfe3;
   border-radius: 10px;
   padding: 10px;
 }
@@ -833,14 +833,14 @@ body { font-family: 'Inter', system-ui, sans-serif; background: var(--bg); color
 .summary-block h4 {
   margin-bottom: 6px;
   font-size: 0.82rem;
-  color: #1e3a8a;
+  color: #0C2C55;
 }
 
 .summary-block p,
 .summary-block li {
   font-size: 0.82rem;
   line-height: 1.45;
-  color: #1f2937;
+  color: #296374;
 }
 
 .summary-block ul {

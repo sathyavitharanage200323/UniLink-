@@ -463,9 +463,9 @@ export default function LecturerSchedulePage({ currentUser, onLogout }) {
   const handleOpenChat = (appt) =>
     navigate('/chat', { state: { appointmentId: appt.id, studentId: appt.student?.id } });
 
-  // Sort by createdAt ascending (order they were made)
+  // Sort newest to oldest by startTime
   const sorted = [...appointments].sort((a, b) =>
-    new Date(a.createdAt) - new Date(b.createdAt)
+    new Date(b.startTime) - new Date(a.startTime)
   );
   const filtered = filter === 'ALL' ? sorted : sorted.filter(a => a.status === filter);
   const counts = { PENDING: 0, CONFIRMED: 0, COMPLETED: 0, CANCELLED: 0 };

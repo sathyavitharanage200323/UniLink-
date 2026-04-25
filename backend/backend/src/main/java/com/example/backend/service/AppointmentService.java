@@ -34,7 +34,8 @@ public class AppointmentService {
     private final EmailService emailService;
 
     public List<Appointment> getAll() {
-        return appointmentRepository.findAll();
+        return appointmentRepository.findAll(org.springframework.data.domain.Sort.by(
+            org.springframework.data.domain.Sort.Direction.DESC, "startTime"));
     }
 
     public Appointment save(Appointment appt) {
@@ -43,12 +44,12 @@ public class AppointmentService {
 
     public List<Appointment> getByStudent(Long studentId) {
         User student = userService.getUser(studentId);
-        return appointmentRepository.findByStudent(student);
+        return appointmentRepository.findByStudentOrderByStartTimeDesc(student);
     }
 
     public List<Appointment> getByLecturer(Long lecturerId) {
         User lecturer = userService.getUser(lecturerId);
-        return appointmentRepository.findByLecturer(lecturer);
+        return appointmentRepository.findByLecturerOrderByStartTimeDesc(lecturer);
     }
 
     public Appointment getById(Long id) {
