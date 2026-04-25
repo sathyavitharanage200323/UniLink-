@@ -1,12 +1,13 @@
 ﻿import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
-import { Calendar, User, Wrench, ArrowLeft, Clock, BellOff, Bell, AlertCircle, CheckCircle, RefreshCw, Camera, Video, MapPin, GraduationCap, MessageSquare, XCircle } from 'lucide-react';
+import { Calendar, User, Wrench, ArrowLeft, Clock, BellOff, Bell, AlertCircle, CheckCircle, RefreshCw, Camera, Video, MapPin, MessageSquare, XCircle } from 'lucide-react';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 import { userApi } from '../api/chatApi';
 import api from '../api/axiosInstance';
 import { BACKEND_BASE_URL } from '../config';
+import './UtilityPages.css';
 
 const BACKEND = BACKEND_BASE_URL;
 
@@ -65,13 +66,11 @@ function RescheduleButtons({ appointmentId, onDone }) {
 		} finally { setLoading(null); }
 	};
 	return (
-		<div style={{ display:'flex', gap:10, marginTop:4 }}>
-			<button onClick={() => handle('accept')} disabled={!!loading}
-				style={{ display:'inline-flex', alignItems:'center', gap:6, padding:'9px 18px', borderRadius:10, border:'none', background:'#16a34a', color:'white', fontWeight:700, fontSize:'0.82rem', cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.7 : 1 }}>
+		<div className="util-reschedule-btns">
+			<button onClick={() => handle('accept')} disabled={!!loading} className="util-btn--accept">
 				<CheckCircle size={14} /> {loading === 'accept' ? 'Confirming…' : 'Accept New Time'}
 			</button>
-			<button onClick={() => handle('decline')} disabled={!!loading}
-				style={{ display:'inline-flex', alignItems:'center', gap:6, padding:'9px 18px', borderRadius:10, border:'1.5px solid #dc2626', background:'white', color:'#dc2626', fontWeight:700, fontSize:'0.82rem', cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.7 : 1 }}>
+			<button onClick={() => handle('decline')} disabled={!!loading} className="util-btn--decline">
 				<XCircle size={14} /> {loading === 'decline' ? 'Declining…' : 'Decline'}
 			</button>
 		</div>
@@ -124,66 +123,57 @@ export function AppointmentsPage({ currentUser, appointments = [], onLogout }) {
 	list.forEach(a => { if (counts[a.status] !== undefined) counts[a.status]++; });
 
 	const STATUS_CFG = {
-		PENDING:   { color:'#d97706', bg:'#fffbeb', border:'#fde68a', dot:'#f59e0b' },
+		PENDING:   { color:'#B5722A', bg:'#FFF5F0', border:'#FDDCC8', dot:'#E8650A' },
 		CONFIRMED: { color:'#16a34a', bg:'#f0fdf4', border:'#bbf7d0', dot:'#22c55e' },
 		CANCELLED: { color:'#dc2626', bg:'#fef2f2', border:'#fecaca', dot:'#ef4444' },
 		COMPLETED: { color:'#6b7280', bg:'#f8fafc', border:'#e2e8f0', dot:'#9ca3af' },
 	};
 
 	return (
-		<div style={{ minHeight:'100vh', background:'linear-gradient(160deg,#f0f4ff 0%,#f8fafc 60%,#eff6ff 100%)', display:'flex', flexDirection:'column', fontFamily:'-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif' }}>
+		<div className="util-page appt-page-bg">
 			<Header currentUser={currentUser} onLogout={onLogout} unreadCount={0} />
-			<main style={{ flex:1, maxWidth:860, margin:'0 auto', width:'100%', padding:'24px 16px 60px' }}>
+			<main className="util-main">
 
 				{/* Back */}
 				<button onClick={() => navigate(isAdmin ? '/admin/home' : (isLecturer ? '/lecturer/home' : '/student/home'))}
-					style={{ display:'inline-flex', alignItems:'center', gap:6, background:'rgba(255,255,255,0.7)', backdropFilter:'blur(12px)', border:'1px solid rgba(0,0,0,0.08)', borderRadius:10, padding:'8px 14px', fontSize:'0.875rem', fontWeight:600, color:'#3a3a3c', cursor:'pointer', marginBottom:20 }}>
+					className="util-back-btn">
 					<ArrowLeft size={15} /> Back
 				</button>
 
 				{/* Header card */}
-				<div style={{ background:'rgba(255,255,255,0.72)', backdropFilter:'blur(20px) saturate(180%)', border:'1px solid rgba(0,0,0,0.07)', borderRadius:20, padding:'20px 24px', marginBottom:16, boxShadow:'0 4px 24px rgba(0,0,0,0.07)' }}>
-					<div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', flexWrap:'wrap', gap:12 }}>
+				<div className="util-header-card">
+					<div className="util-header-card__row">
 						<div>
-							<h1 style={{ margin:0, fontSize:'1.5rem', fontWeight:800, color:'#1c1c1e', display:'flex', alignItems:'center', gap:10 }}>
-								<Calendar size={22} style={{ color:'#007aff' }} /> {isAdmin ? 'All Appointments' : 'My Appointments'}
+							<h1 className="util-header-card__title">
+								<Calendar size={22} className="icon--primary" /> {isAdmin ? 'All Appointments' : 'My Appointments'}
 							</h1>
-				<p style={{ margin:'4px 0 0', color:'#636366', fontSize:'0.82rem' }}>{list.length} total · auto-refreshes every 10s</p>
-
-							<p style={{ margin:'4px 0 0', color:'#636366', fontSize:'0.82rem' }}>{list.length} total � auto-refreshes every 10s</p>
-a65d18b16cd3da6375179f750065c59d7a7b35bc
+							<p className="util-header-card__subtitle">{list.length} total · auto-refreshes every 10s</p>
 						</div>
-						<div style={{ display:'flex', gap:10, alignItems:'center' }}>
+						<div className="util-header-card__actions">
 							{!isLecturer && !isAdmin && (
-								<button onClick={() => navigate('/book')}
-									style={{ display:'inline-flex', alignItems:'center', gap:6, background:'linear-gradient(135deg,#007aff,#0055d4)', color:'white', border:'none', borderRadius:12, padding:'10px 18px', fontWeight:700, fontSize:'0.875rem', cursor:'pointer', boxShadow:'0 4px 12px rgba(0,122,255,0.3)' }}>
+								<button onClick={() => navigate('/book')} className="util-btn--primary">
 									+ Book New
 								</button>
 							)}
-							<button onClick={handleRefresh} disabled={refreshing}
-								style={{ display:'inline-flex', alignItems:'center', gap:6, background:'rgba(0,0,0,0.04)', border:'1px solid rgba(0,0,0,0.08)', borderRadius:10, padding:'9px 14px', fontSize:'0.82rem', fontWeight:600, color:'#3a3a3c', cursor:'pointer' }}>
+							<button onClick={handleRefresh} disabled={refreshing} className="util-btn--ghost">
 								<RefreshCw size={14} style={{ animation: refreshing ? 'apf-rotate 0.8s linear infinite' : 'none' }} /> Refresh
 							</button>
 						</div>
 					</div>
 
 					{/* Filter pills */}
-					<div style={{ display:'flex', gap:8, marginTop:16, flexWrap:'wrap' }}>
+					<div className="util-filter-pills">
 						{['ALL','PENDING','CONFIRMED','COMPLETED','CANCELLED'].map(f => {
 							const active = filter === f;
 							const cfg = STATUS_CFG[f];
 							return (
-								<button key={f} onClick={() => setFilter(f)} style={{
-									display:'inline-flex', alignItems:'center', gap:5,
-									padding:'6px 14px', borderRadius:20,
+								<button key={f} onClick={() => setFilter(f)} className="util-pill" style={{
 									border: active ? 'none' : '1px solid rgba(0,0,0,0.1)',
-									background: active ? (cfg ? cfg.color : '#007aff') : 'rgba(0,0,0,0.04)',
-									color: active ? 'white' : '#636366',
-									fontWeight:700, fontSize:'0.75rem', cursor:'pointer',
-									boxShadow: active ? `0 2px 8px ${cfg ? cfg.color+'55' : 'rgba(0,122,255,0.3)'}` : 'none',
-									transition:'all 0.15s',
+									background: active ? (cfg ? cfg.color : 'var(--color-primary)') : 'rgba(0,0,0,0.04)',
+									color: active ? 'white' : 'var(--color-text-muted)',
+									boxShadow: active ? `0 2px 8px ${cfg ? cfg.color+'55' : 'rgba(232,101,10,0.3)'}` : 'none',
 								}}>
-									{cfg && <span style={{ width:7, height:7, borderRadius:'50%', background: active ? 'rgba(255,255,255,0.7)' : cfg.dot, flexShrink:0 }} />}
+									{cfg && <span className="util-pill__dot" style={{ background: active ? 'rgba(255,255,255,0.7)' : cfg.dot }} />}
 									{f} {f !== 'ALL' && <span style={{ opacity:0.75 }}>({counts[f]})</span>}
 								</button>
 							);
@@ -192,51 +182,51 @@ a65d18b16cd3da6375179f750065c59d7a7b35bc
 				</div>
 
 				{/* Appointment cards */}
-				<div style={{ display:'flex', flexDirection:'column', gap:12 }}>
+				<div className="util-appt-list">
 					{/* Rescheduled appointments — pinned at top with alert styling */}
-					{filtered.filter(a => a.rescheduledAt).map(a => {
+					{filtered.filter(a => a.rescheduledAt && a.status === 'PENDING').map(a => {
 						const mode = extract(a.notes, 'MODE');
 						return (
-							<div key={`rs-${a.id}`} style={{ background:'linear-gradient(135deg,rgba(220,38,38,0.07),rgba(255,255,255,0.85))', backdropFilter:'blur(16px)', border:'2px solid #ef4444', borderLeft:'5px solid #dc2626', borderRadius:18, padding:'16px 18px', display:'flex', flexDirection:'column', gap:10, boxShadow:'0 4px 20px rgba(220,38,38,0.15)', animation:'pulse-red 2s ease-in-out infinite' }}>
-								<div style={{ display:'flex', alignItems:'center', gap:10 }}>
-									<div style={{ width:44, height:44, borderRadius:12, background:'linear-gradient(135deg,#dc2626,#ea580c)', color:'white', fontWeight:800, fontSize:'0.9rem', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+							<div key={`rs-${a.id}`} className="util-appt-card--rescheduled">
+								<div className="util-card-header">
+									<div className="util-avatar util-avatar--danger">
 										{(a.lecturer?.name||'L').split(' ').map(n=>n[0]).join('').slice(0,2).toUpperCase()}
 									</div>
 									<div style={{ flex:1 }}>
-										<div style={{ fontWeight:700, fontSize:'0.95rem', color:'#1c1c1e' }}>{a.lecturer?.name ?? 'Lecturer'}</div>
-										<div style={{ fontSize:'0.72rem', color:'#636366' }}>{a.lecturer?.department}</div>
+										<div className="util-card-name">{a.lecturer?.name ?? 'Lecturer'}</div>
+										<div className="util-card-dept">{a.lecturer?.department}</div>
 									</div>
-									<span style={{ display:'inline-flex', alignItems:'center', gap:5, background:'#dc2626', color:'white', borderRadius:20, padding:'4px 12px', fontSize:'0.72rem', fontWeight:800, textTransform:'uppercase', letterSpacing:'0.04em' }}>
+									<span className="util-badge--rescheduled-label">
 										↺ RESCHEDULED
 									</span>
 								</div>
-								<div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap', fontSize:'0.85rem', fontWeight:700, color:'#1c1c1e' }}>
-									<Clock size={14} style={{ color:'#dc2626' }} />
+								<div className="util-reschedule-time">
+									<Clock size={14} className="icon--danger" />
 									New time: {new Date(a.startTime).toLocaleString('en-GB', { weekday:'long', day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' })}
-									{mode && <span style={{ display:'inline-flex', alignItems:'center', gap:4, padding:'2px 10px', borderRadius:20, fontSize:'0.72rem', fontWeight:700, background:mode==='Online'?'#eff6ff':'#f0fdf4', color:mode==='Online'?'#2563eb':'#16a34a', border:`1px solid ${mode==='Online'?'#bfdbfe':'#bbf7d0'}` }}>{mode==='Online'?<Video size={11} />:<MapPin size={11} />} {mode}</span>}
+									{mode && <span className={mode==='Online'?'util-mode-chip util-mode-chip--online':'util-mode-chip util-mode-chip--inperson'}>{mode==='Online'?<Video size={11} />:<MapPin size={11} />} {mode}</span>}
 								</div>
 								{a.rescheduleReason && (
-									<div style={{ fontSize:'0.82rem', color:'#dc2626', background:'rgba(220,38,38,0.07)', border:'1px solid #fecaca', borderRadius:10, padding:'8px 12px', fontWeight:500 }}>
+									<div className="util-reschedule-reason">
 										<strong>Reason:</strong> {a.rescheduleReason}
 									</div>
 								)}
 								{a.confirmationMessage && (
-									<div style={{ fontSize:'0.85rem', color:'#1c1c1e', display:'flex', gap:6 }}>💬 {a.confirmationMessage}</div>
+									<div className="util-reschedule-confirm-msg">💬 {a.confirmationMessage}</div>
 								)}
 								{(a.meetingLink || a.meetingLocation) && (
-									<div style={{ display:'flex', gap:10, flexWrap:'wrap', padding:'8px 12px', background:'linear-gradient(135deg,rgba(240,253,244,0.9),rgba(239,246,255,0.9))', border:'1px solid #bbf7d0', borderRadius:10 }}>
-										{a.meetingLink && <a href={a.meetingLink} target="_blank" rel="noopener noreferrer" style={{ display:'inline-flex', alignItems:'center', gap:5, color:'#007aff', fontWeight:700, fontSize:'0.82rem', textDecoration:'none', padding:'5px 12px', background:'rgba(0,122,255,0.08)', borderRadius:8 }}><Video size={13} /> Join Meeting</a>}
-										{a.meetingLocation && <span style={{ display:'inline-flex', alignItems:'center', gap:5, color:'#16a34a', fontWeight:600, fontSize:'0.82rem' }}><MapPin size={13} /> {a.meetingLocation}</span>}
+									<div className="util-reschedule-links">
+										{a.meetingLink && <a href={a.meetingLink} target="_blank" rel="noopener noreferrer" className="util-reschedule-link"><Video size={13} /> Join Meeting</a>}
+										{a.meetingLocation && <span className="util-reschedule-location"><MapPin size={13} /> {a.meetingLocation}</span>}
 									</div>
 								)}
-								{/* Student accept/decline buttons for rescheduled appointment */}
-								<RescheduleButtons appointmentId={a.id} onDone={handleRefresh} />
+								{/* Student accept/decline buttons — only if still PENDING after reschedule */}
+								{a.status === 'PENDING' && <RescheduleButtons appointmentId={a.id} onDone={handleRefresh} />}
 							</div>
 						);
 					})}
 
 					{filtered.length === 0 && (
-						<div style={{ background:'rgba(255,255,255,0.7)', backdropFilter:'blur(12px)', border:'1px solid rgba(0,0,0,0.07)', borderRadius:16, padding:'40px 20px', textAlign:'center', color:'#aeaeb2' }}>
+						<div className="util-empty-state">
 							<Calendar size={40} style={{ marginBottom:10, opacity:0.4 }} />
 							<p style={{ margin:0, fontWeight:600 }}>No {filter.toLowerCase()} appointments</p>
 						</div>
@@ -251,29 +241,22 @@ a65d18b16cd3da6375179f750065c59d7a7b35bc
 						const personDept = isAdmin ? `${a.student?.department ?? ''} | ${a.lecturer?.department ?? ''}` : (isLecturer ? a.student?.department : a.lecturer?.department);
 
 						return (
-							<div key={a.id} style={{
-								background:'rgba(255,255,255,0.78)',
-								backdropFilter:'blur(20px) saturate(180%)',
-								WebkitBackdropFilter:'blur(20px) saturate(180%)',
+							<div key={a.id} className="util-appt-card" style={{
 								border:`1px solid ${sc.border}`,
 								borderLeft: `4px solid ${sc.color}`,
-								borderRadius:18, padding:'16px 18px',
-								boxShadow:'0 2px 16px rgba(0,0,0,0.06)',
-								display:'flex', flexDirection:'column', gap:10,
-								transition:'box-shadow 0.15s, transform 0.15s',
 							}}>
 								{/* Header */}
-								<div style={{ display:'flex', alignItems:'center', gap:12 }}>
-									<div style={{ width:44, height:44, borderRadius:12, background:'linear-gradient(135deg,#007aff,#5856d6)', color:'white', fontWeight:800, fontSize:'0.9rem', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, boxShadow:'0 2px 8px rgba(0,122,255,0.3)' }}>
+								<div className="util-card-header">
+									<div className="util-avatar util-avatar--primary">
 										{personName.split(' ').map(n=>n[0]).join('').slice(0,2).toUpperCase()}
 									</div>
 									<div style={{ flex:1, minWidth:0 }}>
-										<div style={{ fontWeight:700, fontSize:'0.95rem', color:'#1c1c1e', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{personName}</div>
-										<div style={{ fontSize:'0.72rem', color:'#636366', marginTop:1 }}>{personDept}</div>
+										<div className="util-card-name">{personName}</div>
+										<div className="util-card-dept">{personDept}</div>
 									</div>
-									<div style={{ display:'flex', alignItems:'center', gap:6, flexWrap:'wrap', justifyContent:'flex-end' }}>
-										{isHP && <span style={{ display:'inline-flex', alignItems:'center', gap:3, background:'#fef2f2', color:'#dc2626', border:'1px solid #fecaca', borderRadius:20, padding:'2px 8px', fontSize:'0.68rem', fontWeight:700 }}>HIGH PRIORITY</span>}
-										{a.rescheduledAt && <span style={{ display:'inline-flex', alignItems:'center', gap:3, background:'#fef2f2', color:'#dc2626', border:'1px solid #fecaca', borderRadius:20, padding:'2px 8px', fontSize:'0.68rem', fontWeight:700 }}>RESCHEDULED</span>}
+									<div className="util-card-badges">
+										{isHP && <span className="util-badge util-badge--danger">HIGH PRIORITY</span>}
+										{a.rescheduledAt && <span className="util-badge util-badge--danger">RESCHEDULED</span>}
 										<span style={{ background:sc.bg, color:sc.color, border:`1.5px solid ${sc.border}`, borderRadius:20, padding:'4px 12px', fontSize:'0.72rem', fontWeight:700, textTransform:'uppercase', letterSpacing:'0.03em' }}>
 											{a.rescheduledAt ? 'Rescheduled' : a.status}
 										</span>
@@ -281,49 +264,45 @@ a65d18b16cd3da6375179f750065c59d7a7b35bc
 								</div>
 
 								{/* Time + mode */}
-								<div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
-									<span style={{ display:'flex', alignItems:'center', gap:5, fontSize:'0.82rem', fontWeight:600, color:'#3a3a3c' }}>
-										<Clock size={13} style={{ color:'#007aff' }} />
+								<div className="util-time-row">
+									<span className="util-time-text">
+										<Clock size={13} className="icon--primary" />
 										{new Date(a.startTime).toLocaleString('en-GB', { weekday:'short', day:'numeric', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' })}
 									</span>
 									{mode && (
-										<span style={{ display:'inline-flex', alignItems:'center', gap:4, padding:'2px 10px', borderRadius:20, fontSize:'0.72rem', fontWeight:700, background:mode==='Online'?'#eff6ff':'#f0fdf4', color:mode==='Online'?'#007aff':'#16a34a', border:`1px solid ${mode==='Online'?'#bfdbfe':'#bbf7d0'}` }}>
+										<span className={mode==='Online'?'util-mode-chip util-mode-chip--online':'util-mode-chip util-mode-chip--inperson'}>
 											{mode==='Online'?<Video size={11} />:<MapPin size={11} />} {mode}
 										</span>
 									)}
 								</div>
 
 								{/* Academic */}
+								{meta && <div className="util-meta-row">{meta}</div>}
 
-								{meta && <div style={{ fontSize:'0.75rem', color:'#636366', display:'flex', alignItems:'center', gap:5 }}>{meta}</div>}
-
-								{meta && <div style={{ fontSize:'0.75rem', color:'#636366', display:'flex', alignItems:'center', gap:5 }}>?? {meta}</div>}
-
-								{/* Reason � PENDING only */}
+								{/* Reason — PENDING only */}
 								{a.status === 'PENDING' && reason && (
-									<div style={{ fontSize:'0.82rem', color:'#3a3a3c', fontStyle:'italic', padding:'8px 12px', background:'rgba(0,0,0,0.03)', borderLeft:'3px solid #007aff', borderRadius:'0 10px 10px 0', lineHeight:1.5 }}>
+									<div className="util-reason-block">
 										"{reason}"
 									</div>
 								)}
 
-
 								{/* Confirmed details */}
 								{a.status === 'CONFIRMED' && (a.meetingLink || a.meetingLocation || a.confirmationMessage) && (
-									<div style={{ display:'flex', flexDirection:'column', gap:8, padding:'12px 14px', background:'linear-gradient(135deg,rgba(240,253,244,0.9),rgba(239,246,255,0.9))', border:'1px solid #bbf7d0', borderRadius:12, backdropFilter:'blur(8px)' }}>
+									<div className="util-confirmed-box">
 										{a.confirmationMessage && (
-											<div style={{ fontSize:'0.85rem', color:'#1c1c1e', fontWeight:500, display:'flex', alignItems:'flex-start', gap:7 }}>
-												<MessageSquare size={14} style={{ color: "#16a34a", flexShrink:0 }} />
+											<div className="util-confirmed-msg">
+												<MessageSquare size={14} className="icon--success" />
 												<span>{a.confirmationMessage}</span>
 											</div>
 										)}
-										<div style={{ display:'flex', alignItems:'center', gap:10, flexWrap:'wrap' }}>
+										<div className="util-confirmed-links">
 											{a.meetingLink && (
-												<a href={a.meetingLink} target="_blank" rel="noopener noreferrer" style={{ display:'inline-flex', alignItems:'center', gap:5, color:'#007aff', fontWeight:700, fontSize:'0.82rem', textDecoration:'none', padding:'6px 12px', background:'rgba(0,122,255,0.08)', borderRadius:10, border:'1px solid rgba(0,122,255,0.15)' }}>
+												<a href={a.meetingLink} target="_blank" rel="noopener noreferrer" className="util-meeting-link">
 													Join Meeting
 												</a>
 											)}
 											{a.meetingLocation && (
-												<span style={{ display:'inline-flex', alignItems:'center', gap:5, color:'#16a34a', fontWeight:600, fontSize:'0.82rem', padding:'6px 12px', background:'rgba(22,163,74,0.06)', borderRadius:10, border:'1px solid rgba(22,163,74,0.15)' }}>
+												<span className="util-meeting-location">
 													{a.meetingLocation}
 												</span>
 											)}
@@ -333,14 +312,14 @@ a65d18b16cd3da6375179f750065c59d7a7b35bc
 
 								{/* Cancelled reason */}
 								{a.status === 'CANCELLED' && a.rescheduleReason && (
-									<div style={{ display:'flex', alignItems:'center', gap:6, fontSize:'0.75rem', color:'#dc2626', fontWeight:600, background:'rgba(254,242,242,0.8)', border:'1px solid #fecaca', borderRadius:10, padding:'7px 12px' }}>
+									<div className="util-cancelled-reason">
 										{a.rescheduleReason}
 									</div>
 								)}
 
 								{/* Reschedule reason */}
 								{a.rescheduledAt && a.rescheduleReason && (
-									<div style={{ display:'flex', alignItems:'center', gap:6, fontSize:'0.75rem', color:'#dc2626', fontWeight:600, background:'rgba(254,242,242,0.8)', border:'1px solid #fecaca', borderRadius:10, padding:'7px 12px' }}>
+									<div className="util-cancelled-reason">
 										RESCHEDULED: {a.rescheduleReason}
 									</div>
 								)}
@@ -353,6 +332,7 @@ a65d18b16cd3da6375179f750065c59d7a7b35bc
 		</div>
 	);
 }
+
 export function ProfilePage({ currentUser, onLogout, onUserUpdate }) {
 	const navigate = useNavigate();
 	const isLecturer = currentUser?.role === 'LECTURER';
@@ -422,13 +402,12 @@ export function ProfilePage({ currentUser, onLogout, onUserUpdate }) {
 			setProfileStatus({ type: 'error', message: 'Image must be under 5MB' });
 			return;
 		}
-		// Show preview immediately
 		setProfileImagePreview(URL.createObjectURL(file));
 		setUploadingImage(true);
 		try {
-			const formData = new FormData();
-			formData.append('image', file);
-			const res = await api.post(`/users/${currentUser.id}/profile-image`, formData);
+			const fd = new FormData();
+			fd.append('image', file);
+			const res = await api.post(`/users/${currentUser.id}/profile-image`, fd);
 			if (onUserUpdate) onUserUpdate(res.data);
 			setProfileStatus({ type: 'success', message: 'Profile photo updated!' });
 		} catch {
@@ -575,66 +554,56 @@ export function ProfilePage({ currentUser, onLogout, onUserUpdate }) {
 	};
 
 	return (
-		<div style={{ minHeight: '100vh', background: '#f8fafc', display: 'flex', flexDirection: 'column' }}>
+		<div className="profile-page">
 			<Header currentUser={currentUser} onLogout={onLogout} unreadCount={0} />
-			<main style={{ flex: 1, maxWidth: 860, margin: '0 auto', width: '100%', padding: '28px 16px' }}>
+			<main className="profile-main">
 				<button
 					type="button"
 					onClick={() => navigate(isLecturer ? '/lecturer/home' : '/student/home')}
-					style={{ display: 'inline-flex', alignItems: 'center', gap: 8, border: '1px solid #cbd5e1', background: 'white', padding: '8px 12px', borderRadius: 10, cursor: 'pointer' }}
+					className="profile-back-btn"
 				>
 					<ArrowLeft size={16} /> Back
 				</button>
 
-				<section style={{ marginTop: 14, background: 'white', border: '1px solid #e2e8f0', borderRadius: 16, padding: 20 }}>
-					<h1 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: 10 }}>
+				<section className="profile-section">
+					<h1 className="profile-section__title">
 						<User size={20} /> My Profile
 					</h1>
 
 					{profileStatus && (
-						<div style={{
-							marginTop: 16,
-							padding: 12,
-							borderRadius: 10,
-							display: 'flex',
-							alignItems: 'center',
-							gap: 8,
-							background: profileStatus.type === 'success' ? '#f0fdf4' : '#fef9c3',
-							border: `1px solid ${profileStatus.type === 'success' ? '#bbf7d0' : '#fed7aa'}`,
-							color: profileStatus.type === 'success' ? '#166534' : '#a16207',
-						}}>
+						<div className={`profile-status ${profileStatus.type === 'success' ? 'profile-status--success' : 'profile-status--error'}`}>
 							{profileStatus.type === 'success' ? <CheckCircle size={16} /> : <AlertCircle size={16} />}
 							<span>{profileStatus.message}</span>
 						</div>
 					)}
 
-					<form onSubmit={handleProfileSave} style={{ marginTop: 16, display: 'grid', gap: 14 }}>
+					<form onSubmit={handleProfileSave} className="profile-form">
 						{/* Profile Photo */}
-						<div style={{ display: 'flex', alignItems: 'center', gap: 20, padding: '12px 0', borderBottom: '1px solid #f1f5f9' }}>
-							<div style={{ position: 'relative', flexShrink: 0 }}>
+						<div style={{ display:'flex', alignItems:'center', gap:20, padding:'12px 0', borderBottom:'1px solid var(--color-bg-secondary)' }}>
+							<div style={{ position:'relative', flexShrink:0 }}>
 								{profileImagePreview ? (
 									<img
 										src={profileImagePreview}
 										alt="Profile"
-										style={{ width: 80, height: 80, borderRadius: '50%', objectFit: 'cover', border: '3px solid #e2e8f0' }}
+										style={{ width:80, height:80, borderRadius:'50%', objectFit:'cover', border:'3px solid var(--color-border)' }}
 									/>
 								) : (
 									<div style={{
-										width: 80, height: 80, borderRadius: '50%',
-										background: 'linear-gradient(135deg, #0f766e, #0891b2)',
-										display: 'flex', alignItems: 'center', justifyContent: 'center',
-										fontSize: '1.6rem', fontWeight: 800, color: 'white', border: '3px solid #e2e8f0'
+										width:80, height:80, borderRadius:'50%',
+										background:'linear-gradient(135deg, var(--color-success), var(--color-primary))',
+										display:'flex', alignItems:'center', justifyContent:'center',
+										fontSize:'1.6rem', fontWeight:800, color:'white', border:'3px solid var(--color-border)'
 									}}>
 										{(currentUser?.name ?? 'U').split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
 									</div>
 								)}
 								<label htmlFor="profile-image-upload" style={{
-									position: 'absolute', bottom: 0, right: 0,
-									width: 26, height: 26, borderRadius: '50%',
-									background: '#0f766e', color: 'white',
-									display: 'flex', alignItems: 'center', justifyContent: 'center',
-									cursor: 'pointer', border: '2px solid white',
-									boxShadow: '0 1px 4px rgba(0,0,0,0.2)'
+									position:'absolute', bottom:0, right:0,
+									width:26, height:26, borderRadius:'50%',
+									background:'var(--color-success)', color:'white',
+									display:'flex', alignItems:'center', justifyContent:'center',
+									cursor:'pointer', border:'2px solid white',
+									boxShadow:'0 1px 4px rgba(0,0,0,0.2)'
 								}}>
 									<Camera size={13} />
 								</label>
@@ -642,35 +611,31 @@ export function ProfilePage({ currentUser, onLogout, onUserUpdate }) {
 									id="profile-image-upload"
 									type="file"
 									accept="image/*"
-									style={{ display: 'none' }}
+									style={{ display:'none' }}
 									onChange={handleProfileImageChange}
 								/>
 							</div>
 							<div>
-								<div style={{ fontWeight: 700, color: '#1e293b' }}>{currentUser?.name}</div>
-								<div style={{ fontSize: 13, color: '#64748b', marginTop: 2 }}>{currentUser?.email}</div>
-								<div style={{ fontSize: 12, color: '#94a3b8', marginTop: 4 }}>
+								<div style={{ fontWeight:700, color:'var(--color-text-primary)' }}>{currentUser?.name}</div>
+								<div style={{ fontSize:13, color:'var(--color-text-muted)', marginTop:2 }}>{currentUser?.email}</div>
+								<div style={{ fontSize:12, color:'var(--color-text-muted)', marginTop:4 }}>
 									{uploadingImage ? 'Uploading...' : 'Click the camera icon to change photo'}
 								</div>
 							</div>
 						</div>
-						<div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12 }}>
+
+						<div className="profile-form__grid">
 							<div>
-								<label style={{ display: 'block', marginBottom: 6, fontWeight: 600 }}>Full Name</label>
-								<input name="name" value={formData.name} onChange={handleFormChange} required style={{ width: '100%', padding: 10, borderRadius: 10, border: '1px solid #cbd5e1' }} />
+								<label className="profile-label">Full Name</label>
+								<input name="name" value={formData.name} onChange={handleFormChange} required className="profile-input" />
 							</div>
 							<div>
-								<label style={{ display: 'block', marginBottom: 6, fontWeight: 600 }}>Email</label>
-								<input value={currentUser?.email || ''} readOnly style={{ width: '100%', padding: 10, borderRadius: 10, border: '1px solid #cbd5e1', background: '#f8fafc' }} />
+								<label className="profile-label">Email</label>
+								<input value={currentUser?.email || ''} readOnly className="profile-input--readonly" />
 							</div>
 							<div>
-								<label style={{ display: 'block', marginBottom: 6, fontWeight: 600 }}>Department</label>
-								<select
-									name="department"
-									value={formData.department}
-									onChange={handleFormChange}
-									style={{ width: '100%', padding: 10, borderRadius: 10, border: '1px solid #cbd5e1', background: 'white' }}
-								>
+								<label className="profile-label">Department</label>
+								<select name="department" value={formData.department} onChange={handleFormChange} className="profile-select">
 									<option value="">Select department</option>
 									{DEPARTMENT_OPTIONS.map((dept) => (
 										<option key={dept} value={dept}>{dept}</option>
@@ -678,25 +643,20 @@ export function ProfilePage({ currentUser, onLogout, onUserUpdate }) {
 								</select>
 							</div>
 							<div>
-								<label style={{ display: 'block', marginBottom: 6, fontWeight: 600 }}>Phone</label>
-								<input name="phone" value={formData.phone} onChange={handleFormChange} style={{ width: '100%', padding: 10, borderRadius: 10, border: '1px solid #cbd5e1' }} />
+								<label className="profile-label">Phone</label>
+								<input name="phone" value={formData.phone} onChange={handleFormChange} className="profile-input" />
 							</div>
 						</div>
 
 						{isStudent && (
-							<div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12 }}>
+							<div className="profile-form__grid">
 								<div>
-									<label style={{ display: 'block', marginBottom: 6, fontWeight: 600 }}>Registration Number</label>
-									<input name="registrationNumber" value={formData.registrationNumber} onChange={handleFormChange} style={{ width: '100%', padding: 10, borderRadius: 10, border: '1px solid #cbd5e1' }} />
+									<label className="profile-label">Registration Number</label>
+									<input name="registrationNumber" value={formData.registrationNumber} onChange={handleFormChange} className="profile-input" />
 								</div>
 								<div>
-									<label style={{ display: 'block', marginBottom: 6, fontWeight: 600 }}>Batch</label>
-									<select
-										name="batch"
-										value={formData.batch}
-										onChange={handleFormChange}
-										style={{ width: '100%', padding: 10, borderRadius: 10, border: '1px solid #cbd5e1', background: 'white' }}
-									>
+									<label className="profile-label">Batch</label>
+									<select name="batch" value={formData.batch} onChange={handleFormChange} className="profile-select">
 										<option value="">Select batch</option>
 										{BATCH_OPTIONS.map((batch) => (
 											<option key={batch} value={batch}>{batch}</option>
@@ -704,12 +664,8 @@ export function ProfilePage({ currentUser, onLogout, onUserUpdate }) {
 									</select>
 								</div>
 								<div>
-									<label style={{ display: 'block', marginBottom: 6, fontWeight: 600 }}>Academic Year</label>
-									<select
-										value={selectedAcademicPeriod}
-										onChange={handleAcademicPeriodChange}
-										style={{ width: '100%', padding: 10, borderRadius: 10, border: '1px solid #cbd5e1', background: 'white' }}
-									>
+									<label className="profile-label">Academic Year</label>
+									<select value={selectedAcademicPeriod} onChange={handleAcademicPeriodChange} className="profile-select">
 										<option value="">Select academic year and semester</option>
 										{ACADEMIC_PERIODS.map((period) => (
 											<option key={period.label} value={period.label}>{period.label}</option>
@@ -717,26 +673,26 @@ export function ProfilePage({ currentUser, onLogout, onUserUpdate }) {
 									</select>
 								</div>
 								<div>
-									<label style={{ display: 'block', marginBottom: 6, fontWeight: 600 }}>Semester</label>
-									<input name="semester" value={formData.semester} readOnly style={{ width: '100%', padding: 10, borderRadius: 10, border: '1px solid #cbd5e1', background: '#f8fafc' }} />
+									<label className="profile-label">Semester</label>
+									<input name="semester" value={formData.semester} readOnly className="profile-input--readonly" />
 								</div>
 							</div>
 						)}
 
 						{isLecturer && (
 							<>
-								<div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12 }}>
+								<div className="profile-form__grid">
 									<div>
-										<label style={{ display: 'block', marginBottom: 6, fontWeight: 600 }}>Expertise</label>
-										<input name="expertise" value={formData.expertise} onChange={handleFormChange} style={{ width: '100%', padding: 10, borderRadius: 10, border: '1px solid #cbd5e1' }} />
+										<label className="profile-label">Expertise</label>
+										<input name="expertise" value={formData.expertise} onChange={handleFormChange} className="profile-input" />
 									</div>
 									<div>
-										<label style={{ display: 'block', marginBottom: 6, fontWeight: 600 }}>Employee Code</label>
-										<input name="employeeCode" value={formData.employeeCode} onChange={handleFormChange} style={{ width: '100%', padding: 10, borderRadius: 10, border: '1px solid #cbd5e1' }} />
+										<label className="profile-label">Employee Code</label>
+										<input name="employeeCode" value={formData.employeeCode} onChange={handleFormChange} className="profile-input" />
 									</div>
 									<div>
-										<label style={{ display: 'block', marginBottom: 6, fontWeight: 600 }}>Designation</label>
-										<select name="designation" value={formData.designation} onChange={handleFormChange} style={{ width: '100%', padding: 10, borderRadius: 10, border: '1px solid #cbd5e1', background: 'white' }}>
+										<label className="profile-label">Designation</label>
+										<select name="designation" value={formData.designation} onChange={handleFormChange} className="profile-select">
 											<option value="">Select designation</option>
 											<option value="Lecturer">Lecturer</option>
 											<option value="Lecturer In Charge">Lecturer In Charge</option>
@@ -745,138 +701,84 @@ export function ProfilePage({ currentUser, onLogout, onUserUpdate }) {
 										</select>
 									</div>
 									<div>
-										<label style={{ display: 'block', marginBottom: 6, fontWeight: 600 }}>Office Location</label>
-										<input name="officeLocation" value={formData.officeLocation} onChange={handleFormChange} style={{ width: '100%', padding: 10, borderRadius: 10, border: '1px solid #cbd5e1' }} />
+										<label className="profile-label">Office Location</label>
+										<input name="officeLocation" value={formData.officeLocation} onChange={handleFormChange} className="profile-input" />
 									</div>
 									<div>
-										<label style={{ display: 'block', marginBottom: 6, fontWeight: 600 }}>Office Hours</label>
-										<input name="officeHours" value={formData.officeHours} onChange={handleFormChange} style={{ width: '100%', padding: 10, borderRadius: 10, border: '1px solid #cbd5e1' }} />
+										<label className="profile-label">Office Hours</label>
+										<input name="officeHours" value={formData.officeHours} onChange={handleFormChange} className="profile-input" />
 									</div>
 								</div>
 								<div>
-									<label style={{ display: 'block', marginBottom: 6, fontWeight: 600 }}>Bio</label>
-									<textarea name="bio" value={formData.bio} onChange={handleFormChange} style={{ width: '100%', minHeight: 90, padding: 10, borderRadius: 10, border: '1px solid #cbd5e1', resize: 'vertical' }} />
+									<label className="profile-label">Bio</label>
+									<textarea name="bio" value={formData.bio} onChange={handleFormChange} className="profile-textarea" />
 								</div>
 							</>
 						)}
 
-						<div style={{ borderTop: '1px solid #e2e8f0', paddingTop: 14, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12 }}>
+						<div className="profile-form__divider">
 							<div>
-								<label style={{ display: 'block', marginBottom: 6, fontWeight: 600 }}>Current Password</label>
-								<input type="password" name="currentPassword" value={formData.currentPassword} onChange={handleFormChange} placeholder="Required if changing password" style={{ width: '100%', padding: 10, borderRadius: 10, border: '1px solid #cbd5e1' }} />
+								<label className="profile-label">Current Password</label>
+								<input type="password" name="currentPassword" value={formData.currentPassword} onChange={handleFormChange} placeholder="Required if changing password" className="profile-input" />
 							</div>
 							<div>
-								<label style={{ display: 'block', marginBottom: 6, fontWeight: 600 }}>New Password</label>
-								<input type="password" name="newPassword" value={formData.newPassword} onChange={handleFormChange} placeholder="Leave empty to keep current password" style={{ width: '100%', padding: 10, borderRadius: 10, border: '1px solid #cbd5e1' }} />
+								<label className="profile-label">New Password</label>
+								<input type="password" name="newPassword" value={formData.newPassword} onChange={handleFormChange} placeholder="Leave empty to keep current password" className="profile-input" />
 							</div>
 							<div>
-								<label style={{ display: 'block', marginBottom: 6, fontWeight: 600 }}>Confirm New Password</label>
-								<input type="password" name="confirmNewPassword" value={formData.confirmNewPassword} onChange={handleFormChange} style={{ width: '100%', padding: 10, borderRadius: 10, border: '1px solid #cbd5e1' }} />
+								<label className="profile-label">Confirm New Password</label>
+								<input type="password" name="confirmNewPassword" value={formData.confirmNewPassword} onChange={handleFormChange} className="profile-input" />
 							</div>
 						</div>
 
-						<div style={{ display: 'flex', gap: 10 }}>
-							<button
-								type="submit"
-								disabled={isSaving}
-								style={{
-									padding: '10px 16px',
-									borderRadius: 10,
-									border: 'none',
-									background: '#0f766e',
-									color: 'white',
-									fontWeight: 700,
-									cursor: isSaving ? 'not-allowed' : 'pointer',
-									opacity: isSaving ? 0.6 : 1,
-								}}
-							>
+						<div className="profile-form__actions">
+							<button type="submit" disabled={isSaving} className="profile-btn--save">
 								{isSaving ? 'Saving...' : 'Save Profile'}
 							</button>
 						</div>
 					</form>
 				</section>
 
-				<section style={{ marginTop: 20, background: 'white', border: '1px solid #fecaca', borderRadius: 16, padding: 20 }}>
-					<h2 style={{ margin: 0, color: '#b91c1c' }}>Delete Account</h2>
-					<p style={{ margin: '10px 0', color: '#7f1d1d' }}>
+				<section className="profile-section--danger">
+					<h2 className="profile-section__title--danger">Delete Account</h2>
+					<p className="profile-delete-desc">
 						This permanently removes your account and associated data from the database.
 					</p>
-					<label style={{ display: 'block', marginBottom: 6, fontWeight: 600, color: '#7f1d1d' }}>
+					<label className="profile-label--danger">
 						Type DELETE to confirm
 					</label>
 					<input
 						value={deleteConfirmText}
 						onChange={(e) => setDeleteConfirmText(e.target.value)}
 						placeholder="DELETE"
-						style={{ width: '100%', padding: 10, borderRadius: 10, border: '1px solid #fca5a5', marginBottom: 12 }}
+						className="profile-input--danger"
 					/>
-					<button
-						type="button"
-						onClick={handleDeleteAccount}
-						disabled={isDeleting}
-						style={{
-							padding: '10px 16px',
-							borderRadius: 10,
-							border: 'none',
-							background: '#dc2626',
-							color: 'white',
-							fontWeight: 700,
-							cursor: isDeleting ? 'not-allowed' : 'pointer',
-							opacity: isDeleting ? 0.6 : 1,
-						}}
-					>
+					<button type="button" onClick={handleDeleteAccount} disabled={isDeleting} className="profile-btn--delete">
 						{isDeleting ? 'Deleting...' : 'Delete My Account'}
 					</button>
 				</section>
 
 				{isLecturer && (
-					<section style={{ marginTop: 20, background: 'white', border: '1px solid #e2e8f0', borderRadius: 16, padding: 20 }}>
-						<h2 style={{ margin: '0 0 16px 0', display: 'flex', alignItems: 'center', gap: 10, color: '#1e293b' }}>
-							{dndEnabled ? <BellOff size={20} style={{ color: '#ea580c' }} /> : <Bell size={20} style={{ color: '#64748b' }} />}
+					<section className="profile-section--standard">
+						<h2 className="profile-section__title--standard">
+							{dndEnabled ? <BellOff size={20} className="icon--warning" /> : <Bell size={20} className="icon--muted" />}
 							Do Not Disturb Settings
 						</h2>
 
 						{saveStatus && (
-							<div style={{
-								marginBottom: 16,
-								padding: 12,
-								borderRadius: 10,
-								display: 'flex',
-								alignItems: 'center',
-								gap: 8,
-								background: saveStatus.type === 'success' ? '#f0fdf4' : '#fef9c3',
-								border: `1px solid ${saveStatus.type === 'success' ? '#bbf7d0' : '#fed7aa'}`,
-								color: saveStatus.type === 'success' ? '#166534' : '#a16207',
-							}}>
+							<div className={`profile-status profile-status--mb ${saveStatus.type === 'success' ? 'profile-status--success' : 'profile-status--warning'}`}>
 								{saveStatus.type === 'success' ? <CheckCircle size={16} /> : <AlertCircle size={16} />}
 								<span>{saveStatus.message}</span>
 							</div>
 						)}
 
-						<div style={{ marginBottom: 20 }}>
-							<div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-								<label style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 600, cursor: 'pointer' }}>
-									<div style={{
-										position: 'relative',
-										width: 48,
-										height: 28,
-										borderRadius: 14,
-										background: dndEnabled ? '#ea580c' : '#cbd5e1',
-										transition: 'background 0.3s ease',
-										cursor: 'pointer',
-									}}>
-										<div style={{
-											position: 'absolute',
-											top: 2,
-											left: dndEnabled ? 24 : 2,
-											width: 24,
-											height: 24,
-											borderRadius: 12,
-											background: 'white',
-											transition: 'left 0.3s ease',
-										}} />
+						<div className="profile-dnd-wrap">
+							<div className="profile-dnd-row">
+								<label className="profile-dnd-label">
+									<div className={`profile-dnd-switch ${dndEnabled ? 'profile-dnd-switch--on' : 'profile-dnd-switch--off'}`}>
+										<div className={`profile-dnd-knob ${dndEnabled ? 'profile-dnd-knob--on' : 'profile-dnd-knob--off'}`} />
 									</div>
-									<span onClick={handleDndToggle} style={{ cursor: 'pointer', userSelect: 'none' }}>
+									<span onClick={handleDndToggle} className="profile-dnd-text">
 										{dndEnabled ? 'Do Not Disturb: ON' : 'Do Not Disturb: OFF'}
 									</span>
 								</label>
@@ -884,59 +786,22 @@ export function ProfilePage({ currentUser, onLogout, onUserUpdate }) {
 						</div>
 
 						<div>
-							<label style={{ display: 'block', marginBottom: 8, fontWeight: 600, color: '#1e293b' }}>
+							<label className="profile-autoreply-label">
 								Auto-Reply Message
 							</label>
 							<textarea
 								value={autoReplyMessage}
 								onChange={(e) => setAutoReplyMessage(e.target.value)}
 								placeholder="e.g., I'm busy right now. I'll get back to you after 3 PM. Thanks for your message!"
-								style={{
-									width: '100%',
-									padding: 12,
-									borderRadius: 10,
-									border: '1px solid #cbd5e1',
-									fontFamily: 'inherit',
-									fontSize: 13,
-									minHeight: 100,
-									resize: 'vertical',
-									boxSizing: 'border-box',
-								}}
+								className="profile-textarea--autoreply"
 							/>
 						</div>
 
-						<div style={{ marginTop: 16, display: 'flex', gap: 10 }}>
-							<button
-								onClick={handleDndToggle}
-								disabled={isSaving}
-								style={{
-									padding: '10px 16px',
-									borderRadius: 10,
-									border: 'none',
-									background: dndEnabled ? 'white' : '#ea580c',
-									color: dndEnabled ? '#ea580c' : 'white',
-									fontWeight: 600,
-									cursor: isSaving ? 'not-allowed' : 'pointer',
-									opacity: isSaving ? 0.6 : 1,
-									borderLeft: dndEnabled ? '2px solid #ea580c' : 'none',
-								}}
-							>
+						<div className="profile-form__actions" style={{ marginTop:16 }}>
+							<button onClick={handleDndToggle} disabled={isSaving} className={dndEnabled ? 'profile-btn--dnd-on' : 'profile-btn--dnd-off'}>
 								{isSaving ? 'Saving...' : (dndEnabled ? 'Turn OFF' : 'Turn ON')}
 							</button>
-							<button
-								onClick={handleSaveAutoReply}
-								disabled={isSaving || !autoReplyMessage.trim()}
-								style={{
-									padding: '10px 16px',
-									borderRadius: 10,
-									border: '1px solid #cbd5e1',
-									background: 'white',
-									color: '#1e293b',
-									fontWeight: 600,
-									cursor: isSaving || !autoReplyMessage.trim() ? 'not-allowed' : 'pointer',
-									opacity: isSaving || !autoReplyMessage.trim() ? 0.6 : 1,
-								}}
-							>
+							<button onClick={handleSaveAutoReply} disabled={isSaving || !autoReplyMessage.trim()} className="profile-btn--secondary">
 								{isSaving ? 'Saving...' : 'Save Auto-Reply'}
 							</button>
 						</div>
@@ -953,23 +818,23 @@ export function ComingSoonPage({ currentUser, onLogout }) {
 	const isLecturer = currentUser?.role === 'LECTURER';
 
 	return (
-		<div style={{ minHeight: '100vh', background: '#f8fafc', display: 'flex', flexDirection: 'column' }}>
+		<div className="util-page">
 			<Header currentUser={currentUser} onLogout={onLogout} unreadCount={0} />
-			<main style={{ flex: 1, maxWidth: 860, margin: '0 auto', width: '100%', padding: '28px 16px' }}>
+			<main className="coming-soon-main">
 				<button
 					type="button"
 					onClick={() => navigate(isLecturer ? '/lecturer/home' : '/student/home')}
-					style={{ display: 'inline-flex', alignItems: 'center', gap: 8, border: '1px solid #cbd5e1', background: 'white', padding: '8px 12px', borderRadius: 10, cursor: 'pointer' }}
+					className="util-back-btn"
 				>
 					<ArrowLeft size={16} /> Back
 				</button>
 
-				<section style={{ marginTop: 14, background: 'white', border: '1px solid #e2e8f0', borderRadius: 16, padding: 24, textAlign: 'center' }}>
-					<div style={{ display: 'inline-flex', width: 56, height: 56, borderRadius: 14, alignItems: 'center', justifyContent: 'center', background: '#eef2ff', color: '#4f46e5' }}>
+				<section className="coming-soon-section">
+					<div className="coming-soon-icon">
 						<Wrench size={24} />
 					</div>
-					<h1 style={{ marginTop: 14, marginBottom: 6 }}>Feature In Progress</h1>
-					<p style={{ margin: 0, color: '#64748b' }}>
+					<h1 style={{ marginTop:14, marginBottom:6 }}>Feature In Progress</h1>
+					<p className="coming-soon-desc">
 						This page is ready. Final business functionality can be added here next.
 					</p>
 				</section>
@@ -978,7 +843,3 @@ export function ComingSoonPage({ currentUser, onLogout }) {
 		</div>
 	);
 }
-
-
-
-

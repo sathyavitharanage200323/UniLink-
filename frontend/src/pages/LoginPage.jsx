@@ -2,7 +2,9 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { loginUser, registerUser } from '../api';
+import { StudyBackground } from '../theme/StudyBackground';
 import '../App.css';
+import './LoginPage.css';
 
 const DEPARTMENT_OPTIONS = [
   'Faculty Of Computing',
@@ -170,121 +172,88 @@ export default function LoginPage({ onLogin }) {
   };
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
-      justifyContent: 'center',
-      background: 'linear-gradient(135deg, rgba(15, 40, 84, 0.85) 0%, rgba(28, 77, 141, 0.85) 50%, rgba(73, 136, 196, 0.85) 100%), url("/background.jpg") center/cover no-repeat',
-      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-      gap: 40,
-      padding: '0 20px',
-    }}>
-      {}
-      <div style={{ textAlign: 'center', marginBottom: '8px' }}>
-        <img className="animated-logo" src="/Logo2.png" alt="Unilink Logo" style={{ height: '300px', maxWidth: '90vw', objectFit: 'contain' }} />
+    <div className="login-page">
+      <StudyBackground variant="login" density="low" />
+
+      <div className="login-page__logo">
+        <img className="animated-logo" src="/Logo2.png" alt="Unilink Logo" />
       </div>
 
-      <div style={{
-        width: 'min(860px, 100%)',
-        borderRadius: 18,
-        padding: 24,
-        background: 'rgba(255,255,255,0.16)',
-        border: '1px solid rgba(255,255,255,0.24)',
-        backdropFilter: 'blur(12px)',
-        color: 'white',
-      }}>
-        <div style={{ display: 'flex', gap: 8, marginBottom: 18 }}>
+      <div className="login-page__card">
+        <div className="login-page__tabs">
           <button
             type="button"
             onClick={() => setTab('LOGIN')}
-            style={{
-              border: 'none', borderRadius: 10, padding: '10px 14px', cursor: 'pointer',
-              background: tab === 'LOGIN' ? 'white' : 'rgba(255,255,255,0.2)',
-              color: tab === 'LOGIN' ? '#0F2854' : 'white', fontWeight: 700,
-            }}
+            className={`login-page__tab ${tab === 'LOGIN' ? 'login-page__tab--active' : 'login-page__tab--inactive'}`}
           >
             Login
           </button>
           <button
             type="button"
             onClick={() => setTab('REGISTER')}
-            style={{
-              border: 'none', borderRadius: 10, padding: '10px 14px', cursor: 'pointer',
-              background: tab === 'REGISTER' ? 'white' : 'rgba(255,255,255,0.2)',
-              color: tab === 'REGISTER' ? '#0F2854' : 'white', fontWeight: 700,
-            }}
+            className={`login-page__tab ${tab === 'REGISTER' ? 'login-page__tab--active' : 'login-page__tab--inactive'}`}
           >
             Register
           </button>
         </div>
 
-        <div style={{ marginBottom: 14, textAlign: 'right' }}>
-          <Link to="/admin-login" style={{ color: '#dbeafe', textDecoration: 'none', fontWeight: 600 }}>
-            Admin login
-          </Link>
+        <div className="login-page__admin-link">
+          <Link to="/admin-login">Admin login</Link>
         </div>
 
         {tab === 'LOGIN' ? (
-          <form onSubmit={handleLoginSubmit} style={{ display: 'grid', gap: 12 }}>
+          <form onSubmit={handleLoginSubmit} className="login-page__form">
             <input
               value={loginForm.email}
               onChange={(e) => setLoginForm((p) => ({ ...p, email: e.target.value }))}
               placeholder="University email"
               type="email"
-              className="auth-field"
-              style={authInputStyle}
+              className="auth-field auth-input"
             />
             <input
               value={loginForm.password}
               onChange={(e) => setLoginForm((p) => ({ ...p, password: e.target.value }))}
               placeholder="Password"
               type="password"
-              className="auth-field"
-              style={authInputStyle}
+              className="auth-field auth-input"
             />
-            <div style={{ textAlign: 'right' }}>
-              <Link to="/reset-password" style={{ color: '#dbeafe', textDecoration: 'none', fontWeight: 600 }}>
-                Forgot password?
-              </Link>
+            <div className="login-page__forgot-link">
+              <Link to="/reset-password">Forgot password?</Link>
             </div>
-            <button type="submit" disabled={submitting} style={authButtonStyle}>
+            <button type="submit" disabled={submitting} className="auth-button">
               {submitting ? 'Signing in...' : 'Sign In'}
             </button>
           </form>
         ) : (
-          <form onSubmit={handleRegisterSubmit} style={{ display: 'grid', gap: 12 }}>
-            <div style={{ display: 'grid', gap: 12, gridTemplateColumns: 'repeat(auto-fit, minmax(220px,1fr))' }}>
-              <input className="auth-field" value={registerForm.name} onChange={(e) => setRegisterForm((p) => ({ ...p, name: e.target.value }))} placeholder="Full name" style={authInputStyle} />
-              <input className="auth-field" type="email" value={registerForm.email} onChange={(e) => setRegisterForm((p) => ({ ...p, email: e.target.value }))} placeholder="Email" style={authInputStyle} />
-              <input className="auth-field" type="password" value={registerForm.password} onChange={(e) => setRegisterForm((p) => ({ ...p, password: e.target.value }))} placeholder="Password (min 8 chars)" style={authInputStyle} />
-              <input className="auth-field" type="password" value={registerForm.confirmPassword} onChange={(e) => setRegisterForm((p) => ({ ...p, confirmPassword: e.target.value }))} placeholder="Confirm password" style={authInputStyle} />
-              <select className="auth-field" value={registerForm.role} onChange={(e) => setRegisterForm((p) => ({ ...p, role: e.target.value }))} style={authInputStyle}>
+          <form onSubmit={handleRegisterSubmit} className="login-page__form">
+            <div className="login-page__form-grid">
+              <input className="auth-field auth-input" value={registerForm.name} onChange={(e) => setRegisterForm((p) => ({ ...p, name: e.target.value }))} placeholder="Full name" />
+              <input className="auth-field auth-input" type="email" value={registerForm.email} onChange={(e) => setRegisterForm((p) => ({ ...p, email: e.target.value }))} placeholder="Email" />
+              <input className="auth-field auth-input" type="password" value={registerForm.password} onChange={(e) => setRegisterForm((p) => ({ ...p, password: e.target.value }))} placeholder="Password (min 8 chars)" />
+              <input className="auth-field auth-input" type="password" value={registerForm.confirmPassword} onChange={(e) => setRegisterForm((p) => ({ ...p, confirmPassword: e.target.value }))} placeholder="Confirm password" />
+              <select className="auth-field auth-input" value={registerForm.role} onChange={(e) => setRegisterForm((p) => ({ ...p, role: e.target.value }))}>
                 <option value="STUDENT">STUDENT</option>
                 <option value="LECTURER">LECTURER</option>
               </select>
               <select
-                className="auth-field"
+                className="auth-field auth-input"
                 value={registerForm.department}
                 onChange={(e) => setRegisterForm((p) => ({ ...p, department: e.target.value }))}
-                style={authInputStyle}
               >
                 <option value="">Select department</option>
                 {DEPARTMENT_OPTIONS.map((d) => (
                   <option key={d} value={d}>{d}</option>
                 ))}
               </select>
-              <input className="auth-field" value={registerForm.phone} onChange={(e) => setRegisterForm((p) => ({ ...p, phone: e.target.value }))} placeholder="Phone" style={authInputStyle} />
+              <input className="auth-field auth-input" value={registerForm.phone} onChange={(e) => setRegisterForm((p) => ({ ...p, phone: e.target.value }))} placeholder="Phone" />
 
               {registerForm.role === 'STUDENT' ? (
                 <>
-                  <input className="auth-field" value={registerForm.registrationNumber} onChange={(e) => setRegisterForm((p) => ({ ...p, registrationNumber: e.target.value }))} placeholder="Registration number" style={authInputStyle} />
+                  <input className="auth-field auth-input" value={registerForm.registrationNumber} onChange={(e) => setRegisterForm((p) => ({ ...p, registrationNumber: e.target.value }))} placeholder="Registration number" />
                   <select
-                    className="auth-field"
+                    className="auth-field auth-input"
                     value={registerForm.batch}
                     onChange={(e) => setRegisterForm((p) => ({ ...p, batch: e.target.value }))}
-                    style={authInputStyle}
                   >
                     <option value="">Select batch / program</option>
                     {BATCH_OPTIONS.map((b) => (
@@ -292,7 +261,7 @@ export default function LoginPage({ onLogin }) {
                     ))}
                   </select>
                   <select
-                    className="auth-field"
+                    className="auth-field auth-input"
                     value={selectedAcademicPeriod}
                     onChange={(e) => {
                       const period = ACADEMIC_PERIODS.find((p) => p.label === e.target.value);
@@ -302,7 +271,6 @@ export default function LoginPage({ onLogin }) {
                         semester: period ? period.semester : '',
                       }));
                     }}
-                    style={authInputStyle}
                   >
                     <option value="">Select academic year and semester</option>
                     {ACADEMIC_PERIODS.map((p) => (
@@ -312,30 +280,29 @@ export default function LoginPage({ onLogin }) {
                 </>
               ) : (
                 <>
-                  <input className="auth-field" value={registerForm.employeeCode} onChange={(e) => setRegisterForm((p) => ({ ...p, employeeCode: e.target.value }))} placeholder="Employee code" style={authInputStyle} />
-                  <select className="auth-field" value={registerForm.designation} onChange={(e) => setRegisterForm((p) => ({ ...p, designation: e.target.value }))} style={authInputStyle}>
+                  <input className="auth-field auth-input" value={registerForm.employeeCode} onChange={(e) => setRegisterForm((p) => ({ ...p, employeeCode: e.target.value }))} placeholder="Employee code" />
+                  <select className="auth-field auth-input" value={registerForm.designation} onChange={(e) => setRegisterForm((p) => ({ ...p, designation: e.target.value }))}>
                     <option value="">Select designation</option>
                     {LECTURER_DESIGNATIONS.map((d) => (
                       <option key={d} value={d}>{d}</option>
                     ))}
                   </select>
-                  <input className="auth-field" value={registerForm.expertise} onChange={(e) => setRegisterForm((p) => ({ ...p, expertise: e.target.value }))} placeholder="Expertise" style={authInputStyle} />
-                  <input className="auth-field" value={registerForm.officeLocation} onChange={(e) => setRegisterForm((p) => ({ ...p, officeLocation: e.target.value }))} placeholder="Office location" style={authInputStyle} />
-                  <input className="auth-field" value={registerForm.officeHours} onChange={(e) => setRegisterForm((p) => ({ ...p, officeHours: e.target.value }))} placeholder="Office hours" style={authInputStyle} />
+                  <input className="auth-field auth-input" value={registerForm.expertise} onChange={(e) => setRegisterForm((p) => ({ ...p, expertise: e.target.value }))} placeholder="Expertise" />
+                  <input className="auth-field auth-input" value={registerForm.officeLocation} onChange={(e) => setRegisterForm((p) => ({ ...p, officeLocation: e.target.value }))} placeholder="Office location" />
+                  <input className="auth-field auth-input" value={registerForm.officeHours} onChange={(e) => setRegisterForm((p) => ({ ...p, officeHours: e.target.value }))} placeholder="Office hours" />
                 </>
               )}
             </div>
             {registerForm.role === 'LECTURER' && (
               <textarea
-                className="auth-field"
+                className="auth-field auth-input auth-input--textarea"
                 value={registerForm.bio}
                 onChange={(e) => setRegisterForm((p) => ({ ...p, bio: e.target.value }))}
                 placeholder="Short bio"
-                style={{ ...authInputStyle, minHeight: 90, resize: 'vertical' }}
               />
             )}
 
-            <button type="submit" disabled={submitting} style={authButtonStyle}>
+            <button type="submit" disabled={submitting} className="auth-button">
               {submitting ? 'Creating account...' : 'Create Account'}
             </button>
           </form>
@@ -344,29 +311,3 @@ export default function LoginPage({ onLogin }) {
     </div>
   );
 }
-
-const authInputStyle = {
-  width: '100%',
-  height: 42,
-  borderRadius: 10,
-  border: '1px solid rgba(255,255,255,0.45)',
-  background: 'rgba(255,255,255,0.16)',
-  color: 'white',
-  WebkitTextFillColor: 'white',
-  caretColor: 'white',
-  padding: '0 12px',
-  boxSizing: 'border-box',
-  outline: 'none',
-};
-
-const authButtonStyle = {
-  border: 'none',
-  borderRadius: 10,
-  height: 42,
-  background: 'white',
-  color: '#0F2854',
-  fontWeight: 800,
-  cursor: 'pointer',
-};
-
-

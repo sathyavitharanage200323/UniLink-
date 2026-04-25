@@ -80,7 +80,8 @@ public class AppointmentController {
             .atZone(java.time.ZoneId.systemDefault())
             .toLocalDateTime();
         String reason = body.get("reason");
-        return ResponseEntity.ok(appointmentService.updateTime(id, newStart, newEnd, reason));
+        String meetingLocation = body.get("meetingLocation");
+        return ResponseEntity.ok(appointmentService.updateTime(id, newStart, newEnd, reason, meetingLocation));
     }
 
     /** Delete an appointment */

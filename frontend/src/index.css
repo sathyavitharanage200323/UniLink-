@@ -1,10 +1,109 @@
+/* ============================================================
+   CSS TOKEN SYSTEM — UniLink Luxury Theme
+   ============================================================ */
+
+/* Light theme defaults */
+:root {
+  /* Brand colours */
+  --color-primary: #E8650A;
+  --color-primary-hover: #D45A08;
+  --color-primary-light: #FEF0E6;
+  --color-accent: #B5722A;
+  --color-accent-light: #F5EBE0;
+  --color-accent-hover: #9A5E1F;
+
+  /* Backgrounds */
+  --color-bg: #FAFAFA;
+  --color-bg-secondary: #F5F5F5;
+  --color-bg-elevated: #FFFFFF;
+
+  /* Borders */
+  --color-border: #E8E8E8;
+  --color-border-strong: #D0D0D0;
+
+  /* Text */
+  --color-text-primary: #0A0A0A;
+  --color-text-secondary: #4A4A4A;
+  --color-text-muted: #8A8A8A;
+
+  /* Hero gradient (bronze → orange) */
+  --color-hero-from: #B5722A;
+  --color-hero-mid: #D4621A;
+  --color-hero-to: #E8650A;
+
+  /* Status colours */
+  --color-success: #15803D;
+  --color-success-bg: #DCFCE7;
+  --color-warning: #B5722A;
+  --color-warning-bg: #FEF0E6;
+  --color-danger: #B91C1C;
+  --color-danger-bg: #FEE2E2;
+
+  /* Typography */
+  --font-heading: 'Playfair Display', 'Libre Baskerville', 'Georgia', serif;
+  --font-body: 'DM Sans', 'Inter', 'Segoe UI', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+
+  /* Border radius */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 18px;
+  --radius-xl: 24px;
+  --radius-full: 999px;
+
+  /* Shadows — warm orange-tinted */
+  --shadow-sm: 0 1px 4px rgba(232,101,10,0.08);
+  --shadow-md: 0 4px 20px rgba(232,101,10,0.10);
+  --shadow-lg: 0 8px 36px rgba(232,101,10,0.14);
+  --shadow-hero: 0 2px 30px rgba(181,114,42,0.30);
+}
+
+/* Dark theme overrides */
+[data-theme="dark"] {
+  --color-primary: #F97316;
+  --color-primary-hover: #FB923C;
+  --color-primary-light: #2A1200;
+  --color-accent: #C47830;
+  --color-accent-light: #1E1008;
+  --color-accent-hover: #D98A40;
+
+  --color-bg: #0A0A0A;
+  --color-bg-secondary: #1A1A1A;
+  --color-bg-elevated: #2A2A2A;
+
+  --color-border: #333333;
+  --color-border-strong: #444444;
+
+  --color-text-primary: #F5F5F5;
+  --color-text-secondary: #B0B0B0;
+  --color-text-muted: #707070;
+
+  --color-hero-from: #0A0A0A;
+  --color-hero-mid: #1A1A1A;
+  --color-hero-to: #2A2A2A;
+
+  --shadow-sm: 0 1px 4px rgba(0,0,0,0.50);
+  --shadow-md: 0 4px 20px rgba(0,0,0,0.60);
+  --shadow-lg: 0 8px 36px rgba(0,0,0,0.70);
+  --shadow-hero: 0 2px 30px rgba(0,0,0,0.70);
+}
+
+/* ============================================================
+   GLOBAL TYPOGRAPHY
+   ============================================================ */
+
+h1, h2, h3 {
+  font-family: var(--font-heading);
+}
+
 body {
   margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
+  font-family: var(--font-body);
+  background-color: var(--color-bg);
+  color: var(--color-text-primary);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 code {

@@ -5,6 +5,7 @@ import {
   Bell, LogOut, MessageSquare, Menu, X,
   Home, Calendar, User, Bug,
 } from 'lucide-react';
+import { ThemeToggle } from '../theme/ThemeToggle';
 import { chatApi } from '../api/chatApi';
 import {
   getAllAppointments,
@@ -325,6 +326,9 @@ export default function Header({ currentUser, onLogout, unreadCount = 0 }) {
               <span className="header__notif-count">{notificationBadge}</span>
             )}
           </button>
+
+          {/* Theme toggle */}
+          <ThemeToggle />
 
           {/* User chip */}
           <button className="header__user-chip" onClick={() => navigate('/profile')} title="Profile">

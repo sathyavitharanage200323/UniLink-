@@ -1,0 +1,66 @@
+/*
+ * StudyBackground.css
+ * Keyframe animations for decorative study-themed SVG icons.
+ * Requirements: 7.2, 7.5, 10.1
+ *
+ * CONSTRAINT: Only `transform` and `opacity` are used in keyframes —
+ * no width, height, top, left, margin, or padding.
+ */
+
+/* ── Keyframe: float — gentle vertical bob ── */
+@keyframes float {
+  0%   { transform: translateY(0px);   opacity: 1;    }
+  50%  { transform: translateY(-14px); opacity: 0.85; }
+  100% { transform: translateY(0px);   opacity: 1;    }
+}
+
+/* ── Keyframe: drift — slow diagonal drift with slight rotation ── */
+@keyframes drift {
+  0%   { transform: translate(0px, 0px)    rotate(0deg);   opacity: 1;    }
+  33%  { transform: translate(8px, -10px)  rotate(3deg);   opacity: 0.9;  }
+  66%  { transform: translate(-6px, -6px)  rotate(-2deg);  opacity: 0.95; }
+  100% { transform: translate(0px, 0px)    rotate(0deg);   opacity: 1;    }
+}
+
+/* ── Animation assignment ── */
+.study-bg-icon--float {
+  animation: float 6s ease-in-out infinite;
+}
+
+.study-bg-icon--drift {
+  animation: drift 9s ease-in-out infinite;
+}
+
+/*
+ * Staggered animation-delay per icon (nth-child, 1-indexed).
+ * Base step: 1.8 s. Small jitter applied per icon to avoid synchronised movement.
+ *
+ * Icon 0  → nth-child(1)  delay: 0.00 s
+ * Icon 1  → nth-child(2)  delay: 1.80 s
+ * Icon 2  → nth-child(3)  delay: 3.60 s  (+ 0.15 s jitter)
+ * Icon 3  → nth-child(4)  delay: 5.40 s  (- 0.20 s jitter)
+ * Icon 4  → nth-child(5)  delay: 7.20 s  (+ 0.10 s jitter)
+ * Icon 5  → nth-child(6)  delay: 9.00 s  (- 0.15 s jitter)
+ * Icon 6  → nth-child(7)  delay: 10.80 s (+ 0.25 s jitter)
+ * Icon 7  → nth-child(8)  delay: 12.60 s (- 0.10 s jitter)
+ * Icon 8  → nth-child(9)  delay: 14.40 s (+ 0.20 s jitter)
+ * Icon 9  → nth-child(10) delay: 16.20 s (- 0.05 s jitter)
+ */
+.study-bg-icon:nth-child(1)  { animation-delay: 0.00s;  }
+.study-bg-icon:nth-child(2)  { animation-delay: 1.80s;  }
+.study-bg-icon:nth-child(3)  { animation-delay: 3.75s;  }
+.study-bg-icon:nth-child(4)  { animation-delay: 5.20s;  }
+.study-bg-icon:nth-child(5)  { animation-delay: 7.30s;  }
+.study-bg-icon:nth-child(6)  { animation-delay: 8.85s;  }
+.study-bg-icon:nth-child(7)  { animation-delay: 11.05s; }
+.study-bg-icon:nth-child(8)  { animation-delay: 12.50s; }
+.study-bg-icon:nth-child(9)  { animation-delay: 14.60s; }
+.study-bg-icon:nth-child(10) { animation-delay: 16.15s; }
+
+/* ── Reduced-motion: disable all animations ── */
+@media (prefers-reduced-motion: reduce) {
+  .study-bg-icon--float,
+  .study-bg-icon--drift {
+    animation: none;
+  }
+}

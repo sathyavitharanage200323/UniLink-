@@ -143,7 +143,7 @@ public class AppointmentService {
     }
 
     @Transactional
-    public Appointment updateTime(Long id, LocalDateTime newStartTime, LocalDateTime newEndTime, String reason) {
+    public Appointment updateTime(Long id, LocalDateTime newStartTime, LocalDateTime newEndTime, String reason, String meetingLocation) {
         Appointment appt = getById(id);
         validateTimeRange(newStartTime, newEndTime);
         if (newStartTime.isBefore(LocalDateTime.now())) {
@@ -175,6 +175,8 @@ public class AppointmentService {
         appt.setStatus(Appointment.Status.PENDING);
         appt.setRescheduledAt(LocalDateTime.now());
         appt.setRescheduleReason(reason != null && !reason.isBlank() ? reason : null);
+        // Save new meeting location if provided
+        if (meetingLocation != null && !meetingLocation.isBlank()) appt.setMeetingLocation(meetingLocation);
         // Clear previous confirmation details
         appt.setMeetingLink(null);
         appt.setMeetingLocation(null);

@@ -127,9 +127,9 @@ export default function LecturerHome({ currentUser, appointments = [], onLogout,
   /* Stats */
   const stats = [
     { label: "Today's Students", value: todaySchedule.length,   icon: Users,                bg: '#faf5ff', color: '#7c3aed' },
-    { label: 'Pending Requests', value: pendingRequests.length, icon: Clock,                bg: '#fff7ed', color: '#ea580c' },
+    { label: 'Pending Requests', value: pendingRequests.length, icon: Clock,                bg: '#FFF5F0', color: '#ea580c' },
     { label: 'Active Chats',     value: studentThreads.length,  icon: MessageSquare,        bg: '#f0fdf4', color: '#16a34a' },
-    { label: 'DND Status',       value: dnd ? 'ON' : 'OFF',     icon: dnd ? BellOff : Bell, bg: dnd ? '#fef9c3' : '#f8fafc', color: dnd ? '#a16207' : '#6b7280' },
+    { label: 'DND Status',       value: dnd ? 'ON' : 'OFF',     icon: dnd ? BellOff : Bell, bg: dnd ? '#FEF0E6' : '#f8fafc', color: dnd ? '#B5722A' : '#6b7280' },
   ];
 
   const initials = getInitials(currentUser?.name);
@@ -367,7 +367,7 @@ export default function LecturerHome({ currentUser, appointments = [], onLogout,
         <div className="lh-full-width">
           <div className="lh-card">
             <div className="lh-card__header">
-              <h2><Star size={17} style={{ color: '#f59e0b' }} /> Quick Actions</h2>
+              <h2><Star size={17} style={{ color: '#E8650A' }} /> Quick Actions</h2>
             </div>
             <div className="lh-quick-grid">
               <button className="lh-quick-btn" onClick={() => navigate('/chat')}>
@@ -375,11 +375,11 @@ export default function LecturerHome({ currentUser, appointments = [], onLogout,
                 <span>Student Chats</span>
               </button>
               <button className="lh-quick-btn" onClick={() => navigate('/lecturer/schedule')}>
-                <div className="lh-quick-icon" style={{ background: '#fff7ed', color: '#ea580c' }}><Calendar size={24} /></div>
+                <div className="lh-quick-icon" style={{ background: '#FFF5F0', color: '#ea580c' }}><Calendar size={24} /></div>
                 <span>My Schedule</span>
               </button>
               <button className="lh-quick-btn" onClick={() => navigate('/chat')}>
-                <div className="lh-quick-icon" style={{ background: '#fff7ed', color: '#d97706' }}><Zap size={24} /></div>
+                <div className="lh-quick-icon" style={{ background: '#FFF5F0', color: '#D45A08' }}><Zap size={24} /></div>
                 <span>Quick Responses</span>
               </button>
               <button className="lh-quick-btn" onClick={() => navigate('/chat')}>

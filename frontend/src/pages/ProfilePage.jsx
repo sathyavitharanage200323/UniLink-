@@ -4,6 +4,7 @@ import { User, ArrowLeft, BellOff, Bell, AlertCircle, CheckCircle } from 'lucide
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 import { userApi } from '../api/chatApi';
+import './ProfilePage.css';
 
 const DEPARTMENT_OPTIONS = [
 	'Faculty Of Computing',
@@ -257,56 +258,46 @@ export default function ProfilePage({ currentUser, onLogout, onUserUpdate }) {
 	};
 
 	return (
-		<div style={{ minHeight: '100vh', background: '#f8fafc', display: 'flex', flexDirection: 'column' }}>
+		<div className="profile-page">
 			<Header currentUser={currentUser} onLogout={onLogout} unreadCount={0} />
-			<main style={{ flex: 1, maxWidth: 860, margin: '0 auto', width: '100%', padding: '28px 16px' }}>
+			<main className="profile-main">
 				<button
 					type="button"
 					onClick={() => navigate(isLecturer ? '/lecturer/home' : '/student/home')}
-					style={{ display: 'inline-flex', alignItems: 'center', gap: 8, border: '1px solid #cbd5e1', background: 'white', padding: '8px 12px', borderRadius: 10, cursor: 'pointer' }}
+					className="profile-back-btn"
 				>
 					<ArrowLeft size={16} /> Back
 				</button>
 
-				<section style={{ marginTop: 14, background: 'white', border: '1px solid #e2e8f0', borderRadius: 16, padding: 20 }}>
-					<h1 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: 10 }}>
+				<section className="profile-section">
+					<h1 className="profile-section__title">
 						<User size={20} /> My Profile
 					</h1>
 
 					{profileStatus && (
-						<div style={{
-							marginTop: 16,
-							padding: 12,
-							borderRadius: 10,
-							display: 'flex',
-							alignItems: 'center',
-							gap: 8,
-							background: profileStatus.type === 'success' ? '#f0fdf4' : '#fef9c3',
-							border: `1px solid ${profileStatus.type === 'success' ? '#bbf7d0' : '#fed7aa'}`,
-							color: profileStatus.type === 'success' ? '#166534' : '#a16207',
-						}}>
+						<div className={`profile-status ${profileStatus.type === 'success' ? 'profile-status--success' : 'profile-status--error'}`}>
 							{profileStatus.type === 'success' ? <CheckCircle size={16} /> : <AlertCircle size={16} />}
 							<span>{profileStatus.message}</span>
 						</div>
 					)}
 
-					<form onSubmit={handleProfileSave} style={{ marginTop: 16, display: 'grid', gap: 14 }}>
-						<div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12 }}>
+					<form onSubmit={handleProfileSave} className="profile-form">
+						<div className="profile-form__grid">
 							<div>
-								<label style={{ display: 'block', marginBottom: 6, fontWeight: 600 }}>Full Name</label>
-								<input name="name" value={formData.name} onChange={handleFormChange} required style={{ width: '100%', padding: 10, borderRadius: 10, border: '1px solid #cbd5e1' }} />
+								<label className="profile-label">Full Name</label>
+								<input name="name" value={formData.name} onChange={handleFormChange} required className="profile-input" />
 							</div>
 							<div>
-								<label style={{ display: 'block', marginBottom: 6, fontWeight: 600 }}>Email</label>
-								<input value={currentUser?.email || ''} readOnly style={{ width: '100%', padding: 10, borderRadius: 10, border: '1px solid #cbd5e1', background: '#f8fafc' }} />
+								<label className="profile-label">Email</label>
+								<input value={currentUser?.email || ''} readOnly className="profile-input--readonly" />
 							</div>
 							<div>
-								<label style={{ display: 'block', marginBottom: 6, fontWeight: 600 }}>Department</label>
+								<label className="profile-label">Department</label>
 								<select
 									name="department"
 									value={formData.department}
 									onChange={handleFormChange}
-									style={{ width: '100%', padding: 10, borderRadius: 10, border: '1px solid #cbd5e1', background: 'white' }}
+									className="profile-select"
 								>
 									<option value="">Select department</option>
 									{DEPARTMENT_OPTIONS.map((dept) => (
@@ -315,24 +306,24 @@ export default function ProfilePage({ currentUser, onLogout, onUserUpdate }) {
 								</select>
 							</div>
 							<div>
-								<label style={{ display: 'block', marginBottom: 6, fontWeight: 600 }}>Phone</label>
-								<input name="phone" value={formData.phone} onChange={handleFormChange} style={{ width: '100%', padding: 10, borderRadius: 10, border: '1px solid #cbd5e1' }} />
+								<label className="profile-label">Phone</label>
+								<input name="phone" value={formData.phone} onChange={handleFormChange} className="profile-input" />
 							</div>
 						</div>
 
 						{isStudent && (
-							<div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12 }}>
+							<div className="profile-form__grid">
 								<div>
-									<label style={{ display: 'block', marginBottom: 6, fontWeight: 600 }}>Registration Number</label>
-									<input name="registrationNumber" value={formData.registrationNumber} onChange={handleFormChange} style={{ width: '100%', padding: 10, borderRadius: 10, border: '1px solid #cbd5e1' }} />
+									<label className="profile-label">Registration Number</label>
+									<input name="registrationNumber" value={formData.registrationNumber} onChange={handleFormChange} className="profile-input" />
 								</div>
 								<div>
-									<label style={{ display: 'block', marginBottom: 6, fontWeight: 600 }}>Batch</label>
+									<label className="profile-label">Batch</label>
 									<select
 										name="batch"
 										value={formData.batch}
 										onChange={handleFormChange}
-										style={{ width: '100%', padding: 10, borderRadius: 10, border: '1px solid #cbd5e1', background: 'white' }}
+										className="profile-select"
 									>
 										<option value="">Select batch</option>
 										{BATCH_OPTIONS.map((batch) => (
@@ -341,11 +332,11 @@ export default function ProfilePage({ currentUser, onLogout, onUserUpdate }) {
 									</select>
 								</div>
 								<div>
-									<label style={{ display: 'block', marginBottom: 6, fontWeight: 600 }}>Academic Year</label>
+									<label className="profile-label">Academic Year</label>
 									<select
 										value={selectedAcademicPeriod}
 										onChange={handleAcademicPeriodChange}
-										style={{ width: '100%', padding: 10, borderRadius: 10, border: '1px solid #cbd5e1', background: 'white' }}
+										className="profile-select"
 									>
 										<option value="">Select academic year and semester</option>
 										{ACADEMIC_PERIODS.map((period) => (
@@ -354,26 +345,26 @@ export default function ProfilePage({ currentUser, onLogout, onUserUpdate }) {
 									</select>
 								</div>
 								<div>
-									<label style={{ display: 'block', marginBottom: 6, fontWeight: 600 }}>Semester</label>
-									<input name="semester" value={formData.semester} readOnly style={{ width: '100%', padding: 10, borderRadius: 10, border: '1px solid #cbd5e1', background: '#f8fafc' }} />
+									<label className="profile-label">Semester</label>
+									<input name="semester" value={formData.semester} readOnly className="profile-input--readonly" />
 								</div>
 							</div>
 						)}
 
 						{isLecturer && (
 							<>
-								<div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12 }}>
+								<div className="profile-form__grid">
 									<div>
-										<label style={{ display: 'block', marginBottom: 6, fontWeight: 600 }}>Expertise</label>
-										<input name="expertise" value={formData.expertise} onChange={handleFormChange} style={{ width: '100%', padding: 10, borderRadius: 10, border: '1px solid #cbd5e1' }} />
+										<label className="profile-label">Expertise</label>
+										<input name="expertise" value={formData.expertise} onChange={handleFormChange} className="profile-input" />
 									</div>
 									<div>
-										<label style={{ display: 'block', marginBottom: 6, fontWeight: 600 }}>Employee Code</label>
-										<input name="employeeCode" value={formData.employeeCode} onChange={handleFormChange} style={{ width: '100%', padding: 10, borderRadius: 10, border: '1px solid #cbd5e1' }} />
+										<label className="profile-label">Employee Code</label>
+										<input name="employeeCode" value={formData.employeeCode} onChange={handleFormChange} className="profile-input" />
 									</div>
 									<div>
-										<label style={{ display: 'block', marginBottom: 6, fontWeight: 600 }}>Designation</label>
-										<select name="designation" value={formData.designation} onChange={handleFormChange} style={{ width: '100%', padding: 10, borderRadius: 10, border: '1px solid #cbd5e1', background: 'white' }}>
+										<label className="profile-label">Designation</label>
+										<select name="designation" value={formData.designation} onChange={handleFormChange} className="profile-select">
 											<option value="">Select designation</option>
 											<option value="Lecturer">Lecturer</option>
 											<option value="Lecturer In Charge">Lecturer In Charge</option>
@@ -382,50 +373,41 @@ export default function ProfilePage({ currentUser, onLogout, onUserUpdate }) {
 										</select>
 									</div>
 									<div>
-										<label style={{ display: 'block', marginBottom: 6, fontWeight: 600 }}>Office Location</label>
-										<input name="officeLocation" value={formData.officeLocation} onChange={handleFormChange} style={{ width: '100%', padding: 10, borderRadius: 10, border: '1px solid #cbd5e1' }} />
+										<label className="profile-label">Office Location</label>
+										<input name="officeLocation" value={formData.officeLocation} onChange={handleFormChange} className="profile-input" />
 									</div>
 									<div>
-										<label style={{ display: 'block', marginBottom: 6, fontWeight: 600 }}>Office Hours</label>
-										<input name="officeHours" value={formData.officeHours} onChange={handleFormChange} style={{ width: '100%', padding: 10, borderRadius: 10, border: '1px solid #cbd5e1' }} />
+										<label className="profile-label">Office Hours</label>
+										<input name="officeHours" value={formData.officeHours} onChange={handleFormChange} className="profile-input" />
 									</div>
 								</div>
 								<div>
-									<label style={{ display: 'block', marginBottom: 6, fontWeight: 600 }}>Bio</label>
-									<textarea name="bio" value={formData.bio} onChange={handleFormChange} style={{ width: '100%', minHeight: 90, padding: 10, borderRadius: 10, border: '1px solid #cbd5e1', resize: 'vertical' }} />
+									<label className="profile-label">Bio</label>
+									<textarea name="bio" value={formData.bio} onChange={handleFormChange} className="profile-textarea" />
 								</div>
 							</>
 						)}
 
-						<div style={{ borderTop: '1px solid #e2e8f0', paddingTop: 14, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12 }}>
+						<div className="profile-form__divider">
 							<div>
-								<label style={{ display: 'block', marginBottom: 6, fontWeight: 600 }}>Current Password</label>
-								<input type="password" name="currentPassword" value={formData.currentPassword} onChange={handleFormChange} placeholder="Required if changing password" style={{ width: '100%', padding: 10, borderRadius: 10, border: '1px solid #cbd5e1' }} />
+								<label className="profile-label">Current Password</label>
+								<input type="password" name="currentPassword" value={formData.currentPassword} onChange={handleFormChange} placeholder="Required if changing password" className="profile-input" />
 							</div>
 							<div>
-								<label style={{ display: 'block', marginBottom: 6, fontWeight: 600 }}>New Password</label>
-								<input type="password" name="newPassword" value={formData.newPassword} onChange={handleFormChange} placeholder="Leave empty to keep current password" style={{ width: '100%', padding: 10, borderRadius: 10, border: '1px solid #cbd5e1' }} />
+								<label className="profile-label">New Password</label>
+								<input type="password" name="newPassword" value={formData.newPassword} onChange={handleFormChange} placeholder="Leave empty to keep current password" className="profile-input" />
 							</div>
 							<div>
-								<label style={{ display: 'block', marginBottom: 6, fontWeight: 600 }}>Confirm New Password</label>
-								<input type="password" name="confirmNewPassword" value={formData.confirmNewPassword} onChange={handleFormChange} style={{ width: '100%', padding: 10, borderRadius: 10, border: '1px solid #cbd5e1' }} />
+								<label className="profile-label">Confirm New Password</label>
+								<input type="password" name="confirmNewPassword" value={formData.confirmNewPassword} onChange={handleFormChange} className="profile-input" />
 							</div>
 						</div>
 
-						<div style={{ display: 'flex', gap: 10 }}>
+						<div className="profile-form__actions">
 							<button
 								type="submit"
 								disabled={isSaving}
-								style={{
-									padding: '10px 16px',
-									borderRadius: 10,
-									border: 'none',
-									background: '#0f766e',
-									color: 'white',
-									fontWeight: 700,
-									cursor: isSaving ? 'not-allowed' : 'pointer',
-									opacity: isSaving ? 0.6 : 1,
-								}}
+								className="profile-btn--save"
 							>
 								{isSaving ? 'Saving...' : 'Save Profile'}
 							</button>
@@ -433,63 +415,46 @@ export default function ProfilePage({ currentUser, onLogout, onUserUpdate }) {
 					</form>
 				</section>
 
-				<section style={{ marginTop: 20, background: 'white', border: '1px solid #fecaca', borderRadius: 16, padding: 20 }}>
-					<h2 style={{ margin: 0, color: '#b91c1c' }}>Delete Account</h2>
-					<p style={{ margin: '10px 0', color: '#7f1d1d' }}>
+				<section className="profile-section--danger">
+					<h2 className="profile-section__title--danger">Delete Account</h2>
+					<p className="profile-delete-desc">
 						This permanently removes your account and associated data from the database.
 					</p>
-					<label style={{ display: 'block', marginBottom: 6, fontWeight: 600, color: '#7f1d1d' }}>
+					<label className="profile-label--danger">
 						Type DELETE to confirm
 					</label>
 					<input
 						value={deleteConfirmText}
 						onChange={(e) => setDeleteConfirmText(e.target.value)}
 						placeholder="DELETE"
-						style={{ width: '100%', padding: 10, borderRadius: 10, border: '1px solid #fca5a5', marginBottom: 12 }}
+						className="profile-input--danger"
 					/>
 					<button
 						type="button"
 						onClick={handleDeleteAccount}
 						disabled={isDeleting}
-						style={{
-							padding: '10px 16px',
-							borderRadius: 10,
-							border: 'none',
-							background: '#dc2626',
-							color: 'white',
-							fontWeight: 700,
-							cursor: isDeleting ? 'not-allowed' : 'pointer',
-							opacity: isDeleting ? 0.6 : 1,
-						}}
+						className="profile-btn--delete"
 					>
 						{isDeleting ? 'Deleting...' : 'Delete My Account'}
 					</button>
 				</section>
 
-				<section style={{ marginTop: 20, background: 'white', border: '1px solid #e2e8f0', borderRadius: 16, padding: 20 }}>
-					<h2 style={{ margin: '0 0 16px 0', display: 'flex', alignItems: 'center', gap: 10, color: '#1e293b' }}>
-						{notificationEnabled ? <Bell size={20} style={{ color: '#16a34a' }} /> : <BellOff size={20} style={{ color: '#64748b' }} />}
+				<section className="profile-section--standard">
+					<h2 className="profile-section__title--standard">
+						{notificationEnabled
+							? <Bell size={20} className="icon--success" />
+							: <BellOff size={20} className="icon--muted" />}
 						Notification Preferences
 					</h2>
 
 					{notificationStatus && (
-						<div style={{
-							marginBottom: 16,
-							padding: 12,
-							borderRadius: 10,
-							display: 'flex',
-							alignItems: 'center',
-							gap: 8,
-							background: notificationStatus.type === 'success' ? '#f0fdf4' : '#fef2f2',
-							border: `1px solid ${notificationStatus.type === 'success' ? '#bbf7d0' : '#fecaca'}`,
-							color: notificationStatus.type === 'success' ? '#166534' : '#b91c1c',
-						}}>
+						<div className={`profile-status profile-status--mb ${notificationStatus.type === 'success' ? 'profile-status--success' : 'profile-status--error'}`}>
 							{notificationStatus.type === 'success' ? <CheckCircle size={16} /> : <AlertCircle size={16} />}
 							<span>{notificationStatus.message}</span>
 						</div>
 					)}
 
-					<p style={{ margin: '0 0 12px 0', color: '#64748b', fontSize: 13 }}>
+					<p className="profile-notif-desc">
 						Controls in-app notifications for booking, cancellations, upcoming appointments, and daily schedule summaries.
 					</p>
 
@@ -497,69 +462,35 @@ export default function ProfilePage({ currentUser, onLogout, onUserUpdate }) {
 						type="button"
 						onClick={handleNotificationToggle}
 						disabled={isSaving}
-						style={{
-							padding: '10px 16px',
-							borderRadius: 10,
-							border: '1px solid #cbd5e1',
-							background: notificationEnabled ? '#16a34a' : 'white',
-							color: notificationEnabled ? 'white' : '#1e293b',
-							fontWeight: 600,
-							cursor: isSaving ? 'not-allowed' : 'pointer',
-							opacity: isSaving ? 0.6 : 1,
-						}}
+						className={notificationEnabled ? 'profile-btn--notif-on' : 'profile-btn--notif-off'}
 					>
 						{isSaving ? 'Saving...' : (notificationEnabled ? 'Disable Notifications' : 'Enable Notifications')}
 					</button>
 				</section>
 
 				{isLecturer && (
-					<section style={{ marginTop: 20, background: 'white', border: '1px solid #e2e8f0', borderRadius: 16, padding: 20 }}>
-						<h2 style={{ margin: '0 0 16px 0', display: 'flex', alignItems: 'center', gap: 10, color: '#1e293b' }}>
-							{dndEnabled ? <BellOff size={20} style={{ color: '#ea580c' }} /> : <Bell size={20} style={{ color: '#64748b' }} />}
+					<section className="profile-section--standard">
+						<h2 className="profile-section__title--standard">
+							{dndEnabled
+								? <BellOff size={20} className="icon--warning" />
+								: <Bell size={20} className="icon--muted" />}
 							Do Not Disturb Settings
 						</h2>
 
 						{saveStatus && (
-							<div style={{
-								marginBottom: 16,
-								padding: 12,
-								borderRadius: 10,
-								display: 'flex',
-								alignItems: 'center',
-								gap: 8,
-								background: saveStatus.type === 'success' ? '#f0fdf4' : '#fef9c3',
-								border: `1px solid ${saveStatus.type === 'success' ? '#bbf7d0' : '#fed7aa'}`,
-								color: saveStatus.type === 'success' ? '#166534' : '#a16207',
-							}}>
+							<div className={`profile-status profile-status--mb ${saveStatus.type === 'success' ? 'profile-status--success' : 'profile-status--warning'}`}>
 								{saveStatus.type === 'success' ? <CheckCircle size={16} /> : <AlertCircle size={16} />}
 								<span>{saveStatus.message}</span>
 							</div>
 						)}
 
-						<div style={{ marginBottom: 20 }}>
-							<div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-								<label style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 600, cursor: 'pointer' }}>
-									<div style={{
-										position: 'relative',
-										width: 48,
-										height: 28,
-										borderRadius: 14,
-										background: dndEnabled ? '#ea580c' : '#cbd5e1',
-										transition: 'background 0.3s ease',
-										cursor: 'pointer',
-									}}>
-										<div style={{
-											position: 'absolute',
-											top: 2,
-											left: dndEnabled ? 24 : 2,
-											width: 24,
-											height: 24,
-											borderRadius: 12,
-											background: 'white',
-											transition: 'left 0.3s ease',
-										}} />
+						<div className="profile-dnd-wrap">
+							<div className="profile-dnd-row">
+								<label className="profile-dnd-label">
+									<div className={`profile-dnd-switch ${dndEnabled ? 'profile-dnd-switch--on' : 'profile-dnd-switch--off'}`}>
+										<div className={`profile-dnd-knob ${dndEnabled ? 'profile-dnd-knob--on' : 'profile-dnd-knob--off'}`} />
 									</div>
-									<span onClick={handleDndToggle} style={{ cursor: 'pointer', userSelect: 'none' }}>
+									<span onClick={handleDndToggle} className="profile-dnd-text">
 										{dndEnabled ? 'Do Not Disturb: ON' : 'Do Not Disturb: OFF'}
 									</span>
 								</label>
@@ -567,58 +498,29 @@ export default function ProfilePage({ currentUser, onLogout, onUserUpdate }) {
 						</div>
 
 						<div>
-							<label style={{ display: 'block', marginBottom: 8, fontWeight: 600, color: '#1e293b' }}>
+							<label className="profile-autoreply-label">
 								Auto-Reply Message
 							</label>
 							<textarea
 								value={autoReplyMessage}
 								onChange={(e) => setAutoReplyMessage(e.target.value)}
 								placeholder="e.g., I'm busy right now. I'll get back to you after 3 PM. Thanks for your message!"
-								style={{
-									width: '100%',
-									padding: 12,
-									borderRadius: 10,
-									border: '1px solid #cbd5e1',
-									fontFamily: 'inherit',
-									fontSize: 13,
-									minHeight: 100,
-									resize: 'vertical',
-									boxSizing: 'border-box',
-								}}
+								className="profile-textarea--autoreply"
 							/>
 						</div>
 
-						<div style={{ marginTop: 16, display: 'flex', gap: 10 }}>
+						<div className="profile-form__actions" style={{ marginTop: 16 }}>
 							<button
 								onClick={handleDndToggle}
 								disabled={isSaving}
-								style={{
-									padding: '10px 16px',
-									borderRadius: 10,
-									border: 'none',
-									background: dndEnabled ? 'white' : '#ea580c',
-									color: dndEnabled ? '#ea580c' : 'white',
-									fontWeight: 600,
-									cursor: isSaving ? 'not-allowed' : 'pointer',
-									opacity: isSaving ? 0.6 : 1,
-									borderLeft: dndEnabled ? '2px solid #ea580c' : 'none',
-								}}
+								className={dndEnabled ? 'profile-btn--dnd-on' : 'profile-btn--dnd-off'}
 							>
 								{isSaving ? 'Saving...' : (dndEnabled ? 'Turn OFF' : 'Turn ON')}
 							</button>
 							<button
 								onClick={handleSaveAutoReply}
 								disabled={isSaving || !autoReplyMessage.trim()}
-								style={{
-									padding: '10px 16px',
-									borderRadius: 10,
-									border: '1px solid #cbd5e1',
-									background: 'white',
-									color: '#1e293b',
-									fontWeight: 600,
-									cursor: isSaving || !autoReplyMessage.trim() ? 'not-allowed' : 'pointer',
-									opacity: isSaving || !autoReplyMessage.trim() ? 0.6 : 1,
-								}}
+								className="profile-btn--secondary"
 							>
 								{isSaving ? 'Saving...' : 'Save Auto-Reply'}
 							</button>
@@ -630,4 +532,3 @@ export default function ProfilePage({ currentUser, onLogout, onUserUpdate }) {
 		</div>
 	);
 }
-
