@@ -31,7 +31,16 @@ const DEFAULT_PREFS = {
 
 function formatTimeDisplay(time) {
   if (!time) return '--';
-  return time.slice(0, 5);
+
+  const clean = time.slice(0, 5);
+  const [hours, minutes] = clean.split(':').map(Number);
+
+  if (Number.isNaN(hours) || Number.isNaN(minutes)) return clean;
+
+  const hour12 = hours % 12 === 0 ? 12 : hours % 12;
+  const period = hours >= 12 ? 'p.m.' : 'a.m.';
+
+  return `${hour12}:${String(minutes).padStart(2, '0')} ${period}`;
 }
 
 function timeToMinutes(time) {
@@ -480,12 +489,12 @@ export default function SlotCalendarPage({ currentUser, onLogout }) {
       }
 
       if (timeToMinutes(start) < timeToMinutes(preferences.workStartTime)) {
-        setBanner({ type: 'error', text: `Slots can start only from ${preferences.workStartTime}.` });
+        setBanner({ type: 'error', text: `Slots can start only from ${formatTimeDisplay(preferences.workStartTime)}.` });
         return;
       }
 
       if (timeToMinutes(end) > timeToMinutes(preferences.workEndTime)) {
-        setBanner({ type: 'error', text: `Slots cannot go beyond ${preferences.workEndTime}.` });
+        setBanner({ type: 'error', text: `Slots cannot go beyond ${formatTimeDisplay(preferences.workEndTime)}.` });
         return;
       }
 
@@ -577,12 +586,12 @@ export default function SlotCalendarPage({ currentUser, onLogout }) {
     }
 
     if (timeToMinutes(start) < timeToMinutes(preferences.workStartTime)) {
-      setBanner({ type: 'error', text: `Slots can start only from ${preferences.workStartTime}.` });
+      setBanner({ type: 'error', text: `Slots can start only from ${formatTimeDisplay(preferences.workStartTime)}.` });
       return;
     }
 
     if (timeToMinutes(end) > timeToMinutes(preferences.workEndTime)) {
-      setBanner({ type: 'error', text: `Slots cannot go beyond ${preferences.workEndTime}.` });
+      setBanner({ type: 'error', text: `Slots cannot go beyond ${formatTimeDisplay(preferences.workEndTime)}.` });
       return;
     }
 
@@ -939,7 +948,7 @@ export default function SlotCalendarPage({ currentUser, onLogout }) {
                 <div className="sc-panel-title">Quick Add Slot</div>
 
                 <div className="sc-quick-add__rules">
-                  <div><strong>Allowed hours:</strong> {preferences.workStartTime} - {preferences.workEndTime}</div>
+                  <div><strong>Allowed hours:</strong> {formatTimeDisplay(preferences.workStartTime)} - {formatTimeDisplay(preferences.workEndTime)}</div>
                   <div><strong>Slot duration:</strong> {preferences.slotDuration} mins</div>
                   <div><strong>Minimum break:</strong> {preferences.breakTime} mins</div>
                   <div><strong>Preferred mode:</strong> {preferences.preferredMode}</div>
@@ -951,7 +960,7 @@ export default function SlotCalendarPage({ currentUser, onLogout }) {
                       className="sc-link-btn"
                       onClick={() => navigate('/lecturer/preferences')}
                     >
-                      Open Preferences
+                      Open Preferences Page
                     </button>
                   </div>
                 </div>
@@ -995,7 +1004,7 @@ export default function SlotCalendarPage({ currentUser, onLogout }) {
                     <option value="">Select valid time</option>
                     {validQuickAddStartTimes.map((time) => (
                       <option key={time} value={time}>
-                        {time}
+                        {formatTimeDisplay(time)}
                       </option>
                     ))}
                   </select>
@@ -1160,7 +1169,7 @@ export default function SlotCalendarPage({ currentUser, onLogout }) {
                 <div className="sc-info-box">
                   This slot follows lecturer default preferences:
                   {' '}
-                  {preferences.slotDuration} mins, {preferences.preferredMode}, {preferences.workStartTime} - {preferences.workEndTime}.
+                  {preferences.slotDuration} mins, {preferences.preferredMode}, {formatTimeDisplay(preferences.workStartTime)} - {formatTimeDisplay(preferences.workEndTime)}.
                 </div>
               ) : (
                 <>
@@ -1173,7 +1182,7 @@ export default function SlotCalendarPage({ currentUser, onLogout }) {
                     >
                       <option value="">Select time</option>
                       {validEditStartTimes.map((time) => (
-                        <option key={time} value={time}>{time}</option>
+                        <option key={time} value={time}>{formatTimeDisplay(time)}</option>
                       ))}
                     </select>
                   </div>

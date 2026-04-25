@@ -605,9 +605,9 @@ export default function LecturerSlotsPage({ currentUser, onLogout }) {
                 <button
                   type="button"
                   className="ls-btn ls-btn--outline"
-                  onClick={() => navigate('/lecturer/preferences')}
+                  onClick={() => navigate('/lecturer/settings')}
                 >
-                  ⚙ Preferences
+                  ⚙ Settings
                 </button>
 
                 <button
@@ -690,9 +690,9 @@ export default function LecturerSlotsPage({ currentUser, onLogout }) {
                 <button
                   type="button"
                   className="ls-inline-link"
-                  onClick={() => navigate('/lecturer/preferences')}
+                  onClick={() => navigate('/lecturer/settings')}
                 >
-                  Change in Preferences
+                  Change in Settings
                 </button>
               </div>
 
@@ -753,9 +753,9 @@ export default function LecturerSlotsPage({ currentUser, onLogout }) {
                     <button
                       type="button"
                       className="ls-inline-link"
-                      onClick={() => navigate('/lecturer/preferences')}
+                      onClick={() => navigate('/lecturer/settings')}
                     >
-                      Edit Preferences
+                      Edit Settings
                     </button>
                   </div>
                 </div>

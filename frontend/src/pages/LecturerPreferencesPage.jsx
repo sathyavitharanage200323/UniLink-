@@ -25,6 +25,38 @@ function formatTime(mins) {
   return `${String(Math.floor(mins / 60)).padStart(2, '0')}:${String(mins % 60).padStart(2, '0')}`;
 }
 
+function formatTimeAmPm(time) {
+  if (!time) return '--';
+  const [h, m] = time.split(':').map(Number);
+  if (Number.isNaN(h) || Number.isNaN(m)) return time;
+
+  const hour12 = h % 12 === 0 ? 12 : h % 12;
+  const period = h >= 12 ? 'p.m.' : 'a.m.';
+  return `${hour12}:${String(m).padStart(2, '0')} ${period}`;
+}
+
+function calculateMaxSlotsPerDay({ workStartTime, workEndTime, slotDuration, breakTime }) {
+  const start = timeToMinutes(workStartTime);
+  const end = timeToMinutes(workEndTime);
+  const duration = Number(slotDuration);
+  const gap = Number(breakTime);
+
+  if (duration <= 0 || gap < 0 || end <= start) {
+    return 0;
+  }
+
+  let count = 0;
+  let current = start;
+  const maxIterations = 1000;
+
+  while (current + duration <= end && count < maxIterations) {
+    count += 1;
+    current += duration + gap;
+  }
+
+  return count;
+}
+
 export default function LecturerPreferencesPage({ currentUser }) {
   const lecturerId = currentUser?.id || 1;
 
@@ -84,6 +116,9 @@ export default function LecturerPreferencesPage({ currentUser }) {
     if (timeToMinutes(preferences.workEndTime) <= timeToMinutes(preferences.workStartTime)) {
       return 'End time must be greater than start time';
     }
+    if (autoMaxSlots <= 0) {
+      return 'No valid slots can be generated with the selected start/end time and duration';
+    }
     return null;
   }
 
@@ -99,7 +134,7 @@ export default function LecturerPreferencesPage({ currentUser }) {
         lecturerId,
         slotDuration: Number(preferences.slotDuration),
         breakTime: Number(preferences.breakTime),
-        maxSlotsPerDay: Number(preferences.maxSlotsPerDay),
+        maxSlotsPerDay: autoMaxSlots,
       };
 
       await saveLecturerPreferences(payload);
@@ -117,6 +152,20 @@ export default function LecturerPreferencesPage({ currentUser }) {
     setMessage({ type: 'success', text: 'Reset done' });
   }
 
+  const autoMaxSlots = useMemo(() => {
+    return calculateMaxSlotsPerDay({
+      workStartTime: preferences.workStartTime,
+      workEndTime: preferences.workEndTime,
+      slotDuration: preferences.slotDuration,
+      breakTime: preferences.breakTime,
+    });
+  }, [
+    preferences.workStartTime,
+    preferences.workEndTime,
+    preferences.slotDuration,
+    preferences.breakTime,
+  ]);
+
   const previewSlots = useMemo(() => {
     const slots = [];
 
@@ -125,7 +174,7 @@ export default function LecturerPreferencesPage({ currentUser }) {
 
     const duration = Number(preferences.slotDuration);
     const breakTime = Number(preferences.breakTime);
-    const max = Number(preferences.maxSlotsPerDay);
+    const max = autoMaxSlots;
 
     while (current + duration <= end && slots.length < max) {
       const start = current;
@@ -140,7 +189,14 @@ export default function LecturerPreferencesPage({ currentUser }) {
     }
 
     return slots;
-  }, [preferences]);
+  }, [preferences, autoMaxSlots]);
+
+  const availableMinutes = Math.max(
+    timeToMinutes(preferences.workEndTime) - timeToMinutes(preferences.workStartTime),
+    0
+  );
+  const availableHours = Math.floor(availableMinutes / 60);
+  const availableRemainingMinutes = availableMinutes % 60;
 
   return (
     <div className="prefV2-page">
@@ -169,6 +225,8 @@ export default function LecturerPreferencesPage({ currentUser }) {
 
           <label>Slot Duration</label>
           <select name="slotDuration" value={preferences.slotDuration} onChange={handleChange}>
+            <option value={10}>10 Minutes</option>
+            <option value={15}>15 Minutes</option>
             <option value={30}>30 Minutes</option>
             <option value={45}>45 Minutes</option>
             <option value={60}>60 Minutes</option>
@@ -188,8 +246,8 @@ export default function LecturerPreferencesPage({ currentUser }) {
           <label>End Time</label>
           <input type="time" name="workEndTime" value={preferences.workEndTime} onChange={handleChange} />
 
-          <label>Max Slots Per Day</label>
-          <input type="number" name="maxSlotsPerDay" value={preferences.maxSlotsPerDay} onChange={handleChange} />
+          <label>Max Slots Per Day (Auto)</label>
+          <input type="number" value={autoMaxSlots} readOnly title="Automatically calculated from Start Time and End Time" />
 
           <button className="saveBtn" onClick={handleSave} disabled={saving}>
             {saving ? 'Saving...' : 'Save Preferences'}
@@ -212,13 +270,28 @@ export default function LecturerPreferencesPage({ currentUser }) {
           <h2>Live Preview</h2>
 
           <div className="infoBox">
-            Total Slots: {previewSlots.length} / Max Allowed: {preferences.maxSlotsPerDay}
+            Full Available Time:{' '}
+            <strong>
+              {formatTimeAmPm(preferences.workStartTime)} - {formatTimeAmPm(preferences.workEndTime)}
+            </strong>
+            <br />
+            Total Window: {availableHours}h {availableRemainingMinutes}m
           </div>
+
+          <div className="infoBox">
+            Total Slots: {previewSlots.length} / Max Allowed: {autoMaxSlots}
+          </div>
+
+          {previewSlots.length === 0 && (
+            <div className="infoBox errorBox">
+              No slots can be generated with the current time range and settings.
+            </div>
+          )}
 
           {previewSlots.map((slot, i) => (
             <div className="slotCard" key={i}>
               <div className="time">
-                {slot.startTime} - {slot.endTime}
+                {formatTimeAmPm(slot.startTime)} - {formatTimeAmPm(slot.endTime)}
               </div>
               <div className="meta">
                 Duration {preferences.slotDuration} mins + Break {preferences.breakTime} mins

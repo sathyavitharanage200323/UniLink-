@@ -28,6 +28,8 @@ import './App.css';
 
 import LoginPage from './pages/LoginPage.jsx';
 import AdminLoginPage from './pages/AdminLoginPage.jsx';
+import LecturerSettingsPage from './pages/LecturerSettingsPage.jsx';
+import LecturerPreferencesPage from './pages/LecturerPreferencesPage.jsx';
 
 function AppRoutes({ activeUser, appointments, onLogin, onLogout, onUserUpdate }) {
   if (!activeUser) {
@@ -160,6 +162,24 @@ function AppRoutes({ activeUser, appointments, onLogin, onLogout, onUserUpdate }
         element={
           isLecturer
             ? <LecturerSlotsPage currentUser={activeUser} onLogout={onLogout} />
+            : <Navigate to={homeRedirect} replace />
+        }
+      />
+
+      <Route
+        path="/lecturer/settings"
+        element={
+          isLecturer
+            ? <LecturerSettingsPage currentUser={activeUser} onLogout={onLogout} />
+            : <Navigate to={homeRedirect} replace />
+        }
+      />
+
+      <Route
+        path="/lecturer/preferences"
+        element={
+          isLecturer
+            ? <LecturerPreferencesPage currentUser={activeUser} />
             : <Navigate to={homeRedirect} replace />
         }
       />
