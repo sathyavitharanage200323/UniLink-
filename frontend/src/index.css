@@ -1,41 +1,42 @@
 /* ============================================================
-   CSS TOKEN SYSTEM — UniLink Luxury Theme
+   CSS TOKEN SYSTEM — UniLink Theme
+   Palette: #0C2C55 · #296374 · #629FAD · #EDEDCE
    ============================================================ */
 
 /* Light theme defaults */
 :root {
   /* Brand colours */
-  --color-primary: #E8650A;
-  --color-primary-hover: #D45A08;
-  --color-primary-light: #FEF0E6;
-  --color-accent: #B5722A;
-  --color-accent-light: #F5EBE0;
-  --color-accent-hover: #9A5E1F;
+  --color-primary: #296374;
+  --color-primary-hover: #0C2C55;
+  --color-primary-light: #e8f4f7;
+  --color-accent: #629FAD;
+  --color-accent-light: #EDEDCE;
+  --color-accent-hover: #296374;
 
   /* Backgrounds */
-  --color-bg: #FAFAFA;
-  --color-bg-secondary: #F5F5F5;
+  --color-bg: #f5f7f5;
+  --color-bg-secondary: #EDEDCE;
   --color-bg-elevated: #FFFFFF;
 
   /* Borders */
-  --color-border: #E8E8E8;
-  --color-border-strong: #D0D0D0;
+  --color-border: #d4dfe3;
+  --color-border-strong: #b0c4cc;
 
   /* Text */
-  --color-text-primary: #0A0A0A;
-  --color-text-secondary: #4A4A4A;
-  --color-text-muted: #8A8A8A;
+  --color-text-primary: #0C2C55;
+  --color-text-secondary: #296374;
+  --color-text-muted: #629FAD;
 
-  /* Hero gradient (bronze → orange) */
-  --color-hero-from: #B5722A;
-  --color-hero-mid: #D4621A;
-  --color-hero-to: #E8650A;
+  /* Hero gradient (dark navy → teal) */
+  --color-hero-from: #0C2C55;
+  --color-hero-mid: #296374;
+  --color-hero-to: #629FAD;
 
   /* Status colours */
   --color-success: #15803D;
   --color-success-bg: #DCFCE7;
-  --color-warning: #B5722A;
-  --color-warning-bg: #FEF0E6;
+  --color-warning: #296374;
+  --color-warning-bg: #e8f4f7;
   --color-danger: #B91C1C;
   --color-danger-bg: #FEE2E2;
 
@@ -51,36 +52,36 @@
   --radius-xl: 24px;
   --radius-full: 999px;
 
-  /* Shadows — warm orange-tinted */
-  --shadow-sm: 0 1px 4px rgba(232,101,10,0.08);
-  --shadow-md: 0 4px 20px rgba(232,101,10,0.10);
-  --shadow-lg: 0 8px 36px rgba(232,101,10,0.14);
-  --shadow-hero: 0 2px 30px rgba(181,114,42,0.30);
+  /* Shadows — teal-tinted */
+  --shadow-sm: 0 1px 4px rgba(12,44,85,0.08);
+  --shadow-md: 0 4px 20px rgba(12,44,85,0.10);
+  --shadow-lg: 0 8px 36px rgba(12,44,85,0.14);
+  --shadow-hero: 0 2px 30px rgba(12,44,85,0.30);
 }
 
 /* Dark theme overrides */
 [data-theme="dark"] {
-  --color-primary: #F97316;
-  --color-primary-hover: #FB923C;
-  --color-primary-light: #2A1200;
-  --color-accent: #C47830;
-  --color-accent-light: #1E1008;
-  --color-accent-hover: #D98A40;
+  --color-primary: #629FAD;
+  --color-primary-hover: #7ab5c2;
+  --color-primary-light: #0d2a38;
+  --color-accent: #296374;
+  --color-accent-light: #0C2C55;
+  --color-accent-hover: #629FAD;
 
-  --color-bg: #0A0A0A;
-  --color-bg-secondary: #1A1A1A;
-  --color-bg-elevated: #2A2A2A;
+  --color-bg: #0a1520;
+  --color-bg-secondary: #0C2C55;
+  --color-bg-elevated: #112233;
 
-  --color-border: #333333;
-  --color-border-strong: #444444;
+  --color-border: #1e3a50;
+  --color-border-strong: #2a4f6a;
 
-  --color-text-primary: #F5F5F5;
-  --color-text-secondary: #B0B0B0;
-  --color-text-muted: #707070;
+  --color-text-primary: #EDEDCE;
+  --color-text-secondary: #a8c8d4;
+  --color-text-muted: #629FAD;
 
-  --color-hero-from: #0A0A0A;
-  --color-hero-mid: #1A1A1A;
-  --color-hero-to: #2A2A2A;
+  --color-hero-from: #0C2C55;
+  --color-hero-mid: #296374;
+  --color-hero-to: #629FAD;
 
   --shadow-sm: 0 1px 4px rgba(0,0,0,0.50);
   --shadow-md: 0 4px 20px rgba(0,0,0,0.60);
