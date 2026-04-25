@@ -55,6 +55,16 @@ public class AppointmentController {
         return ResponseEntity.ok(appointmentService.create(studentId, lecturerId, start, end, notes));
     }
 
+    /** Join waitlist for a booked slot */
+    @PostMapping("/waitlist")
+    public ResponseEntity<Map<String, Object>> joinWaitlist(@RequestBody Map<String, Object> body) {
+        Long studentId = Long.valueOf(body.get("studentId").toString());
+        Long lecturerId = Long.valueOf(body.get("lecturerId").toString());
+        LocalDateTime start = LocalDateTime.parse(body.get("startTime").toString());
+        LocalDateTime end = LocalDateTime.parse(body.get("endTime").toString());
+        return ResponseEntity.ok(appointmentService.joinWaitlist(studentId, lecturerId, start, end));
+    }
+
     /** Update appointment status (PENDING → CONFIRMED / CANCELLED / COMPLETED) */
     @PatchMapping("/{id}/status")
     public ResponseEntity<Appointment> updateStatus(@PathVariable Long id,

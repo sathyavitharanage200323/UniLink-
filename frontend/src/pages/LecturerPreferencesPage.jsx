@@ -1,4 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import Header from '../components/Header';
+import Footer from '../components/Footer';
 import './LecturerPreferencesPage.css';
 import {
   getLecturerPreferences,
@@ -57,7 +59,7 @@ function calculateMaxSlotsPerDay({ workStartTime, workEndTime, slotDuration, bre
   return count;
 }
 
-export default function LecturerPreferencesPage({ currentUser }) {
+export default function LecturerPreferencesPage({ currentUser, onLogout }) {
   const lecturerId = currentUser?.id || 1;
 
   const [preferences, setPreferences] = useState({
@@ -199,7 +201,9 @@ export default function LecturerPreferencesPage({ currentUser }) {
   const availableRemainingMinutes = availableMinutes % 60;
 
   return (
-    <div className="prefV2-page">
+    <>
+      <Header currentUser={currentUser} onLogout={onLogout} unreadCount={0} />
+      <div className="prefV2-page">
 
       <div className="prefV2-hero">
         <h1>Lecturer Preferences</h1>
@@ -302,6 +306,8 @@ export default function LecturerPreferencesPage({ currentUser }) {
         </div>
 
       </div>
-    </div>
+      </div>
+      <Footer />
+    </>
   );
 }

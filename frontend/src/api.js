@@ -93,6 +93,13 @@ export function createAppointment(data) {
   });
 }
 
+export function joinWaitlist(data) {
+  return apiFetch('/api/appointments/waitlist', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
 /**
  * Update appointment status.
  * @param {number} id
@@ -202,6 +209,10 @@ export function getLecturerAvailability(lecturerId) {
 
 export function getLecturerAvailableSlots(lecturerId) {
   return apiFetch('/api/availability/lecturer/' + lecturerId + '/available');
+}
+
+export function getLecturerBookableSlots(lecturerId) {
+  return apiFetch('/api/availability/lecturer/' + lecturerId + '/bookable');
 }
 
 export function createSlot(lecturerId, data) {

@@ -139,6 +139,68 @@ public class EmailService {
         sendHtmlMail(toStudent, "UniLink - Booking Request Declined", html);
     }
 
+    public void sendWaitlistAutoAssignedEmail(String toStudent,
+                                              String studentName,
+                                              String lecturerName,
+                                              String bookingDate,
+                                              String bookingTime) {
+        String safeStudent = studentName == null || studentName.isBlank() ? "Student" : studentName;
+        String safeLecturer = lecturerName == null || lecturerName.isBlank() ? "your lecturer" : lecturerName;
+        String safeDate = bookingDate == null ? "-" : bookingDate;
+        String safeTime = bookingTime == null ? "-" : bookingTime;
+
+        String html = """
+                <html>
+                <body style="font-family:Arial,sans-serif;background:#f8fafc;color:#0f172a;padding:24px;">
+                  <div style="max-width:620px;margin:auto;background:#ffffff;border:1px solid #e2e8f0;border-radius:12px;padding:24px;">
+                    <h2 style="margin:0 0 12px 0;color:#1d4ed8;">Waitlist Update: Slot Auto-Assigned</h2>
+                    <p style="margin:0 0 12px 0;">Hi %s,</p>
+                    <p style="margin:0 0 12px 0;">
+                      A slot you joined via waitlist is now available and has been auto-assigned to you.
+                    </p>
+                    <p style="margin:0 0 12px 0;"><strong>Lecturer:</strong> %s</p>
+                    <p style="margin:0 0 12px 0;"><strong>Date:</strong> %s</p>
+                    <p style="margin:0 0 12px 0;"><strong>Time:</strong> %s</p>
+                    <p style="margin:0;">Please check UniLink for the latest appointment status and details.</p>
+                  </div>
+                </body>
+                </html>
+                """.formatted(safeStudent, safeLecturer, safeDate, safeTime);
+
+        sendHtmlMail(toStudent, "UniLink - Waitlist Slot Assigned", html);
+    }
+
+    public void sendWaitlistSlotAvailableNotification(String toStudent,
+                                                      String studentName,
+                                                      String lecturerName,
+                                                      String bookingDate,
+                                                      String bookingTime) {
+        String safeStudent = studentName == null || studentName.isBlank() ? "Student" : studentName;
+        String safeLecturer = lecturerName == null || lecturerName.isBlank() ? "your lecturer" : lecturerName;
+        String safeDate = bookingDate == null ? "-" : bookingDate;
+        String safeTime = bookingTime == null ? "-" : bookingTime;
+
+        String html = """
+                <html>
+                <body style="font-family:Arial,sans-serif;background:#f8fafc;color:#0f172a;padding:24px;">
+                  <div style="max-width:620px;margin:auto;background:#ffffff;border:1px solid #e2e8f0;border-radius:12px;padding:24px;">
+                    <h2 style="margin:0 0 12px 0;color:#1d4ed8;">Waitlist Update: Slot Opened</h2>
+                    <p style="margin:0 0 12px 0;">Hi %s,</p>
+                    <p style="margin:0 0 12px 0;">
+                      A slot in your waitlist queue has been reopened.
+                    </p>
+                    <p style="margin:0 0 12px 0;"><strong>Lecturer:</strong> %s</p>
+                    <p style="margin:0 0 12px 0;"><strong>Date:</strong> %s</p>
+                    <p style="margin:0 0 12px 0;"><strong>Time:</strong> %s</p>
+                    <p style="margin:0;">UniLink auto-assigns reopened slots in queue order.</p>
+                  </div>
+                </body>
+                </html>
+                """.formatted(safeStudent, safeLecturer, safeDate, safeTime);
+
+        sendHtmlMail(toStudent, "UniLink - Waitlist Slot Update", html);
+    }
+
     private Theme resolveTheme(String lecturerDepartment, String lecturerName, boolean acceptedMail) {
         String dept = lecturerDepartment == null ? "" : lecturerDepartment.toLowerCase();
 

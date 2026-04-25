@@ -178,7 +178,7 @@ function AppRoutes({ activeUser, appointments, onLogin, onLogout, onUserUpdate }
         path="/lecturer/preferences"
         element={
           isLecturer
-            ? <LecturerPreferencesPage currentUser={activeUser} />
+            ? <LecturerPreferencesPage currentUser={activeUser} onLogout={onLogout} />
             : <Navigate to={homeRedirect} replace />
         }
       />

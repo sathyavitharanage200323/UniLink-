@@ -55,6 +55,29 @@ public class AvailabilityService {
                 .collect(Collectors.toList());
     }
 
+    public List<AvailabilitySlotDTO> getLecturerBookableSlots(Long lecturerId) {
+        User lecturer = userService.getUser(lecturerId);
+        LocalDate today = LocalDate.now();
+        LocalTime now = LocalTime.now();
+
+        return availabilitySlotRepository.findByLecturerOrderBySlotDateAscStartTimeAsc(lecturer)
+                .stream()
+                .filter(slot -> {
+                    if (slot.getSlotDate() == null || slot.getStartTime() == null) return false;
+                    if (slot.getStatus() != AvailabilitySlot.SlotStatus.AVAILABLE &&
+                            slot.getStatus() != AvailabilitySlot.SlotStatus.BOOKED) {
+                        return false;
+                    }
+                    if (slot.getSlotDate().isAfter(today)) return true;
+                    if (slot.getSlotDate().isEqual(today)) {
+                        return slot.getStartTime().isAfter(now);
+                    }
+                    return false;
+                })
+                .map(AvailabilitySlotDTO::from)
+                .collect(Collectors.toList());
+    }
+
     @Transactional
     public AvailabilitySlotDTO createSlot(Long lecturerId, AvailabilitySlotDTO dto) {
         User lecturer = userService.getUser(lecturerId);

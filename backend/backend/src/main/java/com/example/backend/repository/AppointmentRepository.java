@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 import java.util.List;
+import java.time.LocalDateTime;
 
 @Repository
 public interface AppointmentRepository extends JpaRepository<Appointment, Long> {
@@ -15,6 +16,13 @@ public interface AppointmentRepository extends JpaRepository<Appointment, Long> 
     List<Appointment> findByLecturerOrderByStartTimeDesc(User lecturer);
     List<Appointment> findByStudentAndStatus(User student, Appointment.Status status);
     List<Appointment> findByLecturerAndStatus(User lecturer, Appointment.Status status);
+    boolean existsByStudentAndLecturerAndStartTimeAndEndTimeAndStatusIn(
+            User student,
+            User lecturer,
+            LocalDateTime startTime,
+            LocalDateTime endTime,
+            List<Appointment.Status> statuses
+    );
 
     @Modifying
     @Query("DELETE FROM Appointment a WHERE a.student = ?1")

@@ -30,6 +30,11 @@ public class AvailabilityController {
         return ResponseEntity.ok(availabilityService.getLecturerAvailableSlots(lecturerId));
     }
 
+    @GetMapping("/lecturer/{lecturerId}/bookable")
+    public ResponseEntity<List<AvailabilitySlotDTO>> getLecturerBookableSlots(@PathVariable Long lecturerId) {
+        return ResponseEntity.ok(availabilityService.getLecturerBookableSlots(lecturerId));
+    }
+
     @PostMapping("/lecturer/{lecturerId}/slot")
     public ResponseEntity<?> createSlot(@PathVariable Long lecturerId, @RequestBody AvailabilitySlotDTO dto) {
         try {

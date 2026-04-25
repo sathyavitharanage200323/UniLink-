@@ -6,7 +6,12 @@ import {
   Loader2, User, MapPin, Calendar, Video
 } from 'lucide-react';
 import api from '../api/axiosInstance';
-import { createAppointment } from '../api';
+import {
+  createAppointment,
+  getLecturerBookableSlots,
+  getLecturerAvailableSlots,
+  joinWaitlist,
+} from '../api';
 import { BACKEND_BASE_URL } from '../config';
 import Header from '../components/Header';
 import './BookingPage.css';
@@ -130,7 +135,18 @@ function StepLecturer({ lecturers, selected, onSelect, onNext }) {
 }
 
 /* ── Step 2 — Select Slot ────────────────────────────────────────────── */
-function StepSlot({ lecturer, slots, slotsLoading, selectedSlotId, onSelect, onBack, onNext }) {
+function StepSlot({
+  lecturer,
+  slots,
+  slotsLoading,
+  selectedSlotId,
+  onSelect,
+  onBack,
+  onNext,
+  onJoinWaitlist,
+  joiningWaitlistId,
+  waitlistedSlotIds,
+}) {
   const grouped = slots.reduce((acc, slot) => {
     const key = slot.slotDate;
     if (!acc[key]) acc[key] = [];
@@ -174,15 +190,20 @@ function StepSlot({ lecturer, slots, slotsLoading, selectedSlotId, onSelect, onB
                   {daySlots.map(slot => {
                     const taken = slot.status !== 'AVAILABLE';
                     const sel = String(selectedSlotId) === String(slot.id);
+                    const isJoining = String(joiningWaitlistId) === String(slot.id);
+                    const isWaitlisted = waitlistedSlotIds.has(String(slot.id));
                     return (
                       <button
                         key={slot.id}
                         className={`bp-slot-pill ${sel ? 'bp-slot-pill--sel' : ''} ${taken ? 'bp-slot-pill--taken' : ''}`}
-                        onClick={() => !taken && onSelect(String(slot.id))}
-                        disabled={taken}
+                        onClick={() => (taken ? onJoinWaitlist(slot) : onSelect(String(slot.id)))}
+                        disabled={isJoining || isWaitlisted}
                       >
                         <Clock size={12} />
-                        {slot.time}
+                        {!taken && slot.time}
+                        {taken && isJoining && 'Joining waitlist...'}
+                        {taken && !isJoining && isWaitlisted && 'Waitlisted'}
+                        {taken && !isJoining && !isWaitlisted && 'Booked - Join Waitlist'}
                         {slot.mode && <span className="bp-slot-mode">{slot.mode}</span>}
                       </button>
                     );
@@ -563,9 +584,11 @@ export default function BookingPage({ currentUser, onLogout }) {
   const [slots, setSlots] = useState([]);
   const [selectedSlotId, setSelectedSlotId] = useState('');
   const [slotsLoading, setSlotsLoading] = useState(false);
+  const [joiningWaitlistId, setJoiningWaitlistId] = useState('');
+  const [waitlistedSlotIds, setWaitlistedSlotIds] = useState(new Set());
   const [loading, setLoading] = useState(false);
   const [loadingMsg, setLoadingMsg] = useState('');
-  const [toast, setToast] = useState({ show: false, success: false, message: '' });
+  const [statusToast, setStatusToast] = useState({ show: false, success: false, message: '' });
 
   const [formData, setFormData] = useState({
     studentName: '',
@@ -592,26 +615,38 @@ export default function BookingPage({ currentUser, onLogout }) {
     if (!selectedLecturer) { setSlots([]); return; }
     setSlotsLoading(true);
     setSelectedSlotId('');
-    api.get(`/availability/lecturer/${selectedLecturer.id}/available`)
-      .then(r => {
-        const mapped = (r.data || [])
-          .filter(s => s?.slotDate && !isNaN(new Date(s.slotDate)))
-          .map(s => {
-            const st = (s.startTime || '00:00').substring(0, 5);
-            const et = (s.endTime || '00:30').substring(0, 5);
-            return {
-              id: s.id,
-              slotDate: s.slotDate,
-              time: fmtRange(st, et),
-              startTime: `${s.slotDate}T${st}:00`,
-              endTime: `${s.slotDate}T${et}:00`,
-              status: s.status || 'AVAILABLE',
-              mode: s.mode || '',
-            };
-          });
-        setSlots(mapped);
+    setWaitlistedSlotIds(new Set());
+
+    const mapSlots = (data) => (data || [])
+      .filter(s => s?.slotDate && !isNaN(new Date(s.slotDate)))
+      .map(s => {
+        const st = (s.startTime || '00:00').substring(0, 5);
+        const et = (s.endTime || '00:30').substring(0, 5);
+        return {
+          id: s.id,
+          slotDate: s.slotDate,
+          time: fmtRange(st, et),
+          startTime: `${s.slotDate}T${st}:00`,
+          endTime: `${s.slotDate}T${et}:00`,
+          status: s.status || 'AVAILABLE',
+          mode: s.mode || '',
+        };
+      });
+
+    getLecturerBookableSlots(selectedLecturer.id)
+      .then((data) => {
+        setSlots(mapSlots(data));
       })
-      .catch(err => { console.error('Failed to load slots', err); toast.error('Failed to load available slots'); })
+      .catch(async (err) => {
+        console.error('Failed to load bookable slots, falling back to available slots', err);
+        try {
+          const availableOnly = await getLecturerAvailableSlots(selectedLecturer.id);
+          setSlots(mapSlots(availableOnly));
+        } catch (fallbackErr) {
+          console.error('Failed to load available slots', fallbackErr);
+          toast.error('Failed to load available slots');
+        }
+      })
       .finally(() => setSlotsLoading(false));
   }, [selectedLecturer]);
 
@@ -626,8 +661,8 @@ export default function BookingPage({ currentUser, onLogout }) {
   const selectedSlot = slots.find(s => String(s.id) === String(selectedSlotId)) || null;
 
   const showToast = (success, message) => {
-    setToast({ show: true, success, message });
-    setTimeout(() => setToast(t => ({ ...t, show: false })), 5000);
+    setStatusToast({ show: true, success, message });
+    setTimeout(() => setStatusToast(t => ({ ...t, show: false })), 5000);
   };
 
   const handleConfirm = async () => {
@@ -671,6 +706,25 @@ export default function BookingPage({ currentUser, onLogout }) {
     }
   };
 
+  const handleJoinWaitlist = async (slot) => {
+    if (!user?.id || !selectedLecturer?.id) return;
+    try {
+      setJoiningWaitlistId(String(slot.id));
+      const res = await joinWaitlist({
+        studentId: user.id,
+        lecturerId: selectedLecturer.id,
+        startTime: slot.startTime,
+        endTime: slot.endTime,
+      });
+      setWaitlistedSlotIds((prev) => new Set(prev).add(String(slot.id)));
+      showToast(true, `Added to waitlist. Queue position: ${res?.queuePosition ?? '-'}`);
+    } catch (err) {
+      showToast(false, err?.response?.data?.message || err?.message || 'Failed to join waitlist.');
+    } finally {
+      setJoiningWaitlistId('');
+    }
+  };
+
   return (
     <div className="bp-page">
       {user && <Header currentUser={user} onLogout={onLogout} unreadCount={0} />}
@@ -700,6 +754,9 @@ export default function BookingPage({ currentUser, onLogout }) {
               onSelect={setSelectedSlotId}
               onBack={() => setStep(1)}
               onNext={() => setStep(3)}
+              onJoinWaitlist={handleJoinWaitlist}
+              joiningWaitlistId={joiningWaitlistId}
+              waitlistedSlotIds={waitlistedSlotIds}
             />
           )}
 
@@ -727,6 +784,7 @@ export default function BookingPage({ currentUser, onLogout }) {
                 setSelectedLecturer(null);
                 setSelectedSlotId('');
                 setSlots([]);
+                setWaitlistedSlotIds(new Set());
                 setFormData({
                   studentName: '',
                   itNumber: '',
@@ -744,7 +802,7 @@ export default function BookingPage({ currentUser, onLogout }) {
           )}
         </div>
       </div>
-      <StatusToast show={toast.show} success={toast.success} message={toast.message} />
+      <StatusToast show={statusToast.show} success={statusToast.success} message={statusToast.message} />
     </div>
   );
 }
