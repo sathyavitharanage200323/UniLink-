@@ -19,6 +19,7 @@ import SlotCalendarPage from './pages/SlotCalendarPage.jsx';
 import NotificationsPage from './pages/NotificationsPage.jsx';
 import LecturerSlotsPage from './pages/LecturerSlotsPage.jsx';
 import LecturerPreferencesPage from './pages/LecturerPreferencesPage.jsx';
+import LecturerSettingsPage from './pages/LecturerSettingsPage.jsx';
 import LoginPage from './pages/LoginPage.jsx';
 import AdminLoginPage from './pages/AdminLoginPage.jsx';
 import {
@@ -28,9 +29,6 @@ import {
 } from './api';
 
 import './App.css';
-
-import LoginPage from './pages/LoginPage.jsx';
-import AdminLoginPage from './pages/AdminLoginPage.jsx';
 
 function AppRoutes({ activeUser, appointments, onLogin, onLogout, onUserUpdate }) {
   if (!activeUser) {
