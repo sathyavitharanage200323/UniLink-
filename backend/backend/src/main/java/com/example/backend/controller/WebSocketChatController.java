@@ -41,7 +41,8 @@ public class WebSocketChatController {
                 request.getContent(),
                 request.getMessageType(),
                 request.getFileUrl(),
-                request.getFileName());
+                request.getFileName(),
+                request.getReplyToMessageId());
 
         ChatMessageDTO dto = ChatMessageDTO.from(saved);
         messagingTemplate.convertAndSend("/topic/room/" + roomId, dto);

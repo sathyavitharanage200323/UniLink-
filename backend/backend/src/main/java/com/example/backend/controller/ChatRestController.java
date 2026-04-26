@@ -3,6 +3,7 @@ package com.example.backend.controller;
 import com.example.backend.dto.ChatRoomSummaryDTO;
 import com.example.backend.dto.ChatMessageDTO;
 import com.example.backend.dto.ChatSummaryDTO;
+import com.example.backend.dto.CreatePollRequest;
 import com.example.backend.dto.SendMessageRequest;
 import com.example.backend.model.ChatMessage;
 import com.example.backend.model.ChatRoom;
@@ -104,12 +105,23 @@ public class ChatRestController {
             request.getContent(),
             request.getMessageType(),
             request.getFileUrl(),
-            request.getFileName());
+            request.getFileName(),
+            request.getReplyToMessageId());
 
         ChatMessageDTO dto = ChatMessageDTO.from(saved);
         messagingTemplate.convertAndSend("/topic/room/" + roomId, dto);
         return ResponseEntity.ok(dto);
         }
+
+    /** Create a quick poll in chat as a message */
+    @PostMapping("/rooms/{roomId}/polls")
+    public ResponseEntity<ChatMessageDTO> createPoll(@PathVariable Long roomId,
+                                                     @RequestBody CreatePollRequest request) {
+        ChatMessage pollMessage = chatService.createPoll(roomId, request.getCreatorId(), request.getQuestion(), request.getOptions());
+        ChatMessageDTO dto = ChatMessageDTO.from(pollMessage);
+        messagingTemplate.convertAndSend("/topic/room/" + roomId, dto);
+        return ResponseEntity.ok(dto);
+    }
 
     /** Keyword search across messages */
     @GetMapping("/rooms/{roomId}/messages/search")
@@ -161,6 +173,56 @@ public class ChatRestController {
     @PatchMapping("/messages/{messageId}/read")
     public ResponseEntity<ChatMessageDTO> markRead(@PathVariable Long messageId) {
         return ResponseEntity.ok(ChatMessageDTO.from(chatService.markRead(messageId)));
+    }
+
+    /** Edit an existing message within a limited edit window */
+    @PatchMapping("/messages/{messageId}/edit")
+    public ResponseEntity<ChatMessageDTO> editMessage(@PathVariable Long messageId,
+                                                      @RequestBody Map<String, Object> body) {
+        Long userId = Long.valueOf(body.get("userId").toString());
+        String content = body.get("content") != null ? body.get("content").toString() : "";
+        ChatMessage updated = chatService.editMessage(messageId, userId, content);
+        ChatMessageDTO dto = ChatMessageDTO.from(updated);
+        messagingTemplate.convertAndSend("/topic/room/" + updated.getRoom().getId(), dto);
+        return ResponseEntity.ok(dto);
+    }
+
+    /** Retrieve edit history of a message */
+    @GetMapping("/messages/{messageId}/history")
+    public ResponseEntity<List<ChatMessageDTO.EditHistoryDTO>> getEditHistory(@PathVariable Long messageId,
+                                                                               @RequestParam Long userId) {
+        return ResponseEntity.ok(chatService.getEditHistory(messageId, userId));
+    }
+
+    /** Toggle emoji reaction for a message */
+    @PostMapping("/messages/{messageId}/reactions")
+    public ResponseEntity<ChatMessageDTO> toggleReaction(@PathVariable Long messageId,
+                                                         @RequestBody Map<String, Object> body) {
+        Long userId = Long.valueOf(body.get("userId").toString());
+        String emoji = body.get("emoji") != null ? body.get("emoji").toString() : "";
+        ChatMessage updated = chatService.toggleReaction(messageId, userId, emoji);
+        ChatMessageDTO dto = ChatMessageDTO.from(updated);
+        messagingTemplate.convertAndSend("/topic/room/" + updated.getRoom().getId(), dto);
+        return ResponseEntity.ok(dto);
+    }
+
+    /** Vote for a poll option (one vote per user, latest vote wins) */
+    @PostMapping("/polls/{pollId}/vote")
+    public ResponseEntity<ChatMessageDTO> votePoll(@PathVariable Long pollId,
+                                                   @RequestBody Map<String, Object> body) {
+        Long userId = Long.valueOf(body.get("userId").toString());
+        Long optionId = Long.valueOf(body.get("optionId").toString());
+        ChatMessage updated = chatService.votePoll(pollId, optionId, userId);
+        ChatMessageDTO dto = ChatMessageDTO.from(updated);
+        messagingTemplate.convertAndSend("/topic/room/" + updated.getRoom().getId(), dto);
+        return ResponseEntity.ok(dto);
+    }
+
+    /** Build an appointment draft directly from a chat message */
+    @PostMapping("/messages/{messageId}/appointment-draft")
+    public ResponseEntity<Map<String, Object>> createAppointmentDraft(@PathVariable Long messageId,
+                                                                      @RequestParam Long userId) {
+        return ResponseEntity.ok(chatService.buildAppointmentDraftFromMessage(messageId, userId));
     }
 
     /** Soft-delete a message */

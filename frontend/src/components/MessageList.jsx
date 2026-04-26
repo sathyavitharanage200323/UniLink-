@@ -6,13 +6,11 @@ import { Light as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { atomOneDark } from 'react-syntax-highlighter/dist/esm/styles/hljs';
 import { BACKEND_BASE_URL } from '../config';
 import {
-  Pin, CheckCircle2, Trash2, FileText,
+  Pin, CheckCircle2, Trash2, FileText, Reply, Pencil, History, CalendarPlus,
 } from 'lucide-react';
 
-/**
- * Renders the full message list with date separators,
- * read receipts, pinned highlights, and context actions.
- */
+const QUICK_REACTIONS = ['👍', '❤️', '👏', '🙏'];
+
 export default function MessageList({
   messages,
   currentUserId,
@@ -20,8 +18,13 @@ export default function MessageList({
   onPin,
   onMarkAnswer,
   onDelete,
+  onReply,
+  onEdit,
+  onShowHistory,
+  onReact,
+  onVotePoll,
+  onBookFromMessage,
 }) {
-  // Group messages by date for dividers
   const grouped = groupByDate(messages);
 
   return (
@@ -38,6 +41,12 @@ export default function MessageList({
               onPin={onPin}
               onMarkAnswer={onMarkAnswer}
               onDelete={onDelete}
+              onReply={onReply}
+              onEdit={onEdit}
+              onShowHistory={onShowHistory}
+              onReact={onReact}
+              onVotePoll={onVotePoll}
+              onBookFromMessage={onBookFromMessage}
             />
           ))}
         </React.Fragment>
@@ -46,10 +55,15 @@ export default function MessageList({
   );
 }
 
-function MessageBubble({ msg, currentUserId, currentUserRole, onPin, onMarkAnswer, onDelete }) {
+function MessageBubble({
+  msg, currentUserId, currentUserRole, onPin, onMarkAnswer, onDelete, onReply,
+  onEdit, onShowHistory, onReact, onVotePoll, onBookFromMessage,
+}) {
   const isMe = msg.senderId === currentUserId;
   const isLecturer = msg.senderRole === 'LECTURER';
   const isSystem = msg.messageType === 'SYSTEM';
+  const canEdit = isMe && !msg.deleted && (msg.messageType === 'TEXT' || msg.messageType === 'CODE');
+  const hasHistory = (msg.editCount || 0) > 0;
 
   if (isSystem) {
     return (
@@ -58,6 +72,8 @@ function MessageBubble({ msg, currentUserId, currentUserRole, onPin, onMarkAnswe
       </div>
     );
   }
+
+  const reactions = Object.entries(msg.reactions || {});
 
   return (
     <div className={`message-row ${isMe ? 'mine' : ''}`}>
@@ -80,16 +96,40 @@ function MessageBubble({ msg, currentUserId, currentUserRole, onPin, onMarkAnswe
             msg.pinned ? 'pinned-highlight' : '',
           ].join(' ').trim()}
         >
-          <BubbleContent msg={msg} isMe={isMe} />
+          {msg.replyToMessageId && (
+            <div className="file-attachment" style={{ marginTop: 0, marginBottom: 8, opacity: 0.9 }}>
+              <Reply size={13} />
+              <span>Reply: {(msg.replyPreview || '').slice(0, 80)}</span>
+            </div>
+          )}
 
-          {/* Context action buttons */}
+          <BubbleContent msg={msg} isMe={isMe} onVotePoll={onVotePoll} />
+
           <div className="bubble-context-menu">
+            <button className="ctx-btn" title="Reply" onClick={() => onReply && onReply(msg)}>
+              <Reply size={14} />
+            </button>
             <button className="ctx-btn" title="Pin" onClick={() => onPin(msg.id)}>
               <Pin size={14} />
             </button>
             {currentUserRole === 'LECTURER' && !isMe && (
               <button className="ctx-btn" title="Mark as Answer" onClick={() => onMarkAnswer(msg.id)}>
                 <CheckCircle2 size={14} />
+              </button>
+            )}
+            {currentUserRole === 'STUDENT' && (
+              <button className="ctx-btn" title="Create booking from this message" onClick={() => onBookFromMessage && onBookFromMessage(msg)}>
+                <CalendarPlus size={14} />
+              </button>
+            )}
+            {canEdit && (
+              <button className="ctx-btn" title="Edit" onClick={() => onEdit && onEdit(msg)}>
+                <Pencil size={14} />
+              </button>
+            )}
+            {hasHistory && (
+              <button className="ctx-btn" title="View edit history" onClick={() => onShowHistory && onShowHistory(msg)}>
+                <History size={14} />
               </button>
             )}
             {isMe && !msg.deleted && (
@@ -100,8 +140,24 @@ function MessageBubble({ msg, currentUserId, currentUserRole, onPin, onMarkAnswe
           </div>
         </div>
 
+        {(reactions.length > 0 || !msg.deleted) && (
+          <div style={{ display: 'flex', gap: 6, marginTop: 4, flexWrap: 'wrap' }}>
+            {reactions.map(([emoji, count]) => (
+              <button key={`${msg.id}-${emoji}`} type="button" className="filter-tab" style={{ padding: '2px 8px' }} onClick={() => onReact && onReact(msg.id, emoji)}>
+                {emoji} {count}
+              </button>
+            ))}
+            {!msg.deleted && QUICK_REACTIONS.map((emoji) => (
+              <button key={`${msg.id}-quick-${emoji}`} type="button" className="filter-tab" style={{ padding: '2px 8px' }} onClick={() => onReact && onReact(msg.id, emoji)}>
+                {emoji}
+              </button>
+            ))}
+          </div>
+        )}
+
         <div className="bubble-meta">
           <span>{msg.sentAt ? format(new Date(msg.sentAt), 'HH:mm') : ''}</span>
+          {msg.editedAt && <span>(edited)</span>}
           {isMe && (
             <span className="read-tick" title={msg.read ? 'Read' : 'Delivered'}>
               {msg.read ? '✓✓' : '✓'}
@@ -114,8 +170,33 @@ function MessageBubble({ msg, currentUserId, currentUserRole, onPin, onMarkAnswe
   );
 }
 
-function BubbleContent({ msg, isMe }) {
+function BubbleContent({ msg, isMe, onVotePoll }) {
   if (msg.deleted) return <span>{msg.content}</span>;
+
+  if (msg.messageType === 'POLL' && msg.poll) {
+    return (
+      <div>
+        <div style={{ fontWeight: 700, marginBottom: 6 }}>{msg.poll.question}</div>
+        <div style={{ display: 'grid', gap: 6 }}>
+          {(msg.poll.options || []).map((opt) => (
+            <button
+              key={opt.id}
+              type="button"
+              className="filter-tab"
+              style={{ textAlign: 'left', justifyContent: 'space-between', display: 'flex' }}
+              onClick={() => onVotePoll && onVotePoll(msg.poll.id, opt.id)}
+            >
+              <span>{opt.text}</span>
+              <strong>{opt.voteCount}</strong>
+            </button>
+          ))}
+        </div>
+        <div style={{ marginTop: 6, fontSize: '0.72rem', opacity: 0.8 }}>
+          Total votes: {msg.poll.totalVotes || 0}
+        </div>
+      </div>
+    );
+  }
 
   if (msg.messageType === 'CODE') {
     return (
@@ -154,21 +235,24 @@ function BubbleContent({ msg, isMe }) {
         className="file-attachment"
         href={`${BACKEND_BASE_URL}${msg.fileUrl}`}
         target="_blank"
-        rel="noreferrer"        aria-label={`Download ${msg.fileName || 'file'}`}      >
+        rel="noreferrer"
+        aria-label={`Download ${msg.fileName || 'file'}`}
+      >
         <FileText size={16} />
         <span>{msg.fileName || 'Download file'}</span>
       </a>
     );
   }
 
-  // TEXT with markdown
   return (
     <ReactMarkdown
       remarkPlugins={[remarkGfm]}
       components={{
-        // open links in new tab
-        // eslint-disable-next-line jsx-a11y/anchor-has-content
-        a: ({ node, ...props }) => <a {...props} target="_blank" rel="noreferrer" style={{ color: isMe ? 'rgba(255,255,255,0.9)' : undefined }} />,
+        a: ({ node, children, ...props }) => (
+          <a {...props} target="_blank" rel="noreferrer" style={{ color: isMe ? 'rgba(255,255,255,0.9)' : undefined }}>
+            {children}
+          </a>
+        ),
       }}
     >
       {msg.content}
@@ -176,7 +260,6 @@ function BubbleContent({ msg, isMe }) {
   );
 }
 
-// ── Helpers ──────────────────────────────────────────────────────
 function groupByDate(messages) {
   const groups = [];
   let currentLabel = null;
@@ -239,7 +322,6 @@ function AudioMessage({ msg }) {
   const handlePlay = () => {
     setPlaybackError(false);
     if (audioRef.current) {
-      // Defensive defaults in case browser persisted muted/low volume state.
       audioRef.current.muted = false;
       if (audioRef.current.volume === 0) {
         audioRef.current.volume = 1;

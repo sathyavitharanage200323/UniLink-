@@ -3,6 +3,8 @@ package com.example.backend.model;
 import jakarta.persistence.*;
 import lombok.*;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Individual chat message inside a ChatRoom.
@@ -27,6 +29,10 @@ public class ChatMessage {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "sender_id", nullable = false)
     private User sender;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "reply_to_message_id")
+    private ChatMessage replyToMessage;
 
     // The raw message content (may contain markdown)
     @Column(columnDefinition = "TEXT", nullable = false)
@@ -66,12 +72,30 @@ public class ChatMessage {
     @Column(name = "is_deleted", nullable = false)
     private boolean deleted = false;
 
+    @Column(name = "edited_at")
+    private LocalDateTime editedAt;
+
+    @Column(name = "edit_count", nullable = false)
+    private int editCount = 0;
+
     // Profanity was detected and filtered
     @Column(name = "profanity_flagged", nullable = false)
     private boolean profanityFlagged = false;
 
     @Column(name = "sent_at", nullable = false, updatable = false)
     private LocalDateTime sentAt;
+
+    @OneToMany(mappedBy = "message", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
+    private List<ChatMessageReaction> reactions = new ArrayList<>();
+
+    @OneToMany(mappedBy = "message", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
+    private List<ChatMessageEdit> editHistory = new ArrayList<>();
+
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "poll_id")
+    private ChatPoll poll;
 
     @PrePersist
     protected void onCreate() {
@@ -84,6 +108,7 @@ public class ChatMessage {
         FILE,       // PDF / document attachment
         IMAGE,      // Image attachment
         AUDIO,      // Voice message
+        POLL,       // Poll/quick-choice message
         SYSTEM      // System-generated messages (e.g., "Chat resolved")
     }
 }

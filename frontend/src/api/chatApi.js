@@ -22,6 +22,8 @@ export const chatApi = {
     api.get(`/chat/rooms/${roomId}/messages`),
   sendMessage: (roomId, payload) =>
     api.post(`/chat/rooms/${roomId}/messages`, payload),
+  createPoll: (roomId, payload) =>
+    api.post(`/chat/rooms/${roomId}/polls`, payload),
   searchMessages: (roomId, keyword) =>
     api.get(`/chat/rooms/${roomId}/messages/search?keyword=${encodeURIComponent(keyword)}`),
   filterByType: (roomId, type) =>
@@ -36,6 +38,16 @@ export const chatApi = {
     api.patch(`/chat/messages/${messageId}/mark-answer`),
   markRead: (messageId) =>
     api.patch(`/chat/messages/${messageId}/read`),
+  editMessage: (messageId, userId, content) =>
+    api.patch(`/chat/messages/${messageId}/edit`, { userId, content }),
+  getMessageHistory: (messageId, userId) =>
+    api.get(`/chat/messages/${messageId}/history?userId=${userId}`),
+  toggleReaction: (messageId, userId, emoji) =>
+    api.post(`/chat/messages/${messageId}/reactions`, { userId, emoji }),
+  votePoll: (pollId, userId, optionId) =>
+    api.post(`/chat/polls/${pollId}/vote`, { userId, optionId }),
+  createAppointmentDraftFromMessage: (messageId, userId) =>
+    api.post(`/chat/messages/${messageId}/appointment-draft?userId=${userId}`),
   deleteMessage: (messageId, userId) =>
     api.delete(`/chat/messages/${messageId}?userId=${userId}`),
 

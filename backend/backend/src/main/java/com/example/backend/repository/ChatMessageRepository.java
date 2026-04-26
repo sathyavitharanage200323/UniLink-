@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface ChatMessageRepository extends JpaRepository<ChatMessage, Long> {
@@ -43,4 +44,6 @@ public interface ChatMessageRepository extends JpaRepository<ChatMessage, Long> 
     @Modifying
        @Query("DELETE FROM ChatMessage m WHERE m.room.id IN :roomIds")
        void deleteByRoomIds(@Param("roomIds") List<Long> roomIds);
+
+    Optional<ChatMessage> findByPollId(Long pollId);
 }

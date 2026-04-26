@@ -58,6 +58,7 @@ export default function ChatPage({ currentUser, appointments = [], onLogout, onU
   const [summaryLoading, setSummaryLoading] = useState(false);
   const [summaryData, setSummaryData] = useState(null);
   const [includeSystemSummary, setIncludeSystemSummary] = useState(false);
+  const [replyTarget, setReplyTarget] = useState(null);
   const totalUnread = Object.values(unreadByRoom).reduce((sum, n) => sum + (n || 0), 0);
 
   const messagesEndRef = useRef(null);
@@ -134,6 +135,7 @@ export default function ChatPage({ currentUser, appointments = [], onLogout, onU
     setSearchQuery('');
     setFilterType('ALL');
     setSummaryData(null);
+    setReplyTarget(null);
 
     Promise.all([
       chatApi.getMessages(selectedRoomId),
@@ -339,7 +341,98 @@ export default function ChatPage({ currentUser, appointments = [], onLogout, onU
   }
 
   function updateMessage(updated) {
-    setMessages((prev) => prev.map((m) => (m.id === updated.id ? updated : m)));
+    setMessages((prev) => {
+      const exists = prev.some((m) => m.id === updated.id);
+      if (!exists) return [...prev, updated];
+      return prev.map((m) => (m.id === updated.id ? updated : m));
+    });
+  }
+
+  async function handleEditMessage(msg) {
+    const next = window.prompt('Edit message', msg?.content || '');
+    if (next == null) return;
+    try {
+      const res = await chatApi.editMessage(msg.id, currentUser?.id, next);
+      updateMessage(res.data);
+      toast.success('Message updated.');
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Could not edit message.');
+    }
+  }
+
+  async function handleShowHistory(msg) {
+    try {
+      const res = await chatApi.getMessageHistory(msg.id, currentUser?.id);
+      const rows = res.data || [];
+      if (rows.length === 0) {
+        toast.info('No edit history for this message.');
+        return;
+      }
+      const text = rows
+        .map((h, i) => `${i + 1}. ${new Date(h.editedAt).toLocaleString()} by ${h.editedByName}: ${h.previousContent}`)
+        .join('\n\n');
+      window.alert(text);
+    } catch {
+      toast.error('Could not load edit history.');
+    }
+  }
+
+  async function handleReaction(messageId, emoji) {
+    try {
+      const res = await chatApi.toggleReaction(messageId, currentUser?.id, emoji);
+      updateMessage(res.data);
+    } catch {
+      toast.error('Could not update reaction.');
+    }
+  }
+
+  async function handleCreatePoll() {
+    if (!selectedRoomId) return;
+    const question = window.prompt('Poll question');
+    if (!question || !question.trim()) return;
+    const raw = window.prompt('Options separated by comma (at least 2)');
+    if (!raw) return;
+    const options = raw.split(',').map((v) => v.trim()).filter(Boolean);
+    if (options.length < 2) {
+      toast.error('Poll needs at least 2 options.');
+      return;
+    }
+    try {
+      const res = await chatApi.createPoll(selectedRoomId, {
+        creatorId: currentUser?.id,
+        question,
+        options,
+      });
+      updateMessage(res.data);
+      toast.success('Poll created.');
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Could not create poll.');
+    }
+  }
+
+  async function handleVotePoll(pollId, optionId) {
+    try {
+      const res = await chatApi.votePoll(pollId, currentUser?.id, optionId);
+      updateMessage(res.data);
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Could not vote.');
+    }
+  }
+
+  async function handleBookFromMessage(msg) {
+    try {
+      const res = await chatApi.createAppointmentDraftFromMessage(msg.id, currentUser?.id);
+      navigate('/book', { state: { chatDraft: res.data } });
+    } catch {
+      navigate('/book', {
+        state: {
+          chatDraft: {
+            lecturerId: otherParty?.id,
+            reason: `Follow-up from chat: ${(msg?.content || '').slice(0, 180)}`,
+          },
+        },
+      });
+    }
   }
 
   async function handleSearch(e) {
@@ -737,7 +830,7 @@ export default function ChatPage({ currentUser, appointments = [], onLogout, onU
                   onChange={handleSearch}
                 />
                 <div className="filter-tabs">
-                  {['ALL', 'TEXT', 'CODE', 'FILE', 'IMAGE', 'AUDIO'].map((t) => (
+                  {['ALL', 'TEXT', 'CODE', 'FILE', 'IMAGE', 'AUDIO', 'POLL'].map((t) => (
                     <button
                       key={t}
                       className={`filter-tab ${filterType === t ? 'active' : ''}`}
@@ -772,6 +865,12 @@ export default function ChatPage({ currentUser, appointments = [], onLogout, onU
                   onPin={handlePin}
                   onMarkAnswer={handleMarkAnswer}
                   onDelete={handleDelete}
+                  onReply={setReplyTarget}
+                  onEdit={handleEditMessage}
+                  onShowHistory={handleShowHistory}
+                  onReact={handleReaction}
+                  onVotePoll={handleVotePoll}
+                  onBookFromMessage={handleBookFromMessage}
                 />
               )}
               <div ref={messagesEndRef} />
@@ -879,6 +978,9 @@ export default function ChatPage({ currentUser, appointments = [], onLogout, onU
               cannedResponses={cannedResponses}
               roomClosed={roomClosed}
               blocked={isBlocked}
+              replyTarget={replyTarget}
+              onClearReply={() => setReplyTarget(null)}
+              onCreatePoll={handleCreatePoll}
             />
           </>
         )}

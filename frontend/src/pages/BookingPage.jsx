@@ -1,5 +1,5 @@
 ﻿import React, { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import {
   ArrowLeft, ArrowRight, Zap, Clock, CheckCircle, AlertCircle,
@@ -576,7 +576,9 @@ function StatusToast({ show, success, message }) {
 /* ── Main BookingPage ────────────────────────────────────────────────── */
 export default function BookingPage({ currentUser, onLogout }) {
   const navigate = useNavigate();
+  const location = useLocation();
   const user = currentUser || JSON.parse(localStorage.getItem('unilink_user') || 'null');
+  const chatDraft = location.state?.chatDraft || null;
 
   const [step, setStep] = useState(1);
   const [lecturers, setLecturers] = useState([]);
@@ -606,9 +608,27 @@ export default function BookingPage({ currentUser, onLogout }) {
   // Load lecturers
   useEffect(() => {
     api.get('/users/role/LECTURER')
-      .then(r => setLecturers(r.data || []))
+      .then(r => {
+        const list = r.data || [];
+        setLecturers(list);
+      })
       .catch(err => { console.error('Failed to load lecturers', err); toast.error('Failed to load lecturers'); });
   }, []);
+
+  useEffect(() => {
+    if (!chatDraft || lecturers.length === 0) return;
+    const target = lecturers.find((l) => String(l.id) === String(chatDraft.lecturerId));
+    if (target) {
+      setSelectedLecturer(target);
+      setStep(2);
+    }
+    if (chatDraft.reason) {
+      setFormData((prev) => ({
+        ...prev,
+        reason: prev.reason || chatDraft.reason,
+      }));
+    }
+  }, [chatDraft, lecturers]);
 
   // Load slots when lecturer selected
   useEffect(() => {

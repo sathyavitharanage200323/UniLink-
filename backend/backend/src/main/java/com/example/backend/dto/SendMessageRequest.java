@@ -14,4 +14,5 @@ public class SendMessageRequest {
     private ChatMessage.MessageType messageType; // default TEXT if null
     private String fileUrl;
     private String fileName;
+    private Long replyToMessageId;
 }

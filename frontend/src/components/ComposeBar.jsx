@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { toast } from 'react-toastify';
 import {
-  Send, Code, Paperclip, Zap, Mic, Square, Trash2,
+  Send, Code, Paperclip, Zap, Mic, Square, Trash2, Vote,
 } from 'lucide-react';
 import { chatApi } from '../api/chatApi';
 
@@ -52,6 +52,9 @@ export default function ComposeBar({
   cannedResponses = [],
   roomClosed = false,
   blocked = false,
+  replyTarget = null,
+  onClearReply,
+  onCreatePoll,
 }) {
   const [content, setContent] = useState('');
   const [mode, setMode] = useState('TEXT'); // TEXT | CODE
@@ -234,11 +237,13 @@ export default function ComposeBar({
       senderId: currentUserId,
       content: trimmed,
       messageType: mode,
+      replyToMessageId: replyTarget?.id || null,
     });
 
     setContent('');
     isTypingRef.current = false;
     onTyping && onTyping(false);
+    onClearReply && onClearReply();
   }
 
   async function uploadAndSendAudio(blob, mime) {
@@ -271,6 +276,7 @@ export default function ComposeBar({
         messageType: 'AUDIO',
         fileUrl,
         fileName,
+        replyToMessageId: replyTarget?.id || null,
       }));
 
       if (sent === false) {
@@ -319,7 +325,9 @@ export default function ComposeBar({
         messageType: type,
         fileUrl,
         fileName,
+        replyToMessageId: replyTarget?.id || null,
       });
+      onClearReply && onClearReply();
     } catch {
       alert('File upload failed. Please try again.');
     } finally {
@@ -578,6 +586,15 @@ export default function ComposeBar({
           onChange={handleFileChange}
         />
 
+        <button
+          className="icon-btn"
+          title="Create poll"
+          onClick={() => onCreatePoll && onCreatePoll()}
+          disabled={uploading}
+        >
+          <Vote size={16} />
+        </button>
+
         {currentUserRole === 'LECTURER' && cannedResponses.length > 0 && (
           <button
             className={`icon-btn ${showCanned ? 'active' : ''}`}
@@ -601,6 +618,20 @@ export default function ComposeBar({
         )}
         {uploading && <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Uploading…</span>}
       </div>
+
+      {replyTarget && (
+        <div className="audio-preview" style={{ marginTop: 0 }}>
+          <div className="audio-preview-meta">
+            <span className="audio-preview-label">Replying to {replyTarget.senderName || 'message'}</span>
+            <button type="button" className="icon-btn danger" onClick={() => onClearReply && onClearReply()}>
+              <Trash2 size={14} />
+            </button>
+          </div>
+          <div className="audio-preview-hint" style={{ color: 'var(--text)' }}>
+            {(replyTarget.content || '').slice(0, 120)}
+          </div>
+        </div>
+      )}
 
       {audioPreview && !isRecording && (
         <div className="audio-preview">
