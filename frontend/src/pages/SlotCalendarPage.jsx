@@ -688,14 +688,6 @@ export default function SlotCalendarPage({ currentUser, onLogout }) {
                 <button
                   type="button"
                   className="sc-btn sc-btn--outline"
-                  onClick={() => navigate('/lecturer/slots')}
-                >
-                  ← Back to Slots
-                </button>
-
-                <button
-                  type="button"
-                  className="sc-btn sc-btn--outline"
                   onClick={() => navigate('/lecturer/preferences')}
                 >
                   ⚙ Preferences

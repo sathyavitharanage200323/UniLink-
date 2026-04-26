@@ -1,11 +1,27 @@
 describe('Admin Login', () => {
-  it('should login successfully as admin', () => {
+  function loginAsAdmin() {
     cy.visit('/admin-login')
     cy.get('input[type="email"]').type('admin@gmail.com')
     cy.get('input[type="password"]').type('admin123')
     cy.get('button[type="submit"]').click()
+  }
+
+  it('should login successfully as admin', () => {
+    loginAsAdmin()
     cy.url().should('include', '/admin/home')
     cy.contains('Administrator Control Center').should('be.visible')
+  })
+
+  it('should show admin home features after login', () => {
+    loginAsAdmin()
+    cy.url().should('include', '/admin/home')
+
+    cy.contains('Administrator Control Center').should('be.visible')
+    cy.contains('Management Console').should('be.visible')
+    cy.contains('System Appointments').should('be.visible')
+    cy.contains('Chat Oversight').should('be.visible')
+    cy.contains('Bug Reports').should('be.visible')
+    cy.contains('Admin Profile').should('be.visible')
   })
 
   it('should show error for invalid credentials', () => {

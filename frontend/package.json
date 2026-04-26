@@ -25,10 +25,12 @@
   "scripts": {
     "start": "react-scripts start",
     "build": "react-scripts build",
-    "test": "react-scripts test",
+    "test": "react-scripts test --watchAll=false",
+    "test:watch": "react-scripts test",
     "eject": "react-scripts eject",
-    "cypress:open": "cypress open",
-    "cypress:run": "cypress run"
+    "cypress:open": "node scripts/cypress-cli.js open --e2e --browser electron",
+    "cypress:run": "node scripts/cypress-cli.js run --e2e",
+    "cypress:verify": "node scripts/cypress-cli.js verify"
   },
   "eslintConfig": {
     "extends": [
@@ -50,7 +52,7 @@
   },
   "devDependencies": {
     "fast-check": "^3.23.2",
-    "cypress": "^15.14.1"
+    "cypress": "13.17.0"
   },
   "jest": {
     "moduleNameMapper": {
