@@ -22,6 +22,7 @@ import LecturerPreferencesPage from './pages/LecturerPreferencesPage.jsx';
 import LecturerSettingsPage from './pages/LecturerSettingsPage.jsx';
 import LoginPage from './pages/LoginPage.jsx';
 import AdminLoginPage from './pages/AdminLoginPage.jsx';
+import ResourcesPage from './pages/ResourcesPage.jsx';
 import {
   getAllAppointments,
   getStudentAppointments,
@@ -109,6 +110,11 @@ function AppRoutes({ activeUser, appointments, onLogin, onLogout, onUserUpdate }
       <Route
         path="/coming-soon"
         element={<ComingSoonPage currentUser={activeUser} onLogout={onLogout} />}
+      />
+
+      <Route
+        path="/resources"
+        element={<ResourcesPage currentUser={activeUser} onLogout={onLogout} />}
       />
 
       <Route

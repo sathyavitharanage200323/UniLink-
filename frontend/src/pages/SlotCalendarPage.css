@@ -1,24 +1,24 @@
 /* SlotCalendarPage.css - fully updated */
 
 :root {
-  --navy: #0C2C55;
-  --royal: #296374;
-  --mid-blue: #629FAD;
-  --sky: #EDEDCE;
+  --navy: var(--color-hero-from);
+  --royal: var(--color-hero-mid);
+  --mid-blue: var(--color-hero-to);
+  --sky: var(--color-accent-light);
 
-  --navy-90: rgba(12, 44, 85, 0.90);
-  --royal-20: rgba(41, 99, 116, 0.20);
-  --sky-40: rgba(237, 237, 206, 0.40);
-  --sky-15: rgba(237, 237, 206, 0.15);
+  --navy-90: rgba(232, 101, 10, 0.90);
+  --royal-20: rgba(224, 122, 32, 0.20);
+  --sky-40: rgba(181, 114, 42, 0.40);
+  --sky-15: rgba(181, 114, 42, 0.15);
 
-  --surface: #f2f5f0;
-  --white: #ffffff;
-  --border: #d4dfe3;
-  --border-mid: #b0c4cc;
+  --surface: var(--color-bg-secondary);
+  --white: var(--color-bg-elevated);
+  --border: var(--color-border);
+  --border-mid: var(--color-border-strong);
 
-  --text-primary: #0C2C55;
-  --text-secondary: #296374;
-  --text-muted: #629FAD;
+  --text-primary: var(--color-text-primary);
+  --text-secondary: var(--color-text-secondary);
+  --text-muted: var(--color-text-muted);
 
   /* FIX 8: Status color variables */
   --status-ongoing-bg: #dcfce7;
@@ -36,6 +36,9 @@
   --status-past-bg: #e2e8f0;
   --status-past-text: #64748b;
   --status-past-accent: #94a3b8;
+
+  --calendar-weekday-color: #0f4c81;
+  --calendar-date-color: #7a3a10;
 }
 
 @keyframes fadeSlideUp {
@@ -78,6 +81,9 @@
   font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
 }
 .sc-main { flex: 1; }
+.sc-main::selection {
+  background: rgba(232, 101, 10, 0.18);
+}
 
 /* Hero */
 .sc-hero {
@@ -125,15 +131,15 @@
   background: rgba(237, 237, 206, 0.18);
   border: 1.5px solid rgba(237, 237, 206, 0.40);
   color: var(--sky);
-  font-size: 0.80rem;
-  font-weight: 600;
+  font-size: 0.78rem;
+  font-weight: 700;
   border-radius: 999px;
   padding: 5px 14px;
   letter-spacing: 0.2px;
   margin-bottom: 12px;
 }
 .sc-hero h1 {
-  font-size: 2.5rem;
+  font-size: 2.75rem;
   font-weight: 800;
   margin: 0 0 14px;
   letter-spacing: -0.6px;
@@ -141,7 +147,7 @@
   color: white;
 }
 .sc-hero p {
-  font-size: 1rem;
+  font-size: 1.05rem;
   opacity: 0.85;
   margin: 0 0 30px;
   line-height: 1.6;
@@ -173,16 +179,21 @@
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  padding: 10px 22px;
+  padding: 11px 24px;
   border-radius: 10px;
-  font-size: 0.88rem;
-  font-weight: 600;
+  font-size: 0.92rem;
+  font-weight: 700;
   border: 2px solid transparent;
   cursor: pointer;
   transition: transform 0.15s cubic-bezier(0.22,1,0.36,1), box-shadow 0.15s ease, background 0.18s ease, border-color 0.18s ease;
   text-decoration: none;
+  font-family: inherit;
 }
 .sc-btn:active { transform: translateY(1px) scale(0.98); }
+.sc-btn:focus-visible {
+  outline: 3px solid rgba(181, 114, 42, 0.45);
+  outline-offset: 1px;
+}
 .sc-btn--primary { background: white; color: var(--royal); box-shadow: 0 2px 14px rgba(12, 44, 85, 0.22); }
 .sc-btn--primary:hover { box-shadow: 0 6px 24px rgba(12, 44, 85, 0.32); transform: translateY(-2px); }
 .sc-btn--outline { background: rgba(237, 237, 206, 0.12); color: white; border-color: rgba(237, 237, 206, 0.45); }
@@ -213,13 +224,19 @@
   display: flex;
   align-items: center;
   gap: 16px;
-  padding: 20px 22px;
+  padding: 22px 24px;
   animation: fadeSlideUp 0.6s cubic-bezier(0.22,1,0.36,1) both;
+  transition: transform 0.18s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+.sc-stat-card:hover {
+  transform: translateY(-2px);
+  border-color: #fdba74;
+  box-shadow: 0 10px 28px rgba(232, 101, 10, 0.16);
 }
 /* FIX 9: Stat icon color variants */
 .sc-stat-icon {
-  width: 48px;
-  height: 48px;
+  width: 52px;
+  height: 52px;
   border-radius: 14px;
   display: flex;
   align-items: center;
@@ -232,7 +249,7 @@
 .sc-stat-icon.gray   { background: #f8fafc; color: #64748b; }
 
 .sc-stat-card h3 {
-  font-size: 1.75rem;
+  font-size: 1.9rem;
   font-weight: 800;
   color: var(--text-primary);
   margin: 0 0 4px;
@@ -262,28 +279,36 @@
   border: 1px solid var(--border);
   box-shadow: 0 2px 20px rgba(12, 44, 85, 0.07);
   overflow: hidden;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+.sc-card:hover {
+  transform: translateY(-2px);
+  border-color: #fdba74;
+  box-shadow: 0 12px 30px rgba(232, 101, 10, 0.14);
 }
 .sc-card__header {
   padding: 20px 24px 16px;
   border-bottom: 1px solid var(--border);
-  background: linear-gradient(to right, #f7faff, var(--white));
+  background: linear-gradient(to right, #fff7ed, var(--white));
 }
 .sc-header-row { display: flex; justify-content: space-between; align-items: center; gap: 16px; }
-.sc-card__header h2 { margin: 0; font-size: 1rem; font-weight: 700; color: var(--text-primary); }
-.sc-subtitle { margin: 6px 0 0; font-size: 0.86rem; color: var(--text-muted); }
-.sc-month-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.sc-card__header h2 { margin: 0; font-size: 1.08rem; font-weight: 800; color: var(--text-primary); }
+.sc-subtitle { margin: 6px 0 0; font-size: 0.9rem; color: var(--text-muted); }
+.sc-month-actions { display: inline-flex; gap: 8px; flex-wrap: nowrap; align-items: center; }
+.sc-month-actions .sc-btn { white-space: nowrap; }
 .sc-filter-row { display: flex; gap: 6px; margin-top: 16px; flex-wrap: wrap; }
 .sc-filter-btn {
-  padding: 6px 12px;
+  padding: 7px 13px;
   border-radius: 999px;
   border: 1px solid var(--border);
   background: white;
-  font-size: 0.78rem;
+  font-size: 0.81rem;
   cursor: pointer;
-  transition: 0.2s;
+  transition: background 0.18s ease, color 0.18s ease, border-color 0.18s ease, transform 0.18s ease;
   color: var(--text-secondary);
 }
-.sc-filter-btn.active { background: var(--navy); color: white; border-color: var(--navy); }
+.sc-filter-btn:hover { transform: translateY(-1px); border-color: #fdba74; }
+.sc-filter-btn.active { background: var(--navy); color: white; border-color: var(--navy); box-shadow: 0 8px 18px rgba(232, 101, 10, 0.25); }
 
 .sc-legend-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
 .sc-legend-pill {
@@ -291,7 +316,7 @@
   align-items: center;
   gap: 6px;
   padding: 4px 10px;
-  font-size: 0.72rem;
+  font-size: 0.75rem;
   border-radius: 999px;
   background: #f8fafc;
   border: 1px solid var(--border);
@@ -324,37 +349,82 @@
 .sc-error { color: #b91c1c; background: #fee2e2; border-radius: 12px; }
 
 /* Calendar grid */
+.sc-calendar-scroll {
+  overflow: visible;
+  padding-bottom: 0;
+}
+
 .sc-days-header {
   display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  gap: 6px;
-  margin-bottom: 8px;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 12px;
+  background: linear-gradient(to right, #fff7ed, #fff);
+  border: 1px solid #fed7aa;
+  border-radius: 14px;
+  padding: 8px 10px;
 }
-.sc-day-name { text-align: center; font-size: 0.72rem; font-weight: 700; color: var(--text-muted); }
+.sc-day-name {
+  text-align: center;
+  font-size: 0.74rem;
+  font-weight: 800;
+  color: var(--calendar-weekday-color);
+  letter-spacing: 0.2px;
+}
 
-.sc-calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 10px; }
+.sc-calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 12px;
+  align-items: start;
+}
 .sc-calendar-empty { visibility: hidden; }
 
 .sc-day-card {
-  background: #f8fafc;
+  background: linear-gradient(180deg, #ffffff 0%, #fffaf5 100%);
   border: 1px solid var(--border);
-  border-radius: 14px;
-  padding: 10px;
+  border-radius: 16px;
+  padding: 12px;
   text-align: left;
-  min-height: 120px;
+  min-height: 176px;
+  height: auto;
+  align-self: start;
   cursor: pointer;
-  transition: 0.2s;
+  transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.2s ease, background 0.2s ease;
   width: 100%;
+  box-shadow: 0 2px 12px rgba(15, 23, 42, 0.05);
 }
-.sc-day-card:hover { border-color: var(--mid-blue); box-shadow: 0 6px 18px rgba(12, 44, 85, 0.10); }
-.sc-day-card.selected { background: var(--sky-15); border-color: var(--royal); }
-.sc-day-card.today { border-color: var(--mid-blue); background: #f0f9ff; }
+.sc-day-card:hover {
+  transform: translateY(-3px);
+  border-color: #fb923c;
+  box-shadow: 0 14px 26px rgba(232, 101, 10, 0.16);
+}
+.sc-day-card.selected {
+  background: linear-gradient(180deg, #fff7ed 0%, #ffedd5 100%);
+  border-color: #ea580c;
+  box-shadow: 0 12px 24px rgba(234, 88, 12, 0.2);
+}
+.sc-day-card.today {
+  border-color: #f97316;
+  background: linear-gradient(180deg, #fffaf5 0%, #fff1e6 100%);
+}
+.sc-day-card.has-slots {
+  border-color: #fdba74;
+}
+.sc-day-card.empty-day {
+  background: #fcfcfd;
+  border-color: #e5edf4;
+}
+.sc-day-card:focus-visible {
+  outline: 3px solid rgba(232, 101, 10, 0.28);
+  outline-offset: 1px;
+}
 /* FIX: Weekend columns slightly dimmed */
 .sc-day-card.weekend { background: #f5f5f7; }
 .sc-day-card.weekend.selected { background: var(--sky-15); }
 
 .sc-day-card__top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
-.sc-day-number { font-weight: 800; color: var(--text-primary); }
+.sc-day-number { font-size: 1.08rem; font-weight: 800; color: var(--calendar-date-color); }
 
 .sc-mini-badge {
   font-size: 0.64rem;
@@ -373,16 +443,35 @@
 .sc-mini-badge.selected { background: var(--status-upcoming-bg); color: var(--status-upcoming-text); }
 .sc-mini-badge.live     { background: var(--status-ongoing-bg); color: var(--status-ongoing-text); }
 
-.sc-day-slot-count { font-size: 0.72rem; color: var(--text-muted); margin-bottom: 6px; }
-.sc-day-slot-preview { display: grid; gap: 6px; }
+.sc-day-slot-count {
+  font-size: 0.8rem;
+  color: #476b8b;
+  margin-bottom: 8px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.sc-day-slot-preview {
+  display: grid;
+  gap: 7px;
+  max-height: none;
+  overflow: visible;
+  padding-right: 0;
+}
 
 .sc-slot-chip {
-  background: white;
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 8px;
+  background: #ffffff;
+  border: 1px solid #d9e4ee;
+  border-radius: 12px;
+  padding: 10px;
   display: grid;
   gap: 6px;
+  transition: border-color 0.16s ease, box-shadow 0.16s ease, transform 0.16s ease;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
+}
+.sc-slot-chip:hover {
+  transform: translateY(-1px);
+  border-color: #fbc286;
+  box-shadow: 0 8px 16px rgba(15, 23, 42, 0.08);
 }
 
 /* FIX 6: slot chip top-line colors by status */
@@ -397,7 +486,7 @@
 .sc-slot-chip__top-line.past     { background: var(--status-past-accent); }
 
 .sc-slot-chip__header { display: flex; justify-content: space-between; align-items: center; gap: 6px; }
-.sc-slot-chip__time { font-size: 0.74rem; font-weight: 700; color: var(--text-primary); }
+.sc-slot-chip__time { font-size: 0.82rem; font-weight: 800; color: #1e3a5f; line-height: 1.35; }
 
 .sc-live-pill {
   display: inline-flex;
@@ -418,29 +507,30 @@
   display: inline-block;
 }
 
-.sc-slot-chip__status { font-size: 0.65rem; font-weight: 700; }
+.sc-slot-chip__status { font-size: 0.7rem; font-weight: 800; }
 .sc-slot-chip__status.ongoing  { color: var(--status-ongoing-text); }
 .sc-slot-chip__status.today    { color: var(--status-today-text); }
 .sc-slot-chip__status.upcoming { color: var(--status-upcoming-text); }
 .sc-slot-chip__status.past     { color: var(--status-past-text); }
 
-.sc-more-text { font-size: 0.7rem; color: var(--text-muted); }
+.sc-more-text { font-size: 0.73rem; color: #3f6487; font-weight: 800; }
 
 /* Side card */
 /* FIX 2: Banner with animation */
 .sc-banner {
-  padding: 12px 14px;
+  padding: 13px 15px;
   border-radius: 10px;
-  font-size: 0.9rem;
+  font-size: 0.93rem;
   margin-bottom: 14px;
   animation: bannerFadeIn 0.3s ease;
+  border: 1px solid transparent;
 }
-.sc-banner.error   { background: #fee2e2; color: #b91c1c; }
-.sc-banner.success { background: #dcfce7; color: #15803d; }
+.sc-banner.error   { background: #fee2e2; color: #b91c1c; border-color: #fca5a5; }
+.sc-banner.success { background: #dcfce7; color: #15803d; border-color: #86efac; }
 
 .sc-info-panel {
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
+  background: #fff8f1;
+  border: 1px solid #fed7aa;
   border-radius: 14px;
   padding: 16px;
   display: grid;
@@ -448,7 +538,7 @@
   margin-bottom: 18px;
 }
 .sc-label { font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.4px; font-weight: 700; }
-.sc-big-date { font-size: 1.1rem; font-weight: 800; color: var(--text-primary); }
+.sc-big-date { font-size: 1.2rem; font-weight: 800; color: var(--text-primary); }
 
 /* FIX 8: Status badge uses variables, no hardcoded default blue */
 .sc-status-badge {
@@ -466,15 +556,23 @@
 .sc-status-badge.past     { background: var(--status-past-bg);     color: var(--status-past-text); }
 
 .sc-capacity-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
-.sc-capacity-card { background: white; border: 1px solid var(--border); border-radius: 12px; padding: 10px; text-align: center; }
+.sc-capacity-card { background: white; border: 1px solid var(--border); border-radius: 12px; padding: 12px; text-align: center; }
+.sc-capacity-card {
+  transition: transform 0.16s ease, border-color 0.16s ease, box-shadow 0.16s ease;
+}
+.sc-capacity-card:hover {
+  transform: translateY(-1px);
+  border-color: #fed7aa;
+  box-shadow: 0 8px 14px rgba(232, 101, 10, 0.10);
+}
 .sc-capacity-card.purple .sc-capacity-number { color: #6d28d9; }
 .sc-capacity-card.blue   .sc-capacity-number { color: #1d4ed8; }
 .sc-capacity-card.green  .sc-capacity-number { color: #15803d; }
-.sc-capacity-label { font-size: 0.72rem; color: var(--text-muted); }
-.sc-capacity-number { font-size: 1.1rem; font-weight: 800; color: var(--text-primary); }
+.sc-capacity-label { font-size: 0.76rem; color: var(--text-muted); }
+.sc-capacity-number { font-size: 1.25rem; font-weight: 800; color: var(--text-primary); }
 
 .sc-quick-add { margin-top: 12px; display: grid; gap: 14px; }
-.sc-panel-title { font-size: 0.92rem; font-weight: 700; color: var(--text-primary); }
+.sc-panel-title { font-size: 0.98rem; font-weight: 800; color: var(--text-primary); }
 .sc-quick-add__rules {
   background: #f8fafc;
   border: 1px solid #e2e8f0;
@@ -491,13 +589,13 @@
 .sc-alert.info     { background: var(--status-upcoming-bg); color: var(--status-upcoming-text); }
 
 .sc-field { display: grid; gap: 6px; }
-.sc-field label { font-weight: 700; color: var(--text-secondary); font-size: 0.85rem; }
+.sc-field label { font-weight: 800; color: var(--text-secondary); font-size: 0.88rem; }
 .sc-input {
-  padding: 10px 12px;
+  padding: 11px 13px;
   border-radius: 12px;
   border: 2px solid #e2e8f0;
   background: #f8fafc;
-  font-size: 0.9rem;
+  font-size: 0.94rem;
   color: var(--text-primary);
   width: 100%;
   box-sizing: border-box;
@@ -527,6 +625,12 @@
   grid-template-columns: 6px 1fr auto;
   gap: 12px;
   align-items: center;
+  transition: border-color 0.16s ease, box-shadow 0.16s ease, transform 0.16s ease;
+}
+.sc-selected-slot-card:hover {
+  transform: translateY(-1px);
+  border-color: #fdba74;
+  box-shadow: 0 8px 16px rgba(232, 101, 10, 0.12);
 }
 
 /* FIX 7: Accent line colors by status */
@@ -542,12 +646,12 @@
 
 .sc-selected-slot-main { display: grid; gap: 6px; }
 .sc-selected-slot-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-.sc-selected-slot-time { font-weight: 700; color: var(--text-primary); }
-.sc-selected-slot-duration { font-size: 0.78rem; color: var(--text-muted); }
+.sc-selected-slot-time { font-size: 0.96rem; font-weight: 800; color: var(--text-primary); }
+.sc-selected-slot-duration { font-size: 0.82rem; color: var(--text-muted); }
 .sc-selected-slot-actions { display: flex; gap: 6px; flex-wrap: wrap; }
 
 .sc-action-btn {
-  padding: 6px 10px;
+  padding: 7px 11px;
   border-radius: 10px;
   border: 1px solid var(--border);
   background: #f8fafc;
@@ -555,7 +659,7 @@
   font-weight: 600;
   cursor: pointer;
   transition: 0.2s;
-  font-size: 0.82rem;
+  font-size: 0.84rem;
 }
 .sc-action-btn.view   { color: var(--royal); border-color: rgba(98, 159, 173, 0.40); }
 .sc-action-btn.edit   { color: #296374; border-color: #b0d4dc; }
@@ -597,7 +701,7 @@
   border-bottom: 1px solid var(--border);
   background: #f8fafc;
 }
-.sc-modal__header h3 { margin: 0; color: var(--text-primary); font-size: 1rem; }
+.sc-modal__header h3 { margin: 0; color: var(--text-primary); font-size: 1.08rem; }
 .sc-modal__header p  { margin: 4px 0 0; font-size: 0.82rem; color: var(--text-muted); }
 .sc-modal__close { background: transparent; border: none; font-size: 1.1rem; cursor: pointer; color: var(--text-muted); }
 .sc-modal__body { padding: 20px 22px 22px; display: grid; gap: 16px; }
@@ -615,7 +719,7 @@
 .sc-details-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; }
 .sc-detail-card { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px; display: grid; gap: 4px; }
 .sc-detail-label { font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.4px; font-weight: 700; }
-.sc-detail-value { font-size: 0.95rem; color: var(--text-primary); font-weight: 700; }
+.sc-detail-value { font-size: 1rem; color: var(--text-primary); font-weight: 800; }
 
 /* Responsive */
 @media (max-width: 1100px) {
@@ -623,15 +727,26 @@
   .sc-hero__content { flex-direction: column; align-items: flex-start; }
   .sc-hero__avatar { display: none; }
   .sc-side-body { max-height: none; overflow-y: visible; }
+  .sc-hero { padding: 42px 0 48px; }
 }
 @media (max-width: 700px) {
   .sc-stats { grid-template-columns: repeat(2, 1fr); }
   .sc-header-row { flex-direction: column; align-items: flex-start; }
-  .sc-calendar-grid { grid-template-columns: repeat(2, 1fr); }
+  .sc-days-header { display: none; }
+  .sc-calendar-scroll { overflow: visible; }
+  .sc-calendar-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); min-width: 0; }
+  .sc-day-card { min-height: 148px; }
+  .sc-day-slot-preview { max-height: 180px; }
   .sc-details-grid { grid-template-columns: 1fr; }
   .sc-capacity-grid { grid-template-columns: 1fr; }
   .sc-selected-slot-card { grid-template-columns: 4px 1fr; }
   .sc-selected-slot-actions { grid-column: 1 / -1; }
+  .sc-grid { padding: 0 16px 28px; gap: 16px; }
+  .sc-stats { padding: 0 16px 18px; gap: 12px; }
+  .sc-card__header, .sc-card__body, .sc-side-body { padding-left: 16px; padding-right: 16px; }
+  .sc-hero__content { padding: 0 16px; }
+  .sc-hero h1 { font-size: 1.95rem; }
+  .sc-hero p { margin-bottom: 22px; font-size: 0.92rem; }
 }
 
 

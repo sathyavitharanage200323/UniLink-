@@ -537,7 +537,7 @@ export default function StudentHome({ currentUser, appointments = [], onLogout }
                 </div>
                 <span>My Schedule</span>
               </button>
-              <button className="sh-quick-btn" onClick={() => navigate('/coming-soon')}>
+              <button className="sh-quick-btn" onClick={() => navigate('/resources')}>
                 <div className="sh-quick-icon" style={{ background: '#f0fdf4', color: '#0891b2' }}>
                   <BookOpen size={24} />
                 </div>

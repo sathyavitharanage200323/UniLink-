@@ -135,4 +135,33 @@ public class DatabaseMigrations {
             }
         }
     }
+
+    @PostConstruct
+    public void ensureLearningResourcesTable() {
+        try {
+            jdbcTemplate.execute(
+                    "CREATE TABLE IF NOT EXISTS learning_resources (" +
+                            "id BIGINT AUTO_INCREMENT PRIMARY KEY," +
+                            "lecturer_id BIGINT NOT NULL," +
+                            "type ENUM('PDF','NOTICE') NOT NULL," +
+                            "title VARCHAR(220) NOT NULL," +
+                            "description VARCHAR(2500) NULL," +
+                            "file_path VARCHAR(255) NULL," +
+                            "file_name VARCHAR(255) NULL," +
+                            "mime_type VARCHAR(120) NULL," +
+                            "file_size BIGINT NULL," +
+                            "created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP," +
+                            "updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP," +
+                            "INDEX idx_lr_created_at (created_at)," +
+                            "INDEX idx_lr_lecturer (lecturer_id)," +
+                            "CONSTRAINT fk_lr_lecturer FOREIGN KEY (lecturer_id) REFERENCES users(id) ON DELETE CASCADE" +
+                            ")"
+            );
+        } catch (Exception ex) {
+            String msg = ex.getMessage() == null ? "" : ex.getMessage().toLowerCase();
+            if (!(msg.contains("already exists") || msg.contains("duplicate"))) {
+                log.warn("Could not verify/create learning_resources table: {}", ex.getMessage());
+            }
+        }
+    }
 }

@@ -153,6 +153,11 @@ function getSlotAccentClass(slot) {
   return 'past';
 }
 
+function isBookedSlot(slot) {
+  const status = String(slot?.status || '').toUpperCase();
+  return status === 'BOOKED';
+}
+
 function hasOngoingSlotForDate(dateKey, allSlotsByDate) {
   const sameDaySlots = allSlotsByDate[dateKey] || [];
   return sameDaySlots.some((slot) => getSlotLiveState(slot) === 'Ongoing');
@@ -298,6 +303,7 @@ export default function SlotCalendarPage({ currentUser, onLogout }) {
 
   const filteredSlots = useMemo(() => {
     return slots.filter((slot) => {
+      if (isBookedSlot(slot)) return false;
       const status = getStatus(slot.slotDate);
       if (filter === 'All') return true;
       return status === filter;
@@ -831,87 +837,89 @@ export default function SlotCalendarPage({ currentUser, onLogout }) {
                 <div className="sc-error">{error}</div>
               ) : (
                 <>
-                  <div className="sc-days-header">
-                    {dayNames.map((day) => (
-                      <div key={day} className="sc-day-name">
-                        {day}
-                      </div>
-                    ))}
-                  </div>
+                  <div className="sc-calendar-scroll">
+                    <div className="sc-days-header">
+                      {dayNames.map((day) => (
+                        <div key={day} className="sc-day-name">
+                          {day}
+                        </div>
+                      ))}
+                    </div>
 
-                  <div className="sc-calendar-grid">
-                    {calendarDays.map((dateObj, index) => {
-                      if (!dateObj) {
-                        return <div key={`empty-${index}`} className="sc-calendar-empty" />;
-                      }
+                    <div className="sc-calendar-grid">
+                      {calendarDays.map((dateObj, index) => {
+                        if (!dateObj) {
+                          return <div key={`empty-${index}`} className="sc-calendar-empty" />;
+                        }
 
-                      const key = dateToKey(dateObj);
-                      const daySlots = slotsByDate[key] || [];
-                      const isToday = key === todayKey;
-                      const isSelected = isSameDate(dateObj, selectedDate);
-                      const hasOngoing = daySlots.some((slot) => getSlotLiveState(slot) === 'Ongoing');
+                        const key = dateToKey(dateObj);
+                        const daySlots = slotsByDate[key] || [];
+                        const isToday = key === todayKey;
+                        const isSelected = isSameDate(dateObj, selectedDate);
+                        const hasOngoing = daySlots.some((slot) => getSlotLiveState(slot) === 'Ongoing');
 
-                      return (
-                        <button
-                          type="button"
-                          key={key}
-                          onClick={() => setSelectedDate(dateObj)}
-                          className={`sc-day-card ${isToday ? 'today' : ''} ${isSelected ? 'selected' : ''} ${daySlots.length > 0 ? 'has-slots' : 'empty-day'}`}
-                        >
-                          <div className="sc-day-card__top">
-                            <span className="sc-day-number">{dateObj.getDate()}</span>
+                        return (
+                          <button
+                            type="button"
+                            key={key}
+                            onClick={() => setSelectedDate(dateObj)}
+                            className={`sc-day-card ${isToday ? 'today' : ''} ${isSelected ? 'selected' : ''} ${daySlots.length > 0 ? 'has-slots' : 'empty-day'}`}
+                          >
+                            <div className="sc-day-card__top">
+                              <span className="sc-day-number">{dateObj.getDate()}</span>
 
-                            {hasOngoing ? (
-                              <span className="sc-mini-badge live">
-                                <span className="sc-live-dot" />
-                                Live
-                              </span>
-                            ) : isSelected ? (
-                              <span className="sc-mini-badge selected">Selected</span>
-                            ) : isToday ? (
-                              <span className="sc-mini-badge today">Today</span>
-                            ) : null}
-                          </div>
+                              {hasOngoing ? (
+                                <span className="sc-mini-badge live">
+                                  <span className="sc-live-dot" />
+                                  Live
+                                </span>
+                              ) : isSelected ? (
+                                <span className="sc-mini-badge selected">Selected</span>
+                              ) : isToday ? (
+                                <span className="sc-mini-badge today">Today</span>
+                              ) : null}
+                            </div>
 
-                          <div className="sc-day-slot-count">
-                            {daySlots.length} slot{daySlots.length !== 1 ? 's' : ''}
-                          </div>
+                            <div className="sc-day-slot-count">
+                              {daySlots.length} slot{daySlots.length !== 1 ? 's' : ''}
+                            </div>
 
-                          <div className="sc-day-slot-preview">
-                            {daySlots.slice(0, 2).map((slot) => {
-                              const liveState = getSlotLiveState(slot);
+                            <div className="sc-day-slot-preview">
+                              {daySlots.slice(0, 2).map((slot) => {
+                                const liveState = getSlotLiveState(slot);
 
-                              return (
-                                <div key={slot.id} className={`sc-slot-chip ${getSlotAccentClass(slot)}`}>
-                                  <div className={`sc-slot-chip__top-line ${getSlotAccentClass(slot)}`} />
+                                return (
+                                  <div key={slot.id} className={`sc-slot-chip ${getSlotAccentClass(slot)}`}>
+                                    <div className={`sc-slot-chip__top-line ${getSlotAccentClass(slot)}`} />
 
-                                  <div className="sc-slot-chip__header">
-                                    <div className="sc-slot-chip__time">
-                                      {formatTimeDisplay(slot.startTime)} - {formatTimeDisplay(slot.endTime)}
+                                    <div className="sc-slot-chip__header">
+                                      <div className="sc-slot-chip__time">
+                                        {formatTimeDisplay(slot.startTime)} - {formatTimeDisplay(slot.endTime)}
+                                      </div>
+
+                                      {liveState === 'Ongoing' && (
+                                        <div className="sc-live-pill">
+                                          <span className="sc-live-dot" />
+                                          Live
+                                        </div>
+                                      )}
                                     </div>
 
-                                    {liveState === 'Ongoing' && (
-                                      <div className="sc-live-pill">
-                                        <span className="sc-live-dot" />
-                                        Live
-                                      </div>
-                                    )}
+                                    <div className={`sc-slot-chip__status ${getSlotBadgeClass(slot)}`}>
+                                      {liveState}
+                                    </div>
                                   </div>
+                                );
+                              })}
 
-                                  <div className={`sc-slot-chip__status ${getSlotBadgeClass(slot)}`}>
-                                    {liveState}
-                                  </div>
-                                </div>
-                              );
-                            })}
-
-                            {daySlots.length > 2 && (
-                              <div className="sc-more-text">+{daySlots.length - 2} more</div>
-                            )}
-                          </div>
-                        </button>
-                      );
-                    })}
+                              {daySlots.length > 2 && (
+                                <div className="sc-more-text">+{daySlots.length - 2} more</div>
+                              )}
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
                   </div>
                 </>
               )}
