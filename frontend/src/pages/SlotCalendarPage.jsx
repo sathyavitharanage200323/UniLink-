@@ -28,6 +28,7 @@ const DEFAULT_PREFS = {
   maxSlotsPerDay: 12,
   preferredMode: 'BOTH',
 };
+const MAX_SLOT_RECORDS = 5000;
 
 function formatTimeDisplay(time) {
   if (!time) return '--';
@@ -214,25 +215,54 @@ export default function SlotCalendarPage({ currentUser, onLogout }) {
     if (currentUser?.id) {
       loadSlots();
       loadPreferences();
+      return;
     }
+    setLoading(false);
+    setError('Unable to load calendar. Please sign in again.');
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentUser?.id]);
 
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setSlots((prev) => [...prev]);
-    }, 30000);
+  function sanitizeSlots(raw) {
+    if (!Array.isArray(raw)) return [];
 
-    return () => clearInterval(timer);
-  }, []);
+    const cleaned = raw.filter((slot) => (
+      slot
+      && typeof slot.slotDate === 'string'
+      && typeof slot.startTime === 'string'
+      && typeof slot.endTime === 'string'
+    ));
+
+    if (cleaned.length > MAX_SLOT_RECORDS) {
+      setBanner({
+        type: 'error',
+        text: `Large dataset detected (${cleaned.length} slots). Showing latest ${MAX_SLOT_RECORDS} for performance.`,
+      });
+      return cleaned
+        .sort((a, b) => String(b.slotDate).localeCompare(String(a.slotDate)))
+        .slice(0, MAX_SLOT_RECORDS);
+    }
+    return cleaned;
+  }
 
   async function loadSlots() {
+    if (!currentUser?.id) {
+      setLoading(false);
+      setError('Unable to load calendar. Missing user session.');
+      return;
+    }
+
+    const withTimeout = (promise, ms = 12000) =>
+      Promise.race([
+        promise,
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Calendar request timed out.')), ms)),
+      ]);
+
     try {
       setLoading(true);
       setError('');
       setBanner({ type: '', text: '' });
-      const data = await getLecturerAvailability(currentUser.id);
-      setSlots(Array.isArray(data) ? data : []);
+      const data = await withTimeout(getLecturerAvailability(currentUser.id));
+      setSlots(sanitizeSlots(data));
     } catch (err) {
       setError(err.message || 'Failed to load calendar slots.');
       setSlots([]);
